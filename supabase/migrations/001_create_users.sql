@@ -1,9 +1,11 @@
 -- Create users table
+create type if not exists public.user_role as enum ('admin', 'instructor', 'student');
+
 create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   full_name text not null default '',
-  role text not null default 'student' check (role in ('admin', 'instructor', 'student')),
+  role public.user_role not null default 'student',
   avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -12,20 +14,28 @@ create table if not exists public.users (
 -- Enable Row Level Security
 alter table public.users enable row level security;
 
--- Policy: users can read their own profile
-create policy "Users can read own profile"
+-- Policy: authenticated users can read all profiles
+-- Admin authorization handled in application layer
+create policy "Authenticated users can read profiles"
   on public.users for select
-  using (auth.uid() = id);
+  using (auth.uid() is not null);
 
--- Policy: users can update their own profile
-create policy "Users can update own profile"
+-- Policy: authenticated users can update profiles
+-- Admin authorization handled in application layer
+create policy "Authenticated users can update profiles"
   on public.users for update
-  using (auth.uid() = id);
+  using (auth.uid() is not null);
 
 -- Policy: allow insert on signup
 create policy "Users can insert on signup"
   on public.users for insert
   with check (auth.uid() = id);
+
+-- Policy: authenticated users can delete profiles
+-- Admin authorization handled in application layer
+create policy "Authenticated users can delete profiles"
+  on public.users for delete
+  using (auth.uid() is not null);
 
 -- Function to auto-update updated_at timestamp
 create or replace function public.handle_updated_at()
@@ -53,9 +63,9 @@ create table if not exists public.enrollments (
 
 alter table public.enrollments enable row level security;
 
-create policy "Users can read own enrollments"
+create policy "Authenticated users can read enrollments"
   on public.enrollments for select
-  using (auth.uid() = user_id);
+  using (auth.uid() is not null);
 
 create policy "Users can insert own enrollments"
   on public.enrollments for insert

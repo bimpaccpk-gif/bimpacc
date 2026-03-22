@@ -1,99 +1,103 @@
+import { getCurrentUser } from "@/lib/dal";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Search, Star } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
-export default function CoursesPage() {
-  const courses = [
-    {
-      id: "1",
-      title: "Introduction to React",
-      description: "Learn the fundamentals of React including components, hooks, and state management.",
-      instructor: "John Doe",
-      students: 124,
-      rating: 4.8,
-      price: 49.99,
-    },
-    {
-      id: "2",
-      title: "Advanced TypeScript",
-      description: "Deep dive into TypeScript generics, utility types, and advanced patterns.",
-      instructor: "Jane Smith",
-      students: 89,
-      rating: 4.7,
-      price: 59.99,
-    },
-    {
-      id: "3",
-      title: "Node.js Fundamentals",
-      description: "Build server-side applications with Node.js, Express, and MongoDB.",
-      instructor: "Alex Johnson",
-      students: 67,
-      rating: 4.9,
-      price: 54.99,
-    },
-    {
-      id: "4",
-      title: "Python for Data Science",
-      description: "Master Python programming for data analysis, visualization, and machine learning.",
-      instructor: "Sarah Wilson",
-      students: 203,
-      rating: 4.6,
-      price: 69.99,
-    },
-  ];
+interface EnrolledCourse {
+  course_id: string;
+  progress: number;
+  enrolled_at: string;
+}
+
+async function getEnrolledCourses(userId: string): Promise<EnrolledCourse[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("course_id, progress, enrolled_at")
+    .eq("user_id", userId)
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching enrollments:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export default async function CoursesPage() {
+  const user = await getCurrentUser();
+  const enrollments = await getEnrolledCourses(user.id);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Browse our catalog of courses
-          </p>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search courses..."
-            className="w-full pl-10 sm:w-64"
-          />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">My Courses</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Courses you are enrolled in
+        </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {courses.map((course) => (
-          <Card key={course.id} className="overflow-hidden transition-shadow hover:shadow-md">
-            <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600" />
-            <CardHeader className="pb-2">
-              <CardTitle className="line-clamp-1 text-lg">{course.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="line-clamp-2 text-sm text-gray-500 dark:text-gray-400">
-                {course.description}
-              </p>
-              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <span>{course.students} students</span>
-                <span>•</span>
-                <span className="flex items-center gap-1 text-yellow-600">
-                  <Star className="h-3.5 w-3.5 fill-current" />
-                  {course.rating}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">
-                  ${course.price}
-                </span>
-                <Link href={`/courses/${course.id}`}>
-                  <Button size="sm">View Course</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {enrollments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
+          <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+          <h3 className="mt-4 text-lg font-semibold">No courses yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You haven&apos;t enrolled in any courses.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {enrollments.map((enrollment) => (
+            <Card
+              key={enrollment.course_id}
+              className="overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="aspect-video bg-gradient-to-br from-brand-500 to-brand-700 dark:from-brand-700 dark:to-brand-900" />
+              <CardHeader className="pb-2">
+                <CardTitle className="line-clamp-1 text-lg">
+                  Course #{enrollment.course_id.slice(0, 8)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium">{enrollment.progress}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${enrollment.progress}%` }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enrolled {formatDate(enrollment.enrolled_at)}
+                </p>
+                <div className="pt-2">
+                  <Link href={`/courses/${enrollment.course_id}`}>
+                    <Button size="sm" className="w-full">
+                      Continue Learning
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

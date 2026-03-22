@@ -19,7 +19,7 @@ import {
 import type { UserRole } from "@/types";
 import { signOut } from "@/app/actions/auth";
 import { useMemo, useState } from "react";
-import { Menu, X, Bell, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Menu, X, Bell, LogOut, User, ChevronDown } from "lucide-react";
 
 interface NavbarUser {
   full_name: string;
@@ -119,10 +119,6 @@ export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
               <DropdownMenuItem onClick={() => router.push("/profile")}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/settings")}>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

@@ -1,7 +1,6 @@
 import { getCurrentUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -15,9 +14,7 @@ import {
   Shield,
   Calendar,
   Clock,
-  Edit,
 } from "lucide-react";
-import Link from "next/link";
 
 async function getUserStats(userId: string, role: string) {
   const supabase = await createClient();
@@ -70,15 +67,9 @@ export default async function ProfilePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
           <p className="text-muted-foreground">
-            Manage your account information
+            View your account information
           </p>
         </div>
-        <Link href="/settings">
-          <Button variant="outline" size="sm">
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Profile
-          </Button>
-        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
