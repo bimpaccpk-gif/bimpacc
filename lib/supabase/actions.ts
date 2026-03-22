@@ -1,5 +1,6 @@
 "use server";
 
+import { verifySession } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
@@ -40,7 +41,11 @@ export async function createUserProfile(
   return data as UserProfile;
 }
 
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+export async function getUserProfile(
+  userId: string
+): Promise<UserProfile | null> {
+  await verifySession();
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -58,15 +63,15 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 }
 
 export async function updateUserProfile(
-  userId: string,
   updates: { full_name?: string; avatar_url?: string }
 ) {
+  const session = await verifySession();
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("users")
     .update(updates as never)
-    .eq("id", userId)
+    .eq("id", session.userId)
     .select()
     .single();
 
@@ -76,30 +81,4 @@ export async function updateUserProfile(
   }
 
   return data as UserProfile;
-}
-
-export async function getCurrentUser() {
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return null;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    console.error("Error fetching user profile:", profileError);
-    return null;
-  }
-
-  return {
-    ...(profile as UserProfile),
-    auth: user,
-  };
 }

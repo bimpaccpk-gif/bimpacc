@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { APP_NAME, DASHBOARD_SIDEBAR_LINKS } from "@/lib/constants";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,21 +10,31 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { UserRole } from "@/types";
+import { signOut } from "@/app/actions/auth";
 import { useMemo, useState } from "react";
 import { Menu, X, Bell, LogOut, User, Settings, ChevronDown } from "lucide-react";
 
-interface DashboardNavbarProps {
-  role: UserRole;
+interface NavbarUser {
+  full_name: string;
+  avatar_url: string | null;
+  email: string;
 }
 
-export function DashboardNavbar({ role }: DashboardNavbarProps) {
+interface DashboardNavbarProps {
+  role: UserRole;
+  user: NavbarUser;
+}
+
+export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const links = useMemo(
     () => DASHBOARD_SIDEBAR_LINKS[role] || DASHBOARD_SIDEBAR_LINKS.student,
@@ -32,17 +42,25 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
   );
 
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+  const initials = user.full_name
+    ? user.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email[0]?.toUpperCase() ?? "U";
 
   return (
-    <nav className="sticky top-0 z-30 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-gray-950/95 dark:supports-[backdrop-filter]:bg-gray-950/80">
+    <nav className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left: Logo + Nav Links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
               B
             </div>
-            <span className="hidden text-lg font-semibold text-gray-900 dark:text-white sm:block">
+            <span className="hidden text-lg font-semibold text-foreground sm:block">
               {APP_NAME}
             </span>
           </Link>
@@ -58,8 +76,8 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
                   className={cn(
                     "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   {link.label}
@@ -73,37 +91,44 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
           <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <Bell className="h-5 w-5 text-muted-foreground" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger>
-              <Button variant="ghost" className="flex items-center gap-2 px-2">
+              <div className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gray-200 text-sm font-medium dark:bg-gray-700">
-                    U
+                  <AvatarFallback className="bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden flex-col items-start text-left sm:flex">
-                  <span className="text-sm font-medium">User</span>
-                  <span className="text-xs text-gray-500">{roleLabel}</span>
+                  <span className="text-sm font-medium">
+                    {user.full_name || "User"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{roleLabel}</span>
                 </div>
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              </Button>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/settings")}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 dark:text-red-400">
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => signOut()}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -116,13 +141,13 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
           <ThemeToggle />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <X className="h-5 w-5 text-foreground/80" />
             ) : (
-              <Menu className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <Menu className="h-5 w-5 text-foreground/80" />
             )}
           </button>
         </div>
@@ -130,7 +155,7 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="border-t bg-white px-4 py-3 dark:bg-gray-950 lg:hidden">
+        <div className="border-t bg-background px-4 py-3 lg:hidden">
           <div className="flex flex-col gap-1">
             {links.map((link) => {
               const isActive = pathname === link.href;
@@ -142,22 +167,28 @@ export function DashboardNavbar({ role }: DashboardNavbarProps) {
                   className={cn(
                     "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   {link.label}
                 </Link>
               );
             })}
-            <hr className="my-2 border-gray-200 dark:border-gray-800" />
+            <hr className="my-2 border-border" />
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               Back to Site
             </Link>
+            <button
+              onClick={() => signOut()}
+              className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-destructive hover:bg-destructive/10"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       )}

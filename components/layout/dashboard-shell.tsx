@@ -1,15 +1,17 @@
 import { DashboardNavbar } from "@/components/layout/dashboard-navbar";
 import type { UserRole } from "@/types";
+import type { SessionUser } from "@/lib/dal";
 
 interface DashboardShellProps {
   children: React.ReactNode;
   role: UserRole;
+  user: SessionUser;
 }
 
-export function DashboardShell({ children, role }: DashboardShellProps) {
+export function DashboardShell({ children, role, user }: DashboardShellProps) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <DashboardNavbar role={role} />
+    <div className="min-h-screen bg-surface-sunken">
+      <DashboardNavbar role={role} user={user} />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {children}
       </main>
