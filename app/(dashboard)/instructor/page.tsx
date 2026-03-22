@@ -3,29 +3,60 @@ import { BookOpen, Users, BarChart3, Star } from "lucide-react";
 
 export default function InstructorDashboardPage() {
   const stats = [
-    { title: "My Courses", value: "8", icon: BookOpen, color: "text-blue-600" },
-    { title: "Total Students", value: "456", icon: Users, color: "text-green-600" },
-    { title: "Completion Rate", value: "78%", icon: BarChart3, color: "text-purple-600" },
-    { title: "Avg. Rating", value: "4.8", icon: Star, color: "text-orange-600" },
+    {
+      title: "My Courses",
+      value: "8",
+      icon: BookOpen,
+      bgColor: "bg-brand-50 dark:bg-brand-950",
+      iconColor: "text-brand-600 dark:text-brand-400",
+    },
+    {
+      title: "Total Students",
+      value: "456",
+      icon: Users,
+      bgColor: "bg-success/10",
+      iconColor: "text-success",
+    },
+    {
+      title: "Completion Rate",
+      value: "78%",
+      icon: BarChart3,
+      bgColor: "bg-info/10",
+      iconColor: "text-info",
+    },
+    {
+      title: "Avg. Rating",
+      value: "4.8",
+      icon: Star,
+      bgColor: "bg-warning/10",
+      iconColor: "text-warning",
+    },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Instructor Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="text-2xl font-bold text-foreground">
+          Instructor Dashboard
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage your courses and track student progress
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card
+            key={stat.title}
+            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <div className={`rounded-lg p-2 ${stat.bgColor}`}>
+                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
@@ -42,23 +73,39 @@ export default function InstructorDashboardPage() {
           <CardContent>
             <div className="space-y-3">
               {[
-                { title: "Introduction to React", students: 124, status: "Published" },
-                { title: "Advanced TypeScript", students: 89, status: "Published" },
-                { title: "Node.js Fundamentals", students: 67, status: "Draft" },
+                {
+                  title: "Introduction to React",
+                  students: 124,
+                  status: "Published",
+                },
+                {
+                  title: "Advanced TypeScript",
+                  students: 89,
+                  status: "Published",
+                },
+                {
+                  title: "Node.js Fundamentals",
+                  students: 67,
+                  status: "Draft",
+                },
               ].map((course) => (
                 <div
                   key={course.title}
-                  className="flex items-center justify-between rounded-lg border p-3 dark:border-gray-700"
+                  className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{course.title}</p>
-                    <p className="text-sm text-gray-500">{course.students} students</p>
+                    <p className="font-medium text-foreground">
+                      {course.title}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {course.students} students
+                    </p>
                   </div>
                   <span
-                    className={`rounded-full px-2 py-1 text-xs font-medium ${
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       course.status === "Published"
-                        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400"
-                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400"
+                        ? "bg-success/10 text-success"
+                        : "bg-warning/10 text-warning"
                     }`}
                   >
                     {course.status}
@@ -83,7 +130,7 @@ export default function InstructorDashboardPage() {
               ].map((action) => (
                 <button
                   key={action}
-                  className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"
                 >
                   {action}
                 </button>

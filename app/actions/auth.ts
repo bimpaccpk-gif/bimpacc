@@ -65,6 +65,22 @@ export async function signUp(
     return { error: "Password must be at least 8 characters." };
   }
 
+  const allowedDomains = [
+    "gmail.com",
+    "outlook.com",
+    "hotmail.com",
+    "yahoo.com",
+    "icloud.com",
+  ];
+  const emailDomain = email.split("@")[1]?.toLowerCase();
+
+  if (!emailDomain || !allowedDomains.includes(emailDomain)) {
+    return {
+      error:
+        "Only Gmail, Outlook, Yahoo, Hotmail, or iCloud emails are allowed.",
+    };
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({

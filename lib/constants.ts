@@ -9,9 +9,8 @@ export const NAV_LINKS = [
 export const DASHBOARD_SIDEBAR_LINKS = {
   admin: [
     { href: "/admin", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/courses", label: "Courses", icon: "BookOpen" },
+    { href: "/admin/courses", label: "Courses", icon: "BookOpen" },
     { href: "/admin/users", label: "Users", icon: "Users" },
-    { href: "/admin/settings", label: "Settings", icon: "Settings" },
   ],
   instructor: [
     { href: "/instructor", label: "Dashboard", icon: "LayoutDashboard" },

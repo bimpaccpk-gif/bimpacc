@@ -15,16 +15,26 @@ export interface Course {
   title: string;
   description: string;
   thumbnail_url?: string;
-  instructor_id: string;
+  instructor_id?: string;
   status: "draft" | "published" | "archived";
   price?: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface Lesson {
+export interface Subject {
   id: string;
   course_id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Lesson {
+  id: string;
+  subject_id: string;
   title: string;
   description?: string;
   video_url?: string;
