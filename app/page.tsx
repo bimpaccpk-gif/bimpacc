@@ -28,7 +28,7 @@ export default function HomePage() {
                     Get Started Free
                   </Button>
                 </Link>
-                <Link href="/dashboard/courses">
+                <Link href="/courses">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
                     Browse Courses
                   </Button>

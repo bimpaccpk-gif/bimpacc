@@ -63,7 +63,7 @@ export default function RegisterPage() {
       }
     }
 
-    router.push("/dashboard/student");
+    router.push("/student");
   };
 
   return (
