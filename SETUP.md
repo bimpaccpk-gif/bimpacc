@@ -70,7 +70,7 @@ bimpacc-lms/
 │   │   ├── login/page.tsx         # Login page
 │   │   └── register/page.tsx      # Registration page
 │   ├── (dashboard)/               # Dashboard route group
-│   │   ├── layout.tsx             # Sidebar + main content layout
+│   │   ├── layout.tsx             # Dashboard layout with auth guard
 │   │   ├── admin/page.tsx         # Admin dashboard
 │   │   ├── instructor/page.tsx    # Instructor dashboard
 │   │   ├── student/page.tsx       # Student dashboard
@@ -86,7 +86,8 @@ bimpacc-lms/
 │   │   └── index.ts
 │   ├── layout/                    # Layout components
 │   │   ├── navbar.tsx             # Top navigation bar
-│   │   ├── sidebar.tsx            # Dashboard sidebar
+│   │   ├── dashboard-navbar.tsx   # Dashboard top nav
+│   │   └── dashboard-shell.tsx    # Dashboard wrapper
 │   │   └── index.ts
 │   └── index.ts
 ├── lib/
