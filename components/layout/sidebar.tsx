@@ -4,10 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { APP_NAME, DASHBOARD_SIDEBAR_LINKS } from "@/lib/constants";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { UserRole } from "@/types";
+import { useEffect, useCallback, useMemo } from "react";
 
 interface SidebarProps {
   role?: UserRole;
+  open?: boolean;
+  onClose?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -49,20 +53,42 @@ const iconMap: Record<string, React.ReactNode> = {
   ),
 };
 
-export function Sidebar({ role = "student" }: SidebarProps) {
+function SidebarContent({ role = "student", onClose }: { role?: UserRole; onClose?: () => void }) {
   const pathname = usePathname();
-  const links = DASHBOARD_SIDEBAR_LINKS[role] || DASHBOARD_SIDEBAR_LINKS.student;
+  const links = useMemo(
+    () => DASHBOARD_SIDEBAR_LINKS[role] || DASHBOARD_SIDEBAR_LINKS.student,
+    [role]
+  );
+
+  const handleClose = useCallback(() => {
+    if (onClose) onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    handleClose();
+  }, [pathname, handleClose]);
 
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 md:block">
-      <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-6 dark:border-gray-800">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
-          B
-        </div>
-        <span className="text-lg font-semibold text-gray-900 dark:text-white">{APP_NAME}</span>
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center justify-between border-b border-gray-200 px-6 dark:border-gray-800">
+        <Link href="/" className="flex items-center gap-2" onClick={onClose}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
+            B
+          </div>
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">{APP_NAME}</span>
+        </Link>
+        <button
+          onClick={onClose}
+          className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
+          aria-label="Close menu"
+        >
+          <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <nav className="flex flex-col gap-1 p-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {links.map((link) => {
           const isActive = pathname === link.href;
           return (
@@ -75,6 +101,7 @@ export function Sidebar({ role = "student" }: SidebarProps) {
                   ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
               )}
+              onClick={onClose}
             >
               {iconMap[link.icon]}
               {link.label}
@@ -83,10 +110,15 @@ export function Sidebar({ role = "student" }: SidebarProps) {
         })}
       </nav>
 
-      <div className="absolute bottom-0 left-0 w-full border-t border-gray-200 p-4 dark:border-gray-800">
+      <div className="border-t border-gray-200 p-4 dark:border-gray-800">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Theme</span>
+          <ThemeToggle />
+        </div>
         <Link
           href="/"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+          onClick={onClose}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -94,6 +126,35 @@ export function Sidebar({ role = "student" }: SidebarProps) {
           Back to Site
         </Link>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+export function Sidebar({ role = "student", open = false, onClose }: SidebarProps) {
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 md:block">
+        <SidebarContent role={role} />
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 h-screen w-64 border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-800 dark:bg-gray-950 md:hidden",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <SidebarContent role={role} onClose={onClose} />
+      </aside>
+    </>
   );
 }

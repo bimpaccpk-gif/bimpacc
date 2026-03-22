@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME, NAV_LINKS } from "@/lib/constants";
 import { useState } from "react";
 
@@ -35,6 +36,7 @@ export function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           <Link href="/login">
             <Button variant="ghost" size="sm">
               Sign In
@@ -45,27 +47,30 @@ export function Navbar() {
           </Link>
         </div>
 
-        <button
-          className="md:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          <svg
-            className="h-6 w-6 text-gray-700 dark:text-gray-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d={mobileMenuOpen
-                ? "M6 18L18 6M6 6l12 12"
-                : "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"}
-            />
-          </svg>
-        </button>
+            <svg
+              className="h-5 w-5 text-gray-700 dark:text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d={mobileMenuOpen
+                  ? "M6 18L18 6M6 6l12 12"
+                  : "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"}
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {mobileMenuOpen && (
