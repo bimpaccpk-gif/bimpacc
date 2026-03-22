@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { APP_NAME, NAV_LINKS } from "@/lib/constants";
 import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-gray-800 dark:bg-gray-950/95 dark:supports-[backdrop-filter]:bg-gray-950/80">
+    <nav className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-gray-950/95 dark:supports-[backdrop-filter]:bg-gray-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
@@ -54,27 +55,17 @@ export function Navbar() {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
-            <svg
-              className="h-5 w-5 text-gray-700 dark:text-gray-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d={mobileMenuOpen
-                  ? "M6 18L18 6M6 6l12 12"
-                  : "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"}
-              />
-            </svg>
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            ) : (
+              <Menu className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+            )}
           </button>
         </div>
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-800 md:hidden">
+        <div className="border-t px-4 py-4 md:hidden">
           <div className="flex flex-col gap-3">
             {NAV_LINKS.map((link) => (
               <Link

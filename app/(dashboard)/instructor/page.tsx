@@ -1,11 +1,12 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BookOpen, Users, BarChart3, Star } from "lucide-react";
 
 export default function InstructorDashboardPage() {
   const stats = [
-    { title: "My Courses", value: "8", color: "text-blue-600" },
-    { title: "Total Students", value: "456", color: "text-green-600" },
-    { title: "Completion Rate", value: "78%", color: "text-purple-600" },
-    { title: "Avg. Rating", value: "4.8", color: "text-orange-600" },
+    { title: "My Courses", value: "8", icon: BookOpen, color: "text-blue-600" },
+    { title: "Total Students", value: "456", icon: Users, color: "text-green-600" },
+    { title: "Completion Rate", value: "78%", icon: BarChart3, color: "text-purple-600" },
+    { title: "Avg. Rating", value: "4.8", icon: Star, color: "text-orange-600" },
   ];
 
   return (
@@ -20,13 +21,14 @@ export default function InstructorDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-2xl font-bold">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
@@ -46,7 +48,7 @@ export default function InstructorDashboardPage() {
               ].map((course) => (
                 <div
                   key={course.title}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+                  className="flex items-center justify-between rounded-lg border p-3 dark:border-gray-700"
                 >
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">{course.title}</p>
@@ -81,7 +83,7 @@ export default function InstructorDashboardPage() {
               ].map((action) => (
                 <button
                   key={action}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   {action}
                 </button>

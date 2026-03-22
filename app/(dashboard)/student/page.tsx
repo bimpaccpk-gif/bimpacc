@@ -1,11 +1,12 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BookOpen, CheckCircle, Clock, Award } from "lucide-react";
 
 export default function StudentDashboardPage() {
   const stats = [
-    { title: "Enrolled Courses", value: "4", color: "text-blue-600" },
-    { title: "Completed", value: "2", color: "text-green-600" },
-    { title: "In Progress", value: "2", color: "text-orange-600" },
-    { title: "Certificates", value: "2", color: "text-purple-600" },
+    { title: "Enrolled Courses", value: "4", icon: BookOpen, color: "text-blue-600" },
+    { title: "Completed", value: "2", icon: CheckCircle, color: "text-green-600" },
+    { title: "In Progress", value: "2", icon: Clock, color: "text-orange-600" },
+    { title: "Certificates", value: "2", icon: Award, color: "text-purple-600" },
   ];
 
   return (
@@ -20,13 +21,14 @@ export default function StudentDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-2xl font-bold">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
@@ -76,7 +78,7 @@ export default function StudentDashboardPage() {
               ].map((course) => (
                 <div
                   key={course.title}
-                  className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+                  className="flex items-center justify-between rounded-lg border p-3 dark:border-gray-700"
                 >
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">{course.title}</p>

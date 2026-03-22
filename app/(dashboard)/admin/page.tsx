@@ -1,11 +1,12 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Users, BookOpen, DollarSign, Activity } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const stats = [
-    { title: "Total Users", value: "1,234", change: "+12%", color: "text-blue-600" },
-    { title: "Active Courses", value: "56", change: "+3%", color: "text-green-600" },
-    { title: "Enrollments", value: "3,456", change: "+18%", color: "text-purple-600" },
-    { title: "Revenue", value: "$45,678", change: "+8%", color: "text-orange-600" },
+    { title: "Total Users", value: "1,234", change: "+12%", icon: Users, color: "text-blue-600" },
+    { title: "Active Courses", value: "56", change: "+3%", icon: BookOpen, color: "text-green-600" },
+    { title: "Enrollments", value: "3,456", change: "+18%", icon: Activity, color: "text-purple-600" },
+    { title: "Revenue", value: "$45,678", change: "+8%", icon: DollarSign, color: "text-orange-600" },
   ];
 
   return (
@@ -20,13 +21,14 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.title}>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {stat.title}
               </CardTitle>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+              <div className="text-2xl font-bold">{stat.value}</div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {stat.change} from last month
               </p>
@@ -74,7 +76,7 @@ export default function AdminDashboardPage() {
               ].map((action) => (
                 <button
                   key={action}
-                  className="rounded-lg border border-gray-200 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   {action}
                 </button>

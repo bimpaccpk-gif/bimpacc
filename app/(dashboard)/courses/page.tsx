@@ -1,5 +1,8 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { Search, Star } from "lucide-react";
 
 export default function CoursesPage() {
   const courses = [
@@ -11,7 +14,6 @@ export default function CoursesPage() {
       students: 124,
       rating: 4.8,
       price: 49.99,
-      thumbnail: null,
     },
     {
       id: "2",
@@ -21,7 +23,6 @@ export default function CoursesPage() {
       students: 89,
       rating: 4.7,
       price: 59.99,
-      thumbnail: null,
     },
     {
       id: "3",
@@ -31,7 +32,6 @@ export default function CoursesPage() {
       students: 67,
       rating: 4.9,
       price: 54.99,
-      thumbnail: null,
     },
     {
       id: "4",
@@ -41,24 +41,24 @@ export default function CoursesPage() {
       students: 203,
       rating: 4.6,
       price: 69.99,
-      thumbnail: null,
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Browse our catalog of courses
           </p>
         </div>
-        <div className="flex gap-2">
-          <input
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
             type="text"
             placeholder="Search courses..."
-            className="h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+            className="w-full pl-10 sm:w-64"
           />
         </div>
       </div>
@@ -78,9 +78,7 @@ export default function CoursesPage() {
                 <span>{course.students} students</span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-yellow-600">
-                  <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
+                  <Star className="h-3.5 w-3.5 fill-current" />
                   {course.rating}
                 </span>
               </div>
@@ -88,11 +86,8 @@ export default function CoursesPage() {
                 <span className="text-lg font-bold text-gray-900 dark:text-white">
                   ${course.price}
                 </span>
-                <Link
-                  href={`/courses/${course.id}`}
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                  View Course
+                <Link href={`/courses/${course.id}`}>
+                  <Button size="sm">View Course</Button>
                 </Link>
               </div>
             </CardContent>
