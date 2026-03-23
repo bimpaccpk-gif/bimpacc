@@ -18,7 +18,7 @@ import { Plus, AlertCircle, Loader2 } from "lucide-react";
 
 interface LessonCreateDialogProps {
   courseId: string;
-  subjectId: string;
+  subjectId?: string;
 }
 
 export function LessonCreateDialog({
@@ -61,7 +61,7 @@ export function LessonCreateDialog({
             </Alert>
           )}
           <input type="hidden" name="courseId" value={courseId} />
-          <input type="hidden" name="subjectId" value={subjectId} />
+          {subjectId && <input type="hidden" name="subjectId" value={subjectId} />}
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input

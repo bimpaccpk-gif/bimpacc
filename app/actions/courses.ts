@@ -3,6 +3,7 @@
 import { verifySession } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { HierarchyType } from "@/types";
 
 // ─── Courses ───────────────────────────────────────────────
 
@@ -15,16 +16,22 @@ export async function createCourse(
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() ?? "";
   const status = (formData.get("status") as string) ?? "draft";
+  const hierarchyTypeStr = (formData.get("hierarchy_type") as string) ?? "1";
 
   if (!title) {
     return { error: "Course title is required.", success: "" };
+  }
+
+  const hierarchyType = parseInt(hierarchyTypeStr) as HierarchyType;
+  if (![1, 2, 3].includes(hierarchyType)) {
+    return { error: "Invalid hierarchy type.", success: "" };
   }
 
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("courses")
-    .insert({ title, description, status } as never)
+    .insert({ title, description, status, hierarchy_type: hierarchyType } as never)
     .select()
     .single();
 
@@ -53,6 +60,7 @@ export async function updateCourse(
 
   const supabase = await createClient();
 
+  // Note: hierarchy_type cannot be changed after creation
   const { error } = await supabase
     .from("courses")
     .update({ title, description, status } as never)
@@ -217,32 +225,74 @@ export async function createLesson(
   const videoUrl = (formData.get("videoUrl") as string)?.trim() ?? "";
   const durationStr = formData.get("durationMinutes") as string;
 
-  if (!subjectId || !title) {
-    return { error: "Subject ID and title are required.", success: "" };
+  if (!title) {
+    return { error: "Lesson title is required.", success: "" };
+  }
+
+  if (!subjectId && !courseId) {
+    return { error: "Either Subject ID or Course ID is required.", success: "" };
   }
 
   const supabase = await createClient();
 
+  // Validate that subject belongs to the course (security check)
+  if (subjectId && courseId) {
+    const { data: subject } = await supabase
+      .from("subjects")
+      .select("course_id")
+      .eq("id", subjectId)
+      .single();
+    
+    if (!subject || subject.course_id !== courseId) {
+      return { error: "Invalid subject for this course.", success: "" };
+    }
+  }
+
+  // Determine which parent to use based on hierarchy type
+  let parentId: string;
+  let parentField: string;
+  let revalidateUrl: string;
+
+  if (subjectId) {
+    // Hierarchy type 1: Lesson belongs to subject
+    parentId = subjectId;
+    parentField = "subject_id";
+    revalidateUrl = `/admin/courses/${courseId}/subjects/${subjectId}/lessons`;
+  } else {
+    // Hierarchy type 2 or 3: Lesson belongs directly to course
+    parentId = courseId;
+    parentField = "course_id";
+    revalidateUrl = `/admin/courses/${courseId}/lessons`;
+  }
+
   const { count } = await supabase
     .from("lessons")
     .select("*", { count: "exact", head: true })
-    .eq("subject_id", subjectId);
+    .eq(parentField, parentId);
 
-  const { error } = await supabase.from("lessons").insert({
-    subject_id: subjectId,
+  const lessonData: any = {
     title,
     description,
     content,
     video_url: videoUrl || null,
     duration_minutes: durationStr ? parseInt(durationStr) : null,
     order_index: (count ?? 0) + 1,
-  } as never);
+  };
+
+  // Set the appropriate parent field
+  if (parentField === "subject_id") {
+    lessonData.subject_id = parentId;
+  } else {
+    lessonData.course_id = parentId;
+  }
+
+  const { error } = await supabase.from("lessons").insert(lessonData as never);
 
   if (error) {
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/subjects/${subjectId}/lessons`);
+  revalidatePath(revalidateUrl);
   return { error: "", success: `Lesson "${title}" created.` };
 }
 
@@ -282,7 +332,15 @@ export async function updateLesson(
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/subjects/${subjectId}/lessons`);
+  // Determine revalidate path based on hierarchy type
+  let revalidateUrl: string;
+  if (subjectId) {
+    revalidateUrl = `/admin/courses/${courseId}/subjects/${subjectId}/lessons`;
+  } else {
+    revalidateUrl = `/admin/courses/${courseId}/lessons`;
+  }
+
+  revalidatePath(revalidateUrl);
   return { error: "", success: "Lesson updated." };
 }
 
@@ -314,7 +372,15 @@ export async function deleteLesson(
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/subjects/${subjectId}/lessons`);
+  // Determine revalidate path based on hierarchy type
+  let revalidateUrl: string;
+  if (subjectId) {
+    revalidateUrl = `/admin/courses/${courseId}/subjects/${subjectId}/lessons`;
+  } else {
+    revalidateUrl = `/admin/courses/${courseId}/lessons`;
+  }
+
+  revalidatePath(revalidateUrl);
   return {
     error: "",
     success: `Lesson "${(lesson as any)?.title ?? id}" deleted.`,

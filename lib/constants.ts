@@ -1,10 +1,8 @@
 export const APP_NAME = "BIMPACC LMS";
-export const APP_DESCRIPTION = "A modern learning management system";
+export const APP_DESCRIPTION = "A modern learning management system for engineers";
 export const APP_TAGLINE = "Learn Without Limits";
 
-export const NAV_LINKS = [
-  { href: "/", label: "Home" },
-] as const;
+export const NAV_LINKS = [] as const;
 
 export const DASHBOARD_SIDEBAR_LINKS = {
   admin: [
@@ -35,25 +33,25 @@ export const STATS = [
 
 export const TESTIMONIALS = [
   {
-    name: "Sarah Johnson",
-    role: "Software Developer",
-    avatar: "SJ",
+    name: "Ahmed Khan",
+    role: "BIM Coordinator",
+    avatar: "AK",
     content:
-      "BIMPACC LMS transformed my career. The courses are well-structured and the instructors are incredibly knowledgeable.",
+      "BIMPACC LMS transformed my career in BIM. The courses are well-structured and helped me master Revit and Navisworks. Now I'm leading projects at a top construction firm in Karachi.",
   },
   {
-    name: "Michael Chen",
-    role: "Data Scientist",
-    avatar: "MC",
+    name: "Muhammad Ali",
+    role: "Senior Architect",
+    avatar: "MA",
     content:
-      "The platform's flexibility allowed me to learn at my own pace. I completed three certifications in just six months.",
+      "The BIM courses helped me transition from traditional drafting to full 3D modeling. I completed my certification in just four months and doubled my salary.",
   },
   {
-    name: "Emily Rodriguez",
-    role: "UX Designer",
-    avatar: "ER",
+    name: "Fatima Rizvi",
+    role: "Construction Manager",
+    avatar: "FR",
     content:
-      "Interactive content and community support made learning enjoyable. Best investment I've made in my professional development.",
+      "Learning BIM through BIMPACC gave me the competitive edge I needed. The hands-on projects and industry-relevant curriculum made all the difference in my career.",
   },
 ] as const;
 
@@ -61,7 +59,6 @@ export const FOOTER_LINKS = [
   {
     title: "Platform",
     links: [
-      { label: "Pricing", href: "/pricing" },
       { label: "For Business", href: "/business" },
     ],
   },

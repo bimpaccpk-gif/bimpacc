@@ -17,7 +17,7 @@ import { Trash2, AlertCircle, Loader2 } from "lucide-react";
 interface LessonDeleteButtonProps {
   lessonId: string;
   lessonTitle: string;
-  subjectId: string;
+  subjectId?: string;
   courseId: string;
 }
 
@@ -56,7 +56,7 @@ export function LessonDeleteButton({
         )}
         <form action={action} className="mt-4 flex gap-3">
           <input type="hidden" name="lessonId" value={lessonId} />
-          <input type="hidden" name="subjectId" value={subjectId} />
+          {subjectId && <input type="hidden" name="subjectId" value={subjectId} />}
           <input type="hidden" name="courseId" value={courseId} />
           <button
             type="button"

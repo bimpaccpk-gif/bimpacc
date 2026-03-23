@@ -108,6 +108,30 @@ export default async function AdminLessonsPage({
           <p className="mt-1 text-sm text-muted-foreground">
             Add lessons to this subject.
           </p>
+          <div className="mt-6 w-full max-w-md space-y-3">
+            <div className="flex items-start gap-3 rounded-lg border bg-card p-3 text-left">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                1
+              </div>
+              <div>
+                <p className="text-sm font-medium">Create Lessons</p>
+                <p className="text-xs text-muted-foreground">
+                  Click &quot;New Lesson&quot; above to add lessons to this subject
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border bg-card p-3 text-left">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                2
+              </div>
+              <div>
+                <p className="text-sm font-medium">Add Content</p>
+                <p className="text-xs text-muted-foreground">
+                  Include video URLs, descriptions, and text content for each lesson
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

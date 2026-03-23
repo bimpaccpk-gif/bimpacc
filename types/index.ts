@@ -1,5 +1,20 @@
 export type UserRole = "admin" | "instructor" | "student";
 
+export type HierarchyType = 1 | 2 | 3;
+
+export interface HierarchyConfig {
+  type: HierarchyType;
+  name: string;
+  description: string;
+  hasSubjects: boolean;
+  hasLessons: boolean;
+  entityNames: {
+    level1: string;
+    level2: string;
+    level3: string;
+  };
+}
+
 export interface User {
   id: string;
   email: string;
@@ -18,6 +33,7 @@ export interface Course {
   instructor_id?: string;
   status: "draft" | "published" | "archived";
   price?: number;
+  hierarchy_type: HierarchyType;
   created_at: string;
   updated_at: string;
 }
@@ -34,7 +50,8 @@ export interface Subject {
 
 export interface Lesson {
   id: string;
-  subject_id: string;
+  subject_id?: string;
+  course_id?: string;
   title: string;
   description?: string;
   video_url?: string;
