@@ -110,9 +110,9 @@ export async function deleteCourse(
 // ─── Subjects ──────────────────────────────────────────────
 
 export async function createSubject(
-  _prevState: { error: string; success: string } | undefined,
+  _prevState: { error: string; success: string; subject?: any } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string }> {
+): Promise<{ error: string; success: string; subject?: any }> {
   await verifySession();
 
   const courseId = formData.get("courseId") as string;
@@ -130,19 +130,19 @@ export async function createSubject(
     .select("*", { count: "exact", head: true })
     .eq("course_id", courseId);
 
-  const { error } = await supabase.from("subjects").insert({
+  const { data, error } = await supabase.from("subjects").insert({
     course_id: courseId,
     title,
     description,
     order_index: (count ?? 0) + 1,
-  } as never);
+  }).select().single();
 
   if (error) {
     return { error: error.message, success: "" };
   }
 
   revalidatePath(`/admin/courses/${courseId}/subjects`);
-  return { error: "", success: `Subject "${title}" created.` };
+  return { error: "", success: `Subject "${title}" created.`, subject: data };
 }
 
 export async function updateSubject(
@@ -209,12 +209,45 @@ export async function deleteSubject(
   };
 }
 
+export async function reorderSubjects(
+  courseId: string,
+  updates: { id: string; order_index: number }[]
+): Promise<{ error: string; success: boolean }> {
+  await verifySession();
+  const supabase = await createClient();
+
+  const promises = updates.map((u) =>
+    supabase.from("subjects").update({ order_index: u.order_index } as never).eq("id", u.id)
+  );
+
+  await Promise.all(promises);
+  revalidatePath(`/admin/courses/${courseId}/subjects`);
+  return { error: "", success: true };
+}
+
+// ─── Courses DND ───────────────────────────────────────────────
+
+export async function reorderCourses(
+  updates: { id: string; order_index: number }[]
+): Promise<{ error: string; success: boolean }> {
+  await verifySession();
+  const supabase = await createClient();
+
+  const promises = updates.map((u) =>
+    supabase.from("courses").update({ order_index: u.order_index } as never).eq("id", u.id)
+  );
+
+  await Promise.all(promises);
+  revalidatePath(`/admin/courses`);
+  return { error: "", success: true };
+}
+
 // ─── Lessons ───────────────────────────────────────────────
 
 export async function createLesson(
-  _prevState: { error: string; success: string } | undefined,
+  _prevState: { error: string; success: string; lesson?: any } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string }> {
+): Promise<{ error: string; success: string; lesson?: any }> {
   await verifySession();
 
   const subjectId = formData.get("subjectId") as string;
@@ -286,14 +319,14 @@ export async function createLesson(
     lessonData.course_id = parentId;
   }
 
-  const { error } = await supabase.from("lessons").insert(lessonData as never);
+  const { data, error } = await supabase.from("lessons").insert(lessonData).select().single();
 
   if (error) {
     return { error: error.message, success: "" };
   }
 
   revalidatePath(revalidateUrl);
-  return { error: "", success: `Lesson "${title}" created.` };
+  return { error: "", success: `Lesson "${title}" created.`, lesson: data };
 }
 
 export async function updateLesson(
@@ -385,4 +418,20 @@ export async function deleteLesson(
     error: "",
     success: `Lesson "${(lesson as any)?.title ?? id}" deleted.`,
   };
+}
+
+export async function reorderLessons(
+  revalidateUrl: string,
+  updates: { id: string; order_index: number }[]
+): Promise<{ error: string; success: boolean }> {
+  await verifySession();
+  const supabase = await createClient();
+
+  const promises = updates.map((u) =>
+    supabase.from("lessons").update({ order_index: u.order_index } as never).eq("id", u.id)
+  );
+
+  await Promise.all(promises);
+  revalidatePath(revalidateUrl);
+  return { error: "", success: true };
 }

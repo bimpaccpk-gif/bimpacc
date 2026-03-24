@@ -6,8 +6,27 @@ import {
   CTA, 
   Footer 
 } from "@/components/home";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import type { UserRole } from "@/types";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      const role = (profile.role as UserRole) ?? "student";
+      redirect(`/${role}`);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Skip to main content link for accessibility */}

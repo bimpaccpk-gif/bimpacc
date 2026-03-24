@@ -2,7 +2,7 @@ export const APP_NAME = "BIMPACC LMS";
 export const APP_DESCRIPTION = "A modern learning management system for engineers";
 export const APP_TAGLINE = "Learn Without Limits";
 
-export const NAV_LINKS = [] as const;
+export const NAV_LINKS: { href: string; label: string }[] = [];
 
 export const DASHBOARD_SIDEBAR_LINKS = {
   admin: [

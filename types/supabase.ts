@@ -38,6 +38,7 @@ export type Database = {
           instructor_id: string;
           status: "draft" | "published" | "archived";
           price: number | null;
+          order_index: number;
           created_at: string;
           updated_at: string;
         };
@@ -48,6 +49,7 @@ export type Database = {
           instructor_id: string;
           status?: "draft" | "published" | "archived";
           price?: number | null;
+          order_index?: number;
         };
         Update: {
           title?: string;
@@ -56,6 +58,7 @@ export type Database = {
           instructor_id?: string;
           status?: "draft" | "published" | "archived";
           price?: number | null;
+          order_index?: number;
         };
       };
       lessons: {

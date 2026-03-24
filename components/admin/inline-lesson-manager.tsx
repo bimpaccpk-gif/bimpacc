@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
-import { createLesson, deleteLesson } from "@/app/actions/courses";
+import { useState, useEffect } from "react";
+import { createLesson, deleteLesson, reorderLessons } from "@/app/actions/courses";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Loader2, Play, Clock, Video, FileText } from "lucide-react";
+import { Plus, Trash2, Loader2, Play, Clock, Video, FileText, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 interface Lesson {
   id: string;
@@ -69,12 +70,12 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
 
     const result = await createLesson(undefined, formData);
     
-    if (result.success) {
-      await fetchLessons();
+    if (result.success && result.lesson) {
+      setLessons([...lessons, result.lesson as Lesson]);
       setNewTitle("");
       setNewVideoUrl("");
       setNewDuration("");
-      setShowAddForm(false);
+      // Intentionally not hiding form so user can rapid-fire add lessons
     }
     setAdding(false);
   };
@@ -87,6 +88,38 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
 
     await deleteLesson(undefined, formData);
     setLessons(lessons.filter(l => l.id !== lessonId));
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+
+    // Optimistically reorder state
+    const newLessons = Array.from(lessons);
+    const [reorderedItem] = newLessons.splice(sourceIndex, 1);
+    newLessons.splice(destinationIndex, 0, reorderedItem);
+
+    // Update index virtually
+    const updates = newLessons.map((l, idx) => ({
+      ...l,
+      order_index: idx + 1,
+    }));
+    
+    setLessons(updates);
+
+    // Persist to server
+    const revalidateUrl = subjectId 
+      ? `/admin/courses/${courseId}/subjects/${subjectId}/lessons` 
+      : `/admin/courses/${courseId}/lessons`;
+
+    await reorderLessons(
+      revalidateUrl,
+      updates.map((u) => ({ id: u.id, order_index: u.order_index }))
+    );
   };
 
   if (loading) {
@@ -110,45 +143,76 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
       </div>
 
       {/* Lesson List */}
-      {lessons.length > 0 && (
-        <div className="space-y-2">
-          {lessons.map((lesson, index) => (
-            <div
-              key={lesson.id}
-              className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all hover:shadow-sm hover:border-primary/30"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
-                {index + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{lesson.title}</p>
-                <div className="mt-1 flex items-center gap-3">
-                  {lesson.video_url && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                      <Video className="h-3 w-3" />
-                      Video
-                    </span>
-                  )}
-                  {lesson.duration_minutes && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {lesson.duration_minutes} min
-                    </span>
-                  )}
+      <div className="space-y-2">
+        {lessons.length > 0 && (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId={`lessons-list-${subjectId || courseId}`}>
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-2"
+                >
+                  {lessons.map((lesson, index) => (
+                    <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={cn(
+                            "group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all",
+                            snapshot.isDragging 
+                              ? "shadow-lg ring-2 ring-primary scale-[1.02] z-50 bg-background/90 backdrop-blur-sm" 
+                              : "hover:shadow-sm hover:border-primary/30"
+                          )}
+                          style={provided.draggableProps.style}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded transition-colors"
+                          >
+                            <GripVertical className="h-4 w-4 text-muted-foreground/50 hover:text-foreground" />
+                          </div>
+                          
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{lesson.title}</p>
+                            <div className="mt-1 flex items-center gap-3">
+                              {lesson.video_url && (
+                                <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                  <Video className="h-3 w-3" />
+                                  Video
+                                </span>
+                              )}
+                              {lesson.duration_minutes && (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {lesson.duration_minutes} min
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteLesson(lesson.id)}
+                            className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
                 </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteLesson(lesson.id)}
-                className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
+      </div>
 
       {/* Empty State */}
       {lessons.length === 0 && !showAddForm && (
