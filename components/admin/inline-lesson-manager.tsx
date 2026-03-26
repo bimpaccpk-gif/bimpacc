@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createLesson, deleteLesson, reorderLessons } from "@/app/actions/courses";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Loader2, Play, Clock, Video, FileText, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { createPortal } from "react-dom";
 
 interface Lesson {
   id: string;
@@ -90,7 +91,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
     setLessons(lessons.filter(l => l.id !== lessonId));
   };
 
-  const handleDragEnd = async (result: DropResult) => {
+  const handleDragEnd = useCallback(async (result: DropResult) => {
     if (!result.destination) return;
     
     const sourceIndex = result.source.index;
@@ -120,7 +121,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
       revalidateUrl,
       updates.map((u) => ({ id: u.id, order_index: u.order_index }))
     );
-  };
+  }, [lessons, courseId, subjectId]);
 
   if (loading) {
     return (
@@ -142,6 +143,18 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
         </div>
       </div>
 
+      {/* Top Add Button */}
+      {!showAddForm && lessons.length > 0 && (
+        <Button
+          onClick={() => setShowAddForm(true)}
+          variant="outline"
+          className="w-full h-10 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Add Lesson
+        </Button>
+      )}
+
       {/* Lesson List */}
       <div className="space-y-2">
         {lessons.length > 0 && (
@@ -155,55 +168,66 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                 >
                   {lessons.map((lesson, index) => (
                     <Draggable key={lesson.id} draggableId={lesson.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={cn(
-                            "group flex items-center gap-3 rounded-lg border bg-card p-3 transition-all",
-                            snapshot.isDragging 
-                              ? "shadow-lg ring-2 ring-primary scale-[1.02] z-50 bg-background/90 backdrop-blur-sm" 
-                              : "hover:shadow-sm hover:border-primary/30"
-                          )}
-                          style={provided.draggableProps.style}
-                        >
+                      {(provided, snapshot) => {
+                        const draggableContent = (
                           <div
-                            {...provided.dragHandleProps}
-                            className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded transition-colors"
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={cn(
+                              "group flex items-center gap-3 rounded-lg border bg-card p-3",
+                              snapshot.isDragging 
+                                ? "shadow-lg ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform" 
+                                : "hover:shadow-sm hover:border-primary/30 transition-[shadow,border-color] duration-200"
+                            )}
+                            style={{
+                              ...provided.draggableProps.style,
+                              ...(snapshot.isDragging ? { zIndex: 99999 } : {}),
+                            }}
                           >
-                            <GripVertical className="h-4 w-4 text-muted-foreground/50 hover:text-foreground" />
-                          </div>
-                          
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
-                            {index + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{lesson.title}</p>
-                            <div className="mt-1 flex items-center gap-3">
-                              {lesson.video_url && (
-                                <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                  <Video className="h-3 w-3" />
-                                  Video
-                                </span>
-                              )}
-                              {lesson.duration_minutes && (
-                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  {lesson.duration_minutes} min
-                                </span>
-                              )}
+                            <div
+                              {...provided.dragHandleProps}
+                              className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded transition-colors"
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground/50 hover:text-foreground" />
                             </div>
+                            
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{lesson.title}</p>
+                              <div className="mt-1 flex items-center gap-3">
+                                {lesson.video_url && (
+                                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                    <Video className="h-3 w-3" />
+                                    Video
+                                  </span>
+                                )}
+                                {lesson.duration_minutes && (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {lesson.duration_minutes} min
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteLesson(lesson.id)}
+                              className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteLesson(lesson.id)}
-                            className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                        );
+
+                        // Portal dragged items to body so they escape dialog's transform/overflow
+                        if (snapshot.isDragging) {
+                          return createPortal(draggableContent, document.body);
+                        }
+                        return draggableContent;
+                      }}
                     </Draggable>
                   ))}
                   {provided.placeholder}

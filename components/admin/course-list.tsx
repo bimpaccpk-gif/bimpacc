@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { CourseCreateDialog } from "@/components/admin/course-create-dialog";
 import { CourseDeleteButton } from "@/components/admin/course-delete-button";
+import { ManageContentDialog } from "@/components/admin/manage-content-dialog";
 import { getHierarchyConfig } from "@/lib/hierarchy-config";
 import { HierarchyType } from "@/types";
 import { cn } from "@/lib/utils";
 import { reorderCourses } from "@/app/actions/courses";
-import { Sparkles, Layers, List, BookOpen, Activity, Calendar, ArrowRight, GripVertical } from "lucide-react";
+import { Sparkles, Layers, List, BookOpen, Activity, Calendar, GripVertical } from "lucide-react";
 
 export interface CourseRow {
   id: string;
@@ -66,29 +66,6 @@ function formatDate(date: string) {
   });
 }
 
-function getManageLink(courseId: string, hierarchyType: HierarchyType): string {
-  switch (hierarchyType) {
-    case 1:
-      return `/admin/courses/${courseId}/subjects`;
-    case 2:
-    case 3:
-      return `/admin/courses/${courseId}/lessons`;
-    default:
-      return `/admin/courses/${courseId}/subjects`;
-  }
-}
-
-function getManageButtonText(hierarchyType: HierarchyType): string {
-  switch (hierarchyType) {
-    case 1:
-      return "Manage Subjects";
-    case 2:
-    case 3:
-      return "Manage Lessons";
-    default:
-      return "Manage Content";
-  }
-}
 
 export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
   // Sort courses by order_index primarily, then fallback to creation date (handled by server query initially)
@@ -102,7 +79,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
     });
   });
 
-  const handleDragEnd = async (result: DropResult, hierarchyType: HierarchyType) => {
+  const handleDragEnd = useCallback(async (result: DropResult, hierarchyType: HierarchyType) => {
     if (!result.destination) return;
     
     // Process only items belonging to this specific hierarchy group
@@ -134,7 +111,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
     await reorderCourses(
       updates.map((u) => ({ id: u.id, order_index: u.order_index! }))
     );
-  };
+  }, [courses]);
 
   if (courses.length === 0) {
     return (
@@ -184,10 +161,10 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "group relative flex flex-col sm:flex-row sm:items-center gap-5 overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/60 dark:bg-zinc-950/60 p-4 backdrop-blur-xl transition-all duration-300",
+                                "group relative flex flex-col sm:flex-row sm:items-center gap-5 overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/60 dark:bg-zinc-950/60 p-4 backdrop-blur-xl",
                                 snapshot.isDragging 
-                                  ? "shadow-2xl ring-2 ring-indigo-500 scale-[1.02] z-50 bg-background/95" 
-                                  : "shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5"
+                                  ? "shadow-2xl ring-2 ring-indigo-500 scale-[1.02] z-50 bg-background/95 will-change-transform" 
+                                  : "shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5 transition-[shadow,border-color,opacity] duration-300"
                               )}
                               style={provided.draggableProps.style}
                             >
@@ -265,12 +242,13 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
 
                               {/* Actions */}
                               <div className="shrink-0 flex items-center gap-2 p-1 pl-4 sm:pl-2">
-                                <Link href={getManageLink(course.id, course.hierarchy_type)} className="w-[160px] sm:w-[150px]">
-                                  <Button className="w-full h-11 rounded-xl bg-gradient-to-r hover:from-indigo-600 hover:to-purple-700 bg-primary text-white shadow-md shadow-indigo-500/10 transition-all active:scale-[0.98] group/btn font-semibold">
-                                    {getManageButtonText(course.hierarchy_type)}
-                                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                                  </Button>
-                                </Link>
+                                <div className="w-[160px] sm:w-[150px]">
+                                  <ManageContentDialog
+                                    courseId={course.id}
+                                    courseTitle={course.title}
+                                    hierarchyType={course.hierarchy_type}
+                                  />
+                                </div>
                                 <CourseDeleteButton
                                   courseId={course.id}
                                   courseTitle={course.title}
