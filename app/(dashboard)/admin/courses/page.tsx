@@ -7,7 +7,7 @@ async function getCourses(): Promise<CourseRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
-    .select("id, title, description, status, price, hierarchy_type, created_at, order_index")
+    .select("id, title, description, batch, status, registration_open, price, hierarchy_type, created_at, order_index")
     .order("order_index", { ascending: true })
     .order("created_at", { ascending: false });
 

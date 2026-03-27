@@ -52,6 +52,7 @@ export async function signUp(
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
+  const courseId = formData.get("courseId") as string;
 
   if (!fullName || !email || !password) {
     return { error: "All fields are required." };
@@ -108,6 +109,14 @@ export async function signUp(
       } as never,
       { onConflict: "id" }
     );
+
+    if (courseId) {
+      // Auto-enroll the new student in the selected course
+      await supabase.from("enrollments").insert({
+        user_id: data.user.id,
+        course_id: courseId,
+      } as never);
+    }
   }
 
   redirect("/student");

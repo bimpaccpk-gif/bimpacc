@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, useEffect } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,23 +32,12 @@ export function CourseCreateDialog() {
     3: <BookOpen className="h-5 w-5" />,
   };
 
-  if (state?.success) {
-    return (
-      <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-2 dark:border-green-800 dark:bg-green-950">
-        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <span className="text-sm text-green-700 dark:text-green-300">{state.success}</span>
-        <button
-          onClick={() => {
-            window.location.reload();
-          }}
-          className={buttonVariants({ size: "sm", variant: "outline" })}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add Another
-        </button>
-      </div>
-    );
-  }
+  // Automtically close dialog on success
+  useEffect(() => {
+    if (state?.success) {
+      setOpen(false);
+    }
+  }, [state?.success]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -56,7 +45,7 @@ export function CourseCreateDialog() {
         <Sparkles className="h-4 w-4" />
         Create Course
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-3">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Sparkles className="h-6 w-6 text-primary" />
@@ -89,6 +78,20 @@ export function CourseCreateDialog() {
             />
           </div>
 
+          {/* Batch */}
+          <div className="space-y-2">
+            <Label htmlFor="batch" className="text-sm font-medium">
+              Batch
+            </Label>
+            <Input
+              id="batch"
+              name="batch"
+              placeholder="e.g., 2026-A"
+              required
+              className="h-11"
+            />
+          </div>
+
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">
@@ -103,7 +106,28 @@ export function CourseCreateDialog() {
             />
           </div>
 
-          {/* Hierarchy Structure Selection */}
+          {/* Additional Settings */}
+          <div className="space-y-4 rounded-xl border bg-muted/30 p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="registration_open" className="text-sm font-medium">
+                  Registration Open
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Allow students to enroll in this course upon creation.
+                </p>
+              </div>
+              <div className="flex items-center h-5">
+                <input
+                  id="registration_open"
+                  name="registration_open"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-3">
             <Label className="text-sm font-medium">Course Structure</Label>
             <input type="hidden" name="hierarchy_type" value={hierarchyType} />

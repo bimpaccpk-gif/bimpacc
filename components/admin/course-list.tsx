@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { CourseCreateDialog } from "@/components/admin/course-create-dialog";
+import { CourseEditDialog } from "@/components/admin/course-edit-dialog";
 import { CourseDeleteButton } from "@/components/admin/course-delete-button";
 import { ManageContentDialog } from "@/components/admin/manage-content-dialog";
 import { getHierarchyConfig } from "@/lib/hierarchy-config";
@@ -16,7 +17,9 @@ export interface CourseRow {
   id: string;
   title: string;
   description: string;
+  batch: string;
   status: string;
+  registration_open: boolean;
   price: number | null;
   hierarchy_type: HierarchyType;
   created_at: string;
@@ -78,6 +81,15 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   });
+
+  useEffect(() => {
+    setCourses([...initialCourses].sort((a, b) => {
+      const aOrder = a.order_index ?? 0;
+      const bOrder = b.order_index ?? 0;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }));
+  }, [initialCourses]);
 
   const handleDragEnd = useCallback(async (result: DropResult, hierarchyType: HierarchyType) => {
     if (!result.destination) return;
@@ -197,9 +209,16 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                     {status.label}
                                   </span>
                                 </div>
-                                <h3 className="font-bold text-xl truncate tracking-tight text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                  {course.title}
-                                </h3>
+                                <div className="flex items-center gap-3">
+                                  <h3 className="font-bold text-xl truncate tracking-tight text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                    {course.title}
+                                  </h3>
+                                  {course.batch && (
+                                    <span className="inline-flex shrink-0 items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 ring-1 ring-indigo-500/20 shadow-sm uppercase tracking-wider">
+                                      Batch {course.batch}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="mt-1 text-sm text-muted-foreground/80 truncate leading-relaxed max-w-2xl">
                                   {course.description || "No description provided."}
                                 </p>
@@ -227,6 +246,15 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   <span className={cn("relative flex h-1.5 w-1.5 rounded-full", status.dotClass)} />
                                   {status.label}
                                 </span>
+                                {course.registration_open ? (
+                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 ring-1 ring-emerald-500/20 shadow-sm uppercase tracking-wider">
+                                    Enrolling
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-300 ring-1 ring-zinc-500/20 shadow-sm uppercase tracking-wider">
+                                    Closed
+                                  </span>
+                                )}
                                 
                                 <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground/80">
                                   <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md border border-border/50" title={`${itemCounts[course.id] ?? 0} active content items`}>
@@ -242,6 +270,14 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
 
                               {/* Actions */}
                               <div className="shrink-0 flex items-center gap-2 p-1 pl-4 sm:pl-2">
+                                <CourseEditDialog
+                                  courseId={course.id}
+                                  initialTitle={course.title}
+                                  initialDescription={course.description}
+                                  initialBatch={course.batch}
+                                  initialStatus={course.status}
+                                  initialRegistrationOpen={course.registration_open}
+                                />
                                 <div className="w-[160px] sm:w-[150px]">
                                   <ManageContentDialog
                                     courseId={course.id}

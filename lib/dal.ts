@@ -11,6 +11,7 @@ export interface SessionUser {
   full_name: string;
   role: UserRole;
   avatar_url: string | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -37,7 +38,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser> => {
 
   const { data: profile, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, avatar_url, created_at, updated_at")
+    .select("id, email, full_name, role, avatar_url, onboarding_completed, created_at, updated_at")
     .eq("id", session.userId)
     .single();
 

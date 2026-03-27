@@ -15,11 +15,17 @@ export async function createCourse(
 
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() ?? "";
+  const batch = (formData.get("batch") as string)?.trim();
   const status = (formData.get("status") as string) ?? "draft";
   const hierarchyTypeStr = (formData.get("hierarchy_type") as string) ?? "1";
+  const registration_open = formData.get("registration_open") === "on";
 
   if (!title) {
     return { error: "Course title is required.", success: "" };
+  }
+
+  if (!batch) {
+    return { error: "Batch is required.", success: "" };
   }
 
   const hierarchyType = parseInt(hierarchyTypeStr) as HierarchyType;
@@ -31,7 +37,7 @@ export async function createCourse(
 
   const { data, error } = await supabase
     .from("courses")
-    .insert({ title, description, status, hierarchy_type: hierarchyType } as never)
+    .insert({ title, description, batch, status, registration_open, hierarchy_type: hierarchyType } as never)
     .select()
     .single();
 
@@ -52,10 +58,12 @@ export async function updateCourse(
   const id = formData.get("courseId") as string;
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() ?? "";
+  const batch = (formData.get("batch") as string)?.trim();
   const status = (formData.get("status") as string) ?? "draft";
+  const registration_open = formData.get("registration_open") === "on";
 
-  if (!id || !title) {
-    return { error: "Course ID and title are required.", success: "" };
+  if (!id || !title || !batch) {
+    return { error: "Course ID, title, and batch are required.", success: "" };
   }
 
   const supabase = await createClient();
@@ -63,7 +71,7 @@ export async function updateCourse(
   // Note: hierarchy_type cannot be changed after creation
   const { error } = await supabase
     .from("courses")
-    .update({ title, description, status } as never)
+    .update({ title, description, batch, status, registration_open } as never)
     .eq("id", id);
 
   if (error) {

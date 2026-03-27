@@ -34,11 +34,9 @@ export function ManageContentDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full h-11 rounded-xl bg-gradient-to-r hover:from-indigo-600 hover:to-purple-700 bg-primary text-white shadow-md shadow-indigo-500/10 transition-all active:scale-[0.98] group/btn font-semibold">
-          {buttonText}
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-        </Button>
+      <DialogTrigger className="w-full flex items-center justify-center h-11 rounded-xl bg-gradient-to-r hover:from-indigo-600 hover:to-purple-700 bg-primary text-white shadow-md shadow-indigo-500/10 transition-all active:scale-[0.98] group/btn font-semibold">
+        {buttonText}
+        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader className="shrink-0">
