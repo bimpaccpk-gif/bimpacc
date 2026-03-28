@@ -99,25 +99,26 @@ export async function adminCreateUser(
     return { error: "Invalid role.", success: "" };
   }
 
-  const supabase = await createClient();
+  // Use the admin (service role) client so the admin's own session is NOT affected.
+  // supabase.auth.signUp() would switch the session to the new user — we don't want that.
+  const admin = createAdminClient();
 
-  const { data, error: signUpError } = await supabase.auth.signUp({
+  const { data, error: createError } = await admin.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-        role,
-      },
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      role,
     },
   });
 
-  if (signUpError) {
-    return { error: signUpError.message, success: "" };
+  if (createError) {
+    return { error: createError.message, success: "" };
   }
 
   if (data.user) {
-    await supabase.from("users").upsert(
+    await admin.from("users").upsert(
       {
         id: data.user.id,
         email,
@@ -199,4 +200,31 @@ export async function updateUserProfile(
   }
 
   return data as UserProfile;
+}
+
+export async function toggleStudentApproval(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const userId = formData.get("userId") as string;
+  const isApproved = formData.get("isApproved") === "true";
+
+  if (!userId) {
+    return { error: "User ID is required.", success: "" };
+  }
+
+  await verifySession();
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("users")
+    .update({ is_approved: isApproved } as never)
+    .eq("id", userId);
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  return { error: "", success: `User has been ${isApproved ? "Approved" : "Unapproved"}.` };
 }

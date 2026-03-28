@@ -55,11 +55,10 @@ export async function completeOnboarding(
       return { error: "You must accept the declaration to proceed." };
     }
 
-    // Insert into student_profiles
-    const { error: profileError } = await supabase
-      .from("student_profiles")
-      .insert({
-        user_id: user.id,
+    // Update users table with all student profile data and mark onboarding as completed
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
         father_name,
         cnic_file_path,
         dob,
@@ -73,23 +72,14 @@ export async function completeOnboarding(
         fee_submission_date,
         fee_receipt_file_path,
         avatar_file_path,
-        declaration_accepted
-      });
-
-    if (profileError) {
-      console.error("Student Profile Error:", profileError);
-      return { error: "Failed to save profile details. " + profileError.message };
-    }
-
-    // Update users table onboarding flag
-    const { error: userError } = await supabase
-      .from("users")
-      .update({ onboarding_completed: true })
+        declaration_accepted,
+        onboarding_completed: true
+      })
       .eq("id", user.id);
 
-    if (userError) {
-      console.error("User Update Error:", userError);
-      return { error: "Failed to verify onboarding completion." };
+    if (updateError) {
+      console.error("User Update Error:", updateError);
+      return { error: "Failed to save profile details. " + updateError.message };
     }
 
     revalidatePath("/student");

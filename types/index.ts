@@ -22,26 +22,22 @@ export interface UserProfile {
   role: UserRole;
   avatar_url?: string;
   onboarding_completed: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StudentProfile {
-  user_id: string;
-  father_name: string;
-  cnic_file_path: string;
-  dob: string;
-  education_level: string;
-  degree_title: string;
-  degree_file_path: string;
-  profession: string;
-  whatsapp_number: string;
-  postal_address: string;
-  fee_transaction_id: string;
-  fee_submission_date: string;
-  fee_receipt_file_path: string;
-  avatar_file_path: string;
-  declaration_accepted: boolean;
+  is_approved: boolean;
+  // Student profile fields (populated after onboarding)
+  father_name?: string;
+  cnic_file_path?: string;
+  dob?: string;
+  education_level?: string;
+  degree_title?: string;
+  degree_file_path?: string;
+  profession?: string;
+  whatsapp_number?: string;
+  postal_address?: string;
+  fee_transaction_id?: string;
+  fee_submission_date?: string;
+  fee_receipt_file_path?: string;
+  avatar_file_path?: string;
+  declaration_accepted?: boolean;
   created_at: string;
   updated_at: string;
 }

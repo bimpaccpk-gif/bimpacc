@@ -5,7 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RoleSelect } from "@/components/admin/role-select";
 import { CreateUserDialog } from "@/components/admin/create-user-dialog";
 import { DeleteUserButton } from "@/components/admin/delete-user-button";
-import { Users } from "lucide-react";
+import { ApprovalToggle } from "@/components/admin/approval-toggle";
+import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
+import { Users, ShieldCheck, Clock, ClipboardList } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface UserRow {
@@ -14,6 +16,8 @@ interface UserRow {
   full_name: string;
   role: string;
   avatar_url: string | null;
+  onboarding_completed: boolean;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -22,7 +26,7 @@ async function getAllUsers(): Promise<UserRow[]> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, avatar_url, created_at")
+    .select("id, email, full_name, role, avatar_url, onboarding_completed, is_approved, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -62,6 +66,10 @@ export default async function AdminUsersPage() {
     {} as Record<string, number>
   );
 
+  const pendingReviewCount = users.filter(
+    (u) => u.role === "student" && u.onboarding_completed && !u.is_approved
+  ).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -74,7 +82,7 @@ export default async function AdminUsersPage() {
         <CreateUserDialog />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -108,6 +116,22 @@ export default async function AdminUsersPage() {
             <div className="text-2xl font-bold">{roleCounts.student ?? 0}</div>
           </CardContent>
         </Card>
+        <Card className={pendingReviewCount > 0 ? "ring-2 ring-amber-500/30 bg-amber-50/30 dark:bg-amber-950/10" : ""}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Pending Review
+            </CardTitle>
+            <ClipboardList className={`h-5 w-5 ${pendingReviewCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${pendingReviewCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+              {pendingReviewCount}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {pendingReviewCount > 0 ? "Applications awaiting review" : "All caught up!"}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -129,6 +153,9 @@ export default async function AdminUsersPage() {
                     </th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">
                       Email
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Status / Approval
                     </th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">
                       Role
@@ -162,6 +189,43 @@ export default async function AdminUsersPage() {
                       </td>
                       <td className="py-3 pr-4 text-muted-foreground">
                         {user.email}
+                      </td>
+                      <td className="py-3 pr-4">
+                        {user.role === "student" ? (
+                          <div className="flex items-center gap-2">
+                            {user.onboarding_completed ? (
+                              <div className="flex items-center gap-2">
+                                <ApprovalToggle 
+                                  userId={user.id} 
+                                  isApproved={user.is_approved} 
+                                  disabled={false} 
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {user.is_approved ? (
+                                    <span className="text-green-500 font-bold">Approved</span>
+                                  ) : (
+                                    <span className="text-indigo-500 font-bold">Under Review</span>
+                                  )}
+                                </span>
+                                <StudentApplicationDialog
+                                  userId={user.id}
+                                  studentName={user.full_name}
+                                  isApproved={user.is_approved}
+                                />
+                              </div>
+                            ) : (
+                              <span className="flex items-center text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending Setup
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="flex items-center text-xs font-semibold text-emerald-500 bg-emerald-500/10 w-fit px-2 py-1 rounded-md">
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                            Auto-Approved
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 pr-4">
                         <RoleSelect
