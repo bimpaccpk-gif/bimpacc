@@ -2,16 +2,19 @@
 
 import { verifySession } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export interface StudentApplication {
   // Identity
   id: string;
   email: string;
   full_name: string;
+  role: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
   is_approved: boolean;
   created_at: string;
+  updated_at: string;
 
   // Personal
   father_name: string | null;
@@ -29,6 +32,9 @@ export interface StudentApplication {
   // Fee
   fee_transaction_id: string | null;
   fee_submission_date: string | null;
+
+  // Declaration
+  declaration_accepted: boolean | null;
 
   // Signed document URLs (generated server-side)
   cnic_url: string | null;
@@ -55,21 +61,12 @@ async function getSignedUrl(
   return data.signedUrl;
 }
 
-export async function getStudentApplication(
-  userId: string
-): Promise<{ data: StudentApplication | null; error: string }> {
-  await verifySession();
-
-  const supabase = await createClient();
-
-  // Verify the caller is an admin
+async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
-  if (!authUser) {
-    return { data: null, error: "Not authenticated." };
-  }
+  if (!authUser) return false;
 
   const { data: callerProfile } = await supabase
     .from("users")
@@ -77,7 +74,17 @@ export async function getStudentApplication(
     .eq("id", authUser.id)
     .single();
 
-  if ((callerProfile as any)?.role !== "admin") {
+  return (callerProfile as any)?.role === "admin";
+}
+
+export async function getStudentApplication(
+  userId: string
+): Promise<{ data: StudentApplication | null; error: string }> {
+  await verifySession();
+
+  const supabase = await createClient();
+
+  if (!(await verifyAdmin(supabase))) {
     return { data: null, error: "Unauthorized. Admin access required." };
   }
 
@@ -111,10 +118,12 @@ export async function getStudentApplication(
       id: s.id,
       email: s.email,
       full_name: s.full_name,
+      role: s.role,
       avatar_url: s.avatar_url,
       onboarding_completed: s.onboarding_completed,
       is_approved: s.is_approved,
       created_at: s.created_at,
+      updated_at: s.updated_at,
       father_name: s.father_name,
       dob: s.dob,
       education_level: s.education_level,
@@ -124,6 +133,7 @@ export async function getStudentApplication(
       postal_address: s.postal_address,
       fee_transaction_id: s.fee_transaction_id,
       fee_submission_date: s.fee_submission_date,
+      declaration_accepted: s.declaration_accepted,
       cnic_url,
       degree_url,
       fee_receipt_url,
@@ -131,4 +141,67 @@ export async function getStudentApplication(
     },
     error: "",
   };
+}
+
+export async function updateStudentProfile(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  await verifySession();
+
+  const supabase = await createClient();
+
+  if (!(await verifyAdmin(supabase))) {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
+
+  const userId = formData.get("userId") as string;
+  if (!userId) {
+    return { error: "User ID is required.", success: "" };
+  }
+
+  // Build the updates object from all editable fields
+  const updates: Record<string, any> = {};
+
+  const textFields = [
+    "full_name",
+    "email",
+    "father_name",
+    "education_level",
+    "degree_title",
+    "profession",
+    "whatsapp_number",
+    "postal_address",
+    "fee_transaction_id",
+  ];
+
+  for (const field of textFields) {
+    const value = formData.get(field);
+    if (value !== null) {
+      updates[field] = (value as string).trim();
+    }
+  }
+
+  // Date fields
+  const dob = formData.get("dob") as string;
+  if (dob) updates.dob = dob;
+
+  const fee_submission_date = formData.get("fee_submission_date") as string;
+  if (fee_submission_date) updates.fee_submission_date = fee_submission_date;
+
+  if (Object.keys(updates).length === 0) {
+    return { error: "No changes to save.", success: "" };
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update(updates as never)
+    .eq("id", userId);
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  revalidatePath("/admin/users");
+  return { error: "", success: "Student profile updated successfully." };
 }

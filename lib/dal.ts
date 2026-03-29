@@ -17,6 +17,23 @@ export interface SessionUser {
   updated_at: string;
 }
 
+export interface FullUserProfile extends SessionUser {
+  father_name: string | null;
+  cnic_file_path: string | null;
+  dob: string | null;
+  education_level: string | null;
+  degree_title: string | null;
+  degree_file_path: string | null;
+  profession: string | null;
+  whatsapp_number: string | null;
+  postal_address: string | null;
+  fee_transaction_id: string | null;
+  fee_submission_date: string | null;
+  fee_receipt_file_path: string | null;
+  avatar_file_path: string | null;
+  declaration_accepted: boolean | null;
+}
+
 export const verifySession = cache(async () => {
   const supabase = await createClient();
 
@@ -49,3 +66,22 @@ export const getCurrentUser = cache(async (): Promise<SessionUser> => {
 
   return profile as SessionUser;
 });
+
+export const getFullUserProfile = cache(async (): Promise<FullUserProfile> => {
+  const session = await verifySession();
+
+  const supabase = await createClient();
+
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", session.userId)
+    .single();
+
+  if (error || !profile) {
+    redirect("/login");
+  }
+
+  return profile as FullUserProfile;
+});
+

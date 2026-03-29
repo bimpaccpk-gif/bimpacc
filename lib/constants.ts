@@ -18,9 +18,8 @@ export const DASHBOARD_SIDEBAR_LINKS = {
   ],
   student: [
     { href: "/student", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/courses", label: "Browse Courses", icon: "BookOpen" },
+    { href: "/student/courses", label: "Available Courses", icon: "BookOpen" },
     { href: "/student/my-courses", label: "My Courses", icon: "GraduationCap" },
-    { href: "/student/progress", label: "Progress", icon: "TrendingUp" },
   ],
 } as const;
 

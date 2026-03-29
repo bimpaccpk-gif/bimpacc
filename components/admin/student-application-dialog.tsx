@@ -10,9 +10,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toggleStudentApproval } from "@/lib/supabase/actions";
 import {
   getStudentApplication,
+  updateStudentProfile,
   type StudentApplication,
 } from "@/app/actions/admin";
 import {
@@ -30,6 +33,12 @@ import {
   MapPin,
   Briefcase,
   ImageIcon,
+  Pencil,
+  Save,
+  Shield,
+  Clock,
+  Mail,
+  CheckSquare,
 } from "lucide-react";
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -40,6 +49,17 @@ function formatDate(date: string | null) {
     year: "numeric",
     month: "long",
     day: "numeric",
+  });
+}
+
+function formatDateTime(date: string | null) {
+  if (!date) return "—";
+  return new Date(date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -133,6 +153,34 @@ function InfoRow({
   );
 }
 
+function EditableField({
+  label,
+  name,
+  value,
+  type = "text",
+  editing,
+}: {
+  label: string;
+  name: string;
+  value: string | null | undefined;
+  type?: string;
+  editing: boolean;
+}) {
+  if (!editing) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        name={name}
+        type={type}
+        defaultValue={value ?? ""}
+        className="h-9 text-sm"
+      />
+    </div>
+  );
+}
+
 // ─── Section Component ─────────────────────────────────────
 
 function Section({
@@ -172,9 +220,15 @@ export function StudentApplicationDialog({
   const [loading, setLoading] = useState(false);
   const [app, setApp] = useState<StudentApplication | null>(null);
   const [fetchError, setFetchError] = useState("");
+  const [editing, setEditing] = useState(false);
 
   const [approvalState, approvalAction, approvalPending] = useActionState(
     toggleStudentApproval,
+    undefined
+  );
+
+  const [editState, editAction, editPending] = useActionState(
+    updateStudentProfile,
     undefined
   );
 
@@ -185,6 +239,19 @@ export function StudentApplicationDialog({
     }
   }, [approvalState]);
 
+  // Re-sync after edit save
+  useEffect(() => {
+    if (editState?.success && app) {
+      setEditing(false);
+      // Re-fetch to get updated data
+      setLoading(true);
+      getStudentApplication(userId).then((result) => {
+        if (result.data) setApp(result.data);
+        setLoading(false);
+      });
+    }
+  }, [editState]);
+
   // Fetch application data when dialog opens
   useEffect(() => {
     if (!open) return;
@@ -192,6 +259,7 @@ export function StudentApplicationDialog({
     let cancelled = false;
     setLoading(true);
     setFetchError("");
+    setEditing(false);
 
     getStudentApplication(userId).then((result) => {
       if (cancelled) return;
@@ -221,7 +289,7 @@ export function StudentApplicationDialog({
         <DialogHeader>
           <DialogTitle>Student Application</DialogTitle>
           <DialogDescription>
-            Reviewing application for{" "}
+            Full profile for{" "}
             <span className="font-semibold text-foreground">{studentName}</span>
           </DialogDescription>
         </DialogHeader>
@@ -249,21 +317,34 @@ export function StudentApplicationDialog({
         {/* Application Data */}
         {app && !loading && (
           <div className="space-y-8 pt-2">
-            {/* Status Badge */}
+            {/* Status Bar */}
             <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <span className="text-sm font-medium text-muted-foreground">
-                Current Status
-              </span>
-              {app.is_approved ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Approved
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Status
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
-                  <Loader2 className="h-3 w-3" />
-                  Under Review
-                </span>
+                {app.is_approved ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Approved
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
+                    <Loader2 className="h-3 w-3" />
+                    Under Review
+                  </span>
+                )}
+              </div>
+              {!editing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditing(true)}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit Details
+                </Button>
               )}
             </div>
 
@@ -283,141 +364,211 @@ export function StudentApplicationDialog({
               </div>
             )}
 
-            {/* Section 1: Personal Info */}
-            <Section icon={User} title="Personal Information">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow icon={User} label="Full Name" value={app.full_name} />
-                <InfoRow
-                  icon={User}
-                  label="Father's Name"
-                  value={app.father_name}
-                />
-                <InfoRow
-                  icon={Calendar}
-                  label="Date of Birth"
-                  value={formatDate(app.dob)}
-                />
-                <InfoRow
-                  icon={User}
-                  label="Email"
-                  value={app.email}
-                />
-              </div>
-              <DocumentViewer url={app.cnic_url} label="CNIC / Passport" />
-            </Section>
-
-            {/* Section 2: Academic Background */}
-            <Section icon={GraduationCap} title="Academic Background">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow
-                  icon={GraduationCap}
-                  label="Education Level"
-                  value={app.education_level}
-                />
-                <InfoRow
-                  icon={GraduationCap}
-                  label="Degree Title"
-                  value={app.degree_title}
-                />
-                <InfoRow
-                  icon={Briefcase}
-                  label="Profession"
-                  value={app.profession}
-                />
-              </div>
-              <DocumentViewer
-                url={app.degree_url}
-                label="Degree / Certificate"
-              />
-            </Section>
-
-            {/* Section 3: Contact Details */}
-            <Section icon={Phone} title="Contact Details">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow
-                  icon={Phone}
-                  label="WhatsApp Number"
-                  value={app.whatsapp_number}
-                />
-                <InfoRow
-                  icon={MapPin}
-                  label="Postal Address"
-                  value={app.postal_address}
-                />
-              </div>
-            </Section>
-
-            {/* Section 4: Fee Verification */}
-            <Section icon={CreditCard} title="Fee Verification">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow
-                  icon={CreditCard}
-                  label="Transaction ID"
-                  value={app.fee_transaction_id}
-                />
-                <InfoRow
-                  icon={Calendar}
-                  label="Payment Date"
-                  value={formatDate(app.fee_submission_date)}
-                />
-              </div>
-              <DocumentViewer
-                url={app.fee_receipt_url}
-                label="Fee Receipt / Screenshot"
-              />
-            </Section>
-
-            {/* Approval Action */}
-            <div className="border-t border-border pt-6">
-              {approvalState?.error && (
-                <p className="mb-3 text-sm text-red-500 text-center">
-                  {approvalState.error}
-                </p>
-              )}
-              {approvalState?.success && (
-                <p className="mb-3 text-sm text-emerald-500 text-center">
-                  {approvalState.success}
-                </p>
-              )}
-
-              <form action={approvalAction}>
+            {/* Wrap editable sections in a form */}
+            {editing ? (
+              <form action={editAction} className="space-y-8">
                 <input type="hidden" name="userId" value={userId} />
-                <input
-                  type="hidden"
-                  name="isApproved"
-                  value={(!app.is_approved).toString()}
-                />
 
-                {app.is_approved ? (
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={approvalPending}
-                    className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
-                  >
-                    {approvalPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <XCircle className="mr-2 h-4 w-4" />
-                    )}
-                    Revoke Approval
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={approvalPending}
-                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg"
-                  >
-                    {approvalPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                    )}
-                    Approve Student
-                  </Button>
+                {/* Section: Account Info */}
+                <Section icon={Shield} title="Account Information">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <EditableField label="Full Name" name="full_name" value={app.full_name} editing={true} />
+                    <EditableField label="Email" name="email" value={app.email} type="email" editing={true} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                    <InfoRow icon={Shield} label="Role" value={app.role} />
+                    <InfoRow icon={Clock} label="Joined" value={formatDateTime(app.created_at)} />
+                  </div>
+                </Section>
+
+                {/* Section 1: Personal Info */}
+                <Section icon={User} title="Personal Information">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <EditableField label="Father's Name" name="father_name" value={app.father_name} editing={true} />
+                    <EditableField label="Date of Birth" name="dob" value={app.dob} type="date" editing={true} />
+                  </div>
+                  <DocumentViewer url={app.cnic_url} label="CNIC / Passport" />
+                </Section>
+
+                {/* Section 2: Academic Background */}
+                <Section icon={GraduationCap} title="Academic Background">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <EditableField label="Education Level" name="education_level" value={app.education_level} editing={true} />
+                    <EditableField label="Degree Title" name="degree_title" value={app.degree_title} editing={true} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                    <EditableField label="Profession" name="profession" value={app.profession} editing={true} />
+                  </div>
+                  <DocumentViewer url={app.degree_url} label="Degree / Certificate" />
+                </Section>
+
+                {/* Section 3: Contact Details */}
+                <Section icon={Phone} title="Contact Details">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <EditableField label="WhatsApp Number" name="whatsapp_number" value={app.whatsapp_number} editing={true} />
+                    <EditableField label="Postal Address" name="postal_address" value={app.postal_address} editing={true} />
+                  </div>
+                </Section>
+
+                {/* Section 4: Fee Verification */}
+                <Section icon={CreditCard} title="Fee Verification">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <EditableField label="Transaction ID" name="fee_transaction_id" value={app.fee_transaction_id} editing={true} />
+                    <EditableField label="Payment Date" name="fee_submission_date" value={app.fee_submission_date} type="date" editing={true} />
+                  </div>
+                  <DocumentViewer url={app.fee_receipt_url} label="Fee Receipt / Screenshot" />
+                </Section>
+
+                {/* Edit feedback */}
+                {editState?.error && (
+                  <p className="text-sm text-red-500 text-center">{editState.error}</p>
                 )}
+                {editState?.success && (
+                  <p className="text-sm text-emerald-500 text-center">{editState.success}</p>
+                )}
+
+                {/* Edit Actions */}
+                <div className="flex gap-3 border-t border-border pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setEditing(false)}
+                    disabled={editPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700"
+                    disabled={editPending}
+                  >
+                    {editPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Save Changes
+                  </Button>
+                </div>
               </form>
-            </div>
+            ) : (
+              /* ─── Read-Only View ─── */
+              <div className="space-y-8">
+                {/* Section: Account Info */}
+                <Section icon={Shield} title="Account Information">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InfoRow icon={User} label="Full Name" value={app.full_name} />
+                    <InfoRow icon={Mail} label="Email" value={app.email} />
+                    <InfoRow icon={Shield} label="Role" value={app.role} />
+                    <InfoRow icon={CheckSquare} label="Onboarding" value={app.onboarding_completed ? "Completed" : "Pending"} />
+                    <InfoRow icon={Clock} label="Joined" value={formatDateTime(app.created_at)} />
+                    <InfoRow icon={Clock} label="Last Updated" value={formatDateTime(app.updated_at)} />
+                  </div>
+                </Section>
+
+                {/* Section 1: Personal Info */}
+                <Section icon={User} title="Personal Information">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InfoRow icon={User} label="Full Name" value={app.full_name} />
+                    <InfoRow icon={User} label="Father's Name" value={app.father_name} />
+                    <InfoRow icon={Calendar} label="Date of Birth" value={formatDate(app.dob)} />
+                    <InfoRow icon={Mail} label="Email" value={app.email} />
+                  </div>
+                  <DocumentViewer url={app.cnic_url} label="CNIC / Passport" />
+                </Section>
+
+                {/* Section 2: Academic Background */}
+                <Section icon={GraduationCap} title="Academic Background">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InfoRow icon={GraduationCap} label="Education Level" value={app.education_level} />
+                    <InfoRow icon={GraduationCap} label="Degree Title" value={app.degree_title} />
+                    <InfoRow icon={Briefcase} label="Profession" value={app.profession} />
+                  </div>
+                  <DocumentViewer url={app.degree_url} label="Degree / Certificate" />
+                </Section>
+
+                {/* Section 3: Contact Details */}
+                <Section icon={Phone} title="Contact Details">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InfoRow icon={Phone} label="WhatsApp Number" value={app.whatsapp_number} />
+                    <InfoRow icon={MapPin} label="Postal Address" value={app.postal_address} />
+                  </div>
+                </Section>
+
+                {/* Section 4: Fee Verification */}
+                <Section icon={CreditCard} title="Fee Verification">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InfoRow icon={CreditCard} label="Transaction ID" value={app.fee_transaction_id} />
+                    <InfoRow icon={Calendar} label="Payment Date" value={formatDate(app.fee_submission_date)} />
+                  </div>
+                  <DocumentViewer url={app.fee_receipt_url} label="Fee Receipt / Screenshot" />
+                </Section>
+
+                {/* Section 5: Declaration */}
+                <Section icon={CheckSquare} title="Declaration">
+                  <div className="grid grid-cols-1 gap-4">
+                    <InfoRow
+                      icon={CheckSquare}
+                      label="Declaration Accepted"
+                      value={app.declaration_accepted ? "Yes — Student accepted the declaration" : "No"}
+                    />
+                  </div>
+                </Section>
+
+                {/* Approval Action */}
+                <div className="border-t border-border pt-6">
+                  {approvalState?.error && (
+                    <p className="mb-3 text-sm text-red-500 text-center">
+                      {approvalState.error}
+                    </p>
+                  )}
+                  {approvalState?.success && (
+                    <p className="mb-3 text-sm text-emerald-500 text-center">
+                      {approvalState.success}
+                    </p>
+                  )}
+
+                  <form action={approvalAction}>
+                    <input type="hidden" name="userId" value={userId} />
+                    <input
+                      type="hidden"
+                      name="isApproved"
+                      value={(!app.is_approved).toString()}
+                    />
+
+                    {app.is_approved ? (
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        disabled={approvalPending}
+                        className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                      >
+                        {approvalPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Revoke Approval
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={approvalPending}
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg"
+                      >
+                        {approvalPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Approve Student
+                      </Button>
+                    )}
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

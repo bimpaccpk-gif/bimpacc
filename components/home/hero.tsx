@@ -60,7 +60,7 @@ export function Hero() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/courses">
+              <Link href="/register">
                 <Button size="lg" variant="outline" className="w-full gap-2 sm:w-auto h-11 px-6">
                   <Play className="h-4 w-4" />
                   Browse Courses

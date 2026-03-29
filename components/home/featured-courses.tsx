@@ -209,7 +209,7 @@ export function FeaturedCourses() {
                         ${course.price}
                       </span>
                     </div>
-                    <Link href={`/courses/${course.id}`}>
+                    <Link href="/register">
                       <Button size="sm" className="gap-1">
                         View Course
                         <ArrowRight className="h-4 w-4" />
@@ -224,7 +224,7 @@ export function FeaturedCourses() {
 
         {/* View All Link */}
         <div className="mt-12 text-center">
-          <Link href="/courses">
+          <Link href="/register">
             <Button variant="outline" size="lg" className="gap-2">
               View All Courses
               <ArrowRight className="h-4 w-4" />

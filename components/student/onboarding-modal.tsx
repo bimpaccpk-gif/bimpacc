@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, UploadCloud, FileType, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, UploadCloud, FileType, CheckCircle2, AlertCircle, Lock } from "lucide-react";
 
 export function OnboardingModal({ user }: { user: any }) {
   const [state, action, pending] = useActionState(completeOnboarding, undefined);
@@ -203,6 +203,35 @@ export function OnboardingModal({ user }: { user: any }) {
                 <AlertDescription>{state.error}</AlertDescription>
               </Alert>
             )}
+
+            {/* Account Info Section (Read-Only) */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold border-b pb-2 flex-1">Your Account</h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                  Auto-filled
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Full Name</Label>
+                  <Input 
+                    value={user.full_name} 
+                    disabled 
+                    className="bg-muted/50 text-foreground font-medium cursor-not-allowed"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Email Address</Label>
+                  <Input 
+                    value={user.email} 
+                    disabled 
+                    className="bg-muted/50 text-foreground font-medium cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Profile Info Section */}
             <div className="space-y-6">
