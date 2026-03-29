@@ -22,7 +22,9 @@ export interface UserProfile {
   role: UserRole;
   avatar_url?: string;
   onboarding_completed: boolean;
+  onboarding_bypassed: boolean;
   is_approved: boolean;
+  selected_course_id?: string;
   // Student profile fields (populated after onboarding)
   father_name?: string;
   cnic_file_path?: string;

@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toggleStudentApproval } from "@/lib/supabase/actions";
+import { toggleStudentApproval, adminBypassOnboarding } from "@/lib/supabase/actions";
 import {
   getStudentApplication,
   updateStudentProfile,
@@ -39,6 +39,9 @@ import {
   Clock,
   Mail,
   CheckSquare,
+  BookOpen,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react";
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -232,12 +235,24 @@ export function StudentApplicationDialog({
     undefined
   );
 
+  const [bypassState, bypassAction, bypassPending] = useActionState(
+    adminBypassOnboarding,
+    undefined
+  );
+
   // Re-sync local approval state after action
   useEffect(() => {
     if (approvalState?.success && app) {
       setApp({ ...app, is_approved: !app.is_approved });
     }
   }, [approvalState]);
+
+  // Re-sync local bypass state after action
+  useEffect(() => {
+    if (bypassState?.success && app) {
+      setApp({ ...app, onboarding_bypassed: !app.onboarding_bypassed });
+    }
+  }, [bypassState]);
 
   // Re-sync after edit save
   useEffect(() => {
@@ -334,18 +349,57 @@ export function StudentApplicationDialog({
                     Under Review
                   </span>
                 )}
+                {app.onboarding_bypassed && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20">
+                    <ShieldCheck className="h-3 w-3" />
+                    Onboarding Bypassed
+                  </span>
+                )}
               </div>
-              {!editing && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditing(true)}
-                  className="h-8 text-xs gap-1.5"
-                >
-                  <Pencil className="h-3 w-3" />
-                  Edit Details
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {!app.onboarding_completed && (
+                  <form action={bypassAction}>
+                    <input type="hidden" name="userId" value={userId} />
+                    <input
+                      type="hidden"
+                      name="bypass"
+                      value={app.onboarding_bypassed ? "false" : "true"}
+                    />
+                    <Button
+                      type="submit"
+                      variant={app.onboarding_bypassed ? "destructive" : "outline"}
+                      size="sm"
+                      disabled={bypassPending}
+                      className="h-8 text-xs gap-1.5"
+                    >
+                      {bypassPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : app.onboarding_bypassed ? (
+                        <>
+                          <ShieldOff className="h-3 w-3" />
+                          Restore Onboarding
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-3 w-3" />
+                          Bypass Onboarding
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                )}
+                {!editing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditing(true)}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit Details
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Student Photo */}
@@ -461,7 +515,7 @@ export function StudentApplicationDialog({
                     <InfoRow icon={User} label="Full Name" value={app.full_name} />
                     <InfoRow icon={Mail} label="Email" value={app.email} />
                     <InfoRow icon={Shield} label="Role" value={app.role} />
-                    <InfoRow icon={CheckSquare} label="Onboarding" value={app.onboarding_completed ? "Completed" : "Pending"} />
+                    <InfoRow icon={CheckSquare} label="Onboarding" value={app.onboarding_completed ? "Completed" : app.onboarding_bypassed ? "Bypassed" : "Pending"} />
                     <InfoRow icon={Clock} label="Joined" value={formatDateTime(app.created_at)} />
                     <InfoRow icon={Clock} label="Last Updated" value={formatDateTime(app.updated_at)} />
                   </div>
@@ -504,6 +558,25 @@ export function StudentApplicationDialog({
                   </div>
                   <DocumentViewer url={app.fee_receipt_url} label="Fee Receipt / Screenshot" />
                 </Section>
+
+                {/* Section 5: Enrollment Request */}
+                {app.selected_course_id && (
+                  <Section icon={BookOpen} title="Enrollment Request">
+                    <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10">
+                          <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{app.selected_course_title || "Course"}</p>
+                          {app.selected_course_batch && (
+                            <p className="text-sm text-muted-foreground">Batch: {app.selected_course_batch}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Section>
+                )}
 
                 {/* Section 5: Declaration */}
                 <Section icon={CheckSquare} title="Declaration">

@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertCircle, Check, Loader2, UserPlus, ChevronDown } from "lucide-react";
+import { AlertCircle, Check, Loader2, UserPlus, ChevronDown, Info, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import type { UserRole } from "@/types";
 
 const roles: { value: UserRole; label: string }[] = [
@@ -21,9 +21,36 @@ const roles: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Admin" },
 ];
 
-export function CreateUserForm({ onSuccess }: { onSuccess?: () => void } = {}) {
+export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void; courses?: any[] } = {}) {
   const [state, action, pending] = useActionState(adminCreateUser, undefined);
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const getPasswordStrength = (pw: string) => {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    return score;
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+  const strengthLabels = ["Weak", "Fair", "Good", "Strong"];
+  const strengthColorVars = [
+    "bg-destructive",
+    "bg-amber-500",
+    "bg-blue-500",
+    "bg-green-500",
+  ];
+
+  const passwordRequirements = [
+    { label: "At least 8 characters", met: password.length >= 8 },
+    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
+    { label: "One number", met: /[0-9]/.test(password) },
+    { label: "One special character", met: /[^A-Za-z0-9]/.test(password) },
+  ];
 
   useEffect(() => {
     if (state?.success && onSuccess) {
@@ -57,14 +84,35 @@ export function CreateUserForm({ onSuccess }: { onSuccess?: () => void } = {}) {
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       )}
+
+      {/* CNIC Notice */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 dark:border-amber-500/20 dark:bg-amber-950/20 shadow-sm">
+        <div className="flex gap-3">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="space-y-1.5 text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">
+              Important: Name Format
+            </p>
+            <p className="text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
+              Enter name <span className="font-bold text-amber-900 dark:text-amber-200">exactly as on CNIC</span> in
+              <span className="font-bold text-amber-900 dark:text-amber-200"> CAPITAL LETTERS</span>. This will appear on certificates.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="fullName">Full Name</Label>
         <Input
           id="fullName"
           name="fullName"
-          placeholder="John Doe"
+          placeholder="Ex: AHMED KHAN"
+          style={{ textTransform: "uppercase" }}
           required
         />
+        <p className="text-xs text-muted-foreground">
+          Write in CAPITAL letters as per CNIC
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
@@ -72,19 +120,95 @@ export function CreateUserForm({ onSuccess }: { onSuccess?: () => void } = {}) {
           id="email"
           name="email"
           type="email"
-          placeholder="user@example.com"
+          placeholder="user@gmail.com"
           required
         />
+        <p className="text-xs text-muted-foreground">
+          Only Gmail emails are allowed
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          placeholder="Min. 8 characters"
-          required
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Create a strong password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+        
+        {/* Password Strength */}
+        {password && (
+          <div className="space-y-3 rounded-xl bg-background/50 border border-border/50 p-3.5 shadow-sm">
+            {/* Strength Bar */}
+            <div className="space-y-2">
+              <div className="flex gap-1.5 w-full">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                      i < passwordStrength
+                        ? strengthColorVars[passwordStrength - 1] || "bg-destructive"
+                        : "bg-muted dark:bg-zinc-800"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs font-medium text-muted-foreground">
+                Strength:{" "}
+                <span
+                  className={`font-semibold ${
+                    passwordStrength === 1
+                      ? "text-red-500"
+                      : passwordStrength === 2
+                      ? "text-amber-500"
+                      : passwordStrength === 3
+                      ? "text-blue-500"
+                      : "text-green-500"
+                  }`}
+                >
+                  {strengthLabels[passwordStrength - 1] || "Too weak"}
+                </span>
+              </p>
+            </div>
+
+            {/* Requirements Checklist */}
+            <div className="grid grid-cols-2 gap-y-2 gap-x-1">
+              {passwordRequirements.map((req, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center gap-2 text-xs font-medium transition-colors duration-300 ${
+                    req.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground/60"
+                  }`}
+                >
+                  <CheckCircle2
+                    className={`h-3.5 w-3.5 shrink-0 transition-all duration-300 ${
+                      req.met
+                        ? "fill-green-500/20 text-green-500 scale-110"
+                        : "text-muted-foreground/30 scale-100"
+                    }`}
+                  />
+                  {req.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <div className="space-y-2">
         <Label>Role</Label>
@@ -110,6 +234,32 @@ export function CreateUserForm({ onSuccess }: { onSuccess?: () => void } = {}) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Course Selection (for students only) */}
+      {selectedRole === "student" && courses && courses.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="courseId">Select Course to Enroll</Label>
+          <select
+            id="courseId"
+            name="courseId"
+            className="w-full h-10 px-3 rounded-md border bg-background focus:ring-indigo-500 focus:border-indigo-500"
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select an open course...
+            </option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title} {course.batch ? `(Batch: ${course.batch})` : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Choose an open course to enroll the student
+          </p>
+        </div>
+      )}
+
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

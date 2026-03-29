@@ -64,7 +64,7 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="Ex: you@example.com"
+                placeholder="Ex: you@gmail.com"
                 className="h-12 pl-11 bg-background/50 border-white/10 dark:border-white/5 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500 transition-all rounded-xl"
                 required
               />

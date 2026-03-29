@@ -8,7 +8,8 @@ import { DeleteUserButton } from "@/components/admin/delete-user-button";
 import { ApprovalToggle } from "@/components/admin/approval-toggle";
 import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
 import { EnrollStudentDialog } from "@/components/admin/enroll-student-dialog";
-import { Users, ShieldCheck, Clock, ClipboardList } from "lucide-react";
+import { BypassOnboardingToggle } from "@/components/admin/bypass-onboarding-toggle";
+import { Users, ShieldCheck, Clock, ClipboardList, ShieldCheck as ShieldCheckIcon } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface UserRow {
@@ -18,6 +19,7 @@ interface UserRow {
   role: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  onboarding_bypassed: boolean;
   is_approved: boolean;
   created_at: string;
 }
@@ -34,7 +36,7 @@ async function getAllUsers(): Promise<UserRow[]> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, avatar_url, onboarding_completed, is_approved, created_at")
+    .select("id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -220,10 +222,10 @@ export default async function AdminUsersPage() {
                           <div className="flex items-center gap-2">
                             {user.onboarding_completed ? (
                               <div className="flex items-center gap-2">
-                                <ApprovalToggle 
-                                  userId={user.id} 
-                                  isApproved={user.is_approved} 
-                                  disabled={false} 
+                                <ApprovalToggle
+                                  userId={user.id}
+                                  isApproved={user.is_approved}
+                                  disabled={false}
                                 />
                                 <span className="text-xs text-muted-foreground">
                                   {user.is_approved ? (
@@ -238,11 +240,30 @@ export default async function AdminUsersPage() {
                                   isApproved={user.is_approved}
                                 />
                               </div>
+                            ) : user.onboarding_bypassed ? (
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center text-xs font-semibold text-blue-500 bg-blue-500/10 px-2 py-1 rounded-md">
+                                  <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                  Onboarding Bypassed
+                                </span>
+                                <BypassOnboardingToggle
+                                  userId={user.id}
+                                  isBypassed={true}
+                                  onboardingCompleted={false}
+                                />
+                              </div>
                             ) : (
-                              <span className="flex items-center text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending Setup
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Pending Setup
+                                </span>
+                                <BypassOnboardingToggle
+                                  userId={user.id}
+                                  isBypassed={false}
+                                  onboardingCompleted={false}
+                                />
+                              </div>
                             )}
                           </div>
                         ) : (

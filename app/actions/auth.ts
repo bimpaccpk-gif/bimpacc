@@ -68,17 +68,13 @@ export async function signUp(
 
   const allowedDomains = [
     "gmail.com",
-    "outlook.com",
-    "hotmail.com",
-    "yahoo.com",
-    "icloud.com",
   ];
   const emailDomain = email.split("@")[1]?.toLowerCase();
 
   if (!emailDomain || !allowedDomains.includes(emailDomain)) {
     return {
       error:
-        "Only Gmail, Outlook, Yahoo, Hotmail, or iCloud emails are allowed.",
+        "Only Gmail emails are allowed for registration.",
     };
   }
 
@@ -106,17 +102,10 @@ export async function signUp(
         email,
         full_name: fullName,
         role: "student",
+        selected_course_id: courseId || null,
       } as never,
       { onConflict: "id" }
     );
-
-    if (courseId) {
-      // Auto-enroll the new student in the selected course
-      await supabase.from("enrollments").insert({
-        user_id: data.user.id,
-        course_id: courseId,
-      } as never);
-    }
   }
 
   redirect("/student");

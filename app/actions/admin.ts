@@ -12,6 +12,7 @@ export interface StudentApplication {
   role: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  onboarding_bypassed: boolean;
   is_approved: boolean;
   created_at: string;
   updated_at: string;
@@ -35,6 +36,11 @@ export interface StudentApplication {
 
   // Declaration
   declaration_accepted: boolean | null;
+
+  // Course enrollment
+  selected_course_id: string | null;
+  selected_course_title: string | null;
+  selected_course_batch: string | null;
 
   // Signed document URLs (generated server-side)
   cnic_url: string | null;
@@ -113,6 +119,21 @@ export async function getStudentApplication(
       getSignedUrl(supabase, s.avatar_file_path),
     ]);
 
+  // Fetch course information if selected
+  let selected_course_title = null;
+  let selected_course_batch = null;
+  if (s.selected_course_id) {
+    const { data: course } = await supabase
+      .from("courses")
+      .select("title, batch")
+      .eq("id", s.selected_course_id)
+      .single();
+    if (course) {
+      selected_course_title = (course as any).title;
+      selected_course_batch = (course as any).batch;
+    }
+  }
+
   return {
     data: {
       id: s.id,
@@ -121,6 +142,7 @@ export async function getStudentApplication(
       role: s.role,
       avatar_url: s.avatar_url,
       onboarding_completed: s.onboarding_completed,
+      onboarding_bypassed: s.onboarding_bypassed,
       is_approved: s.is_approved,
       created_at: s.created_at,
       updated_at: s.updated_at,
@@ -134,6 +156,9 @@ export async function getStudentApplication(
       fee_transaction_id: s.fee_transaction_id,
       fee_submission_date: s.fee_submission_date,
       declaration_accepted: s.declaration_accepted,
+      selected_course_id: s.selected_course_id,
+      selected_course_title,
+      selected_course_batch,
       cnic_url,
       degree_url,
       fee_receipt_url,

@@ -146,13 +146,13 @@ export function RegisterForm({ courses }: { courses: Course[] }) {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="you@example.com"
+                placeholder="you@gmail.com"
                 className="h-12 pl-11 bg-background/50 border-white/10 dark:border-white/5 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500 transition-all rounded-xl shadow-sm"
                 required
               />
             </div>
             <p className="text-xs font-medium text-muted-foreground/60 ml-1">
-              Gmail, Outlook, Yahoo, Hotmail, or iCloud
+              Only Gmail emails are allowed
             </p>
           </div>
 

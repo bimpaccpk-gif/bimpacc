@@ -3,13 +3,14 @@
 import { useState, useActionState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { completeOnboarding } from "@/app/actions/student";
+import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, UploadCloud, FileType, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { Loader2, UploadCloud, FileType, CheckCircle2, AlertCircle, Lock, BookOpen, LogOut } from "lucide-react";
 
-export function OnboardingModal({ user }: { user: any }) {
+export function OnboardingModal({ user, selectedCourse }: { user: any; selectedCourse: any }) {
   const [state, action, pending] = useActionState(completeOnboarding, undefined);
   
   // File upload states
@@ -147,9 +148,17 @@ export function OnboardingModal({ user }: { user: any }) {
         {/* Left Panel - Static Info */}
         <div className="lg:w-2/5 p-8 lg:p-12 bg-indigo-50/50 dark:bg-indigo-950/20 border-r border-border/50 overflow-y-auto hidden lg:block">
           <div className="space-y-8">
-            <div>
-              <h2 className="text-3xl font-bold text-foreground">Welcome to BIMPACC</h2>
-              <p className="mt-2 text-muted-foreground">Please complete your profile to access your dashboard.</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-foreground">Welcome to BIMPACC</h2>
+                <p className="mt-2 text-muted-foreground">Please complete your profile to access your dashboard.</p>
+              </div>
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </form>
             </div>
 
             <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-border shadow-sm space-y-4">
@@ -193,8 +202,14 @@ export function OnboardingModal({ user }: { user: any }) {
         {/* Right Panel - Form */}
         <div className="flex-1 p-6 lg:p-12 overflow-y-auto bg-background">
           <form action={formActionWrapper} className="w-full max-w-2xl mx-auto space-y-8">
-            <div className="lg:hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-6 text-sm">
-               Please scroll and complete all mandatory fields to unlock your account. Check the sidebar on Desktop for payment instructions.
+            <div className="lg:hidden flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-6 text-sm">
+              <span>Please scroll and complete all mandatory fields to unlock your account.</span>
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" size="sm" className="text-amber-800 hover:text-amber-900 hover:bg-amber-100">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </form>
             </div>
 
             {state?.error && (
@@ -216,22 +231,48 @@ export function OnboardingModal({ user }: { user: any }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Full Name</Label>
-                  <Input 
-                    value={user.full_name} 
-                    disabled 
+                  <Input
+                    value={user.full_name}
+                    disabled
                     className="bg-muted/50 text-foreground font-medium cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Email Address</Label>
-                  <Input 
-                    value={user.email} 
-                    disabled 
+                  <Input
+                    value={user.email}
+                    disabled
                     className="bg-muted/50 text-foreground font-medium cursor-not-allowed"
                   />
                 </div>
               </div>
             </div>
+
+            {/* Selected Course Section (Read-Only) */}
+            {selectedCourse && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold border-b pb-2 flex-1">Selected Course</h3>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                    <Lock className="h-3 w-3" />
+                    Not changeable
+                  </span>
+                </div>
+                <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10">
+                      <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{selectedCourse.title}</p>
+                      {selectedCourse.batch && (
+                        <p className="text-sm text-muted-foreground">Batch: {selectedCourse.batch}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Profile Info Section */}
             <div className="space-y-6">

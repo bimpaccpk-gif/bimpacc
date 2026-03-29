@@ -25,6 +25,7 @@ import {
   Download,
   Image as ImageIcon,
 } from "lucide-react";
+import { ProfileCompletionForm } from "@/components/student/profile-completion-form";
 
 async function getUserStats(userId: string, role: string) {
   const supabase = await createClient();
@@ -37,16 +38,6 @@ async function getUserStats(userId: string, role: string) {
   return {
     enrollments: enrollmentCount ?? 0,
   };
-}
-
-async function getSignedUrl(filePath: string | null) {
-  if (!filePath) return null;
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage
-    .from("student_documents")
-    .createSignedUrl(filePath, 60 * 60);
-  if (error) return null;
-  return data.signedUrl;
 }
 
 function getInitials(name: string) {
@@ -65,6 +56,24 @@ function formatDate(date: string | null) {
     month: "long",
     day: "numeric",
   });
+}
+
+function hasProfileData(user: any): boolean {
+  return !!(
+    user.father_name ||
+    user.dob ||
+    user.education_level ||
+    user.degree_title ||
+    user.profession ||
+    user.whatsapp_number ||
+    user.postal_address ||
+    user.fee_transaction_id ||
+    user.fee_submission_date ||
+    user.cnic_file_path ||
+    user.degree_file_path ||
+    user.fee_receipt_file_path ||
+    user.avatar_file_path
+  );
 }
 
 function InfoField({
@@ -87,87 +96,13 @@ function InfoField({
   );
 }
 
-function isImageUrl(url: string) {
-  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)/i.test(url);
-}
-
-function DocumentField({
-  url,
-  label,
-}: {
-  url: string | null;
-  label: string;
-}) {
-  if (!url) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        <FileText className="h-4 w-4" />
-        <span>{label}: Not uploaded</span>
-      </div>
-    );
-  }
-
-  if (isImageUrl(url)) {
-    return (
-      <div className="rounded-lg border overflow-hidden">
-        <div className="px-4 py-2 bg-muted/30 border-b">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-        </div>
-        <div className="group relative bg-white dark:bg-zinc-900">
-          <img
-            src={url}
-            alt={label}
-            className="w-full max-h-48 object-contain"
-          />
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
-          >
-            <Download className="h-3 w-3" />
-            Open Full Size
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-lg border p-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
-    >
-      <FileText className="h-5 w-5 text-indigo-500" />
-      <span className="flex-1">{label}</span>
-      <Download className="h-4 w-4 text-muted-foreground" />
-    </a>
-  );
-}
-
 export default async function ProfilePage() {
   const user = await getFullUserProfile();
   const stats = await getUserStats(user.id, user.role);
 
   const isStudent = user.role === "student";
   const hasOnboarded = user.onboarding_completed;
-
-  // Generate signed URLs for documents (only for students who onboarded)
-  let cnicUrl: string | null = null;
-  let degreeUrl: string | null = null;
-  let receiptUrl: string | null = null;
-  let avatarFileUrl: string | null = null;
-
-  if (isStudent && hasOnboarded) {
-    [cnicUrl, degreeUrl, receiptUrl, avatarFileUrl] = await Promise.all([
-      getSignedUrl(user.cnic_file_path),
-      getSignedUrl(user.degree_file_path),
-      getSignedUrl(user.fee_receipt_file_path),
-      getSignedUrl(user.avatar_file_path),
-    ]);
-  }
+  const showProfileData = isStudent && (hasOnboarded || (user.onboarding_bypassed && hasProfileData(user)));
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
@@ -192,23 +127,14 @@ export default async function ProfilePage() {
         {/* Profile Card */}
         <Card className="md:col-span-1">
           <CardContent className="flex flex-col items-center pt-6">
-            {/* Show uploaded student photo if available, otherwise avatar */}
-            {avatarFileUrl ? (
-              <img
-                src={avatarFileUrl}
-                alt={user.full_name}
-                className="h-24 w-24 rounded-full object-cover border-2 border-border shadow-md"
-              />
-            ) : (
-              <Avatar className="h-24 w-24">
-                {user.avatar_url && (
-                  <AvatarImage src={user.avatar_url} alt={user.full_name} />
-                )}
-                <AvatarFallback className="bg-brand-100 text-2xl font-semibold text-brand-700 dark:bg-brand-900 dark:text-brand-300">
-                  {getInitials(user.full_name)}
-                </AvatarFallback>
-              </Avatar>
-            )}
+            <Avatar className="h-24 w-24">
+              {user.avatar_url && (
+                <AvatarImage src={user.avatar_url} alt={user.full_name} />
+              )}
+              <AvatarFallback className="bg-brand-100 text-2xl font-semibold text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                {getInitials(user.full_name)}
+              </AvatarFallback>
+            </Avatar>
             <h2 className="mt-4 text-xl font-semibold">{user.full_name}</h2>
             <p className="text-sm text-muted-foreground">{user.email}</p>
             <span
@@ -269,8 +195,27 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* ─── Student Onboarding Details ─── */}
-        {isStudent && hasOnboarded && (
+        {/* Profile Completion for Bypassed Students */}
+        {isStudent && user.onboarding_bypassed && !hasOnboarded && (
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserIcon className="h-5 w-5 text-indigo-500" />
+                Complete Your Profile
+              </CardTitle>
+              <CardDescription>
+                Your onboarding was bypassed by an admin. You can complete your profile
+                at any time to provide additional information. All fields are optional.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProfileCompletionForm user={user} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ─── Student Profile Details (Text Only) ─── */}
+        {showProfileData && (
           <>
             {/* Personal Information */}
             <Card className="md:col-span-3">
@@ -286,11 +231,7 @@ export default async function ProfilePage() {
                   <InfoField icon={UserIcon} label="Father's Name" value={user.father_name} />
                   <InfoField icon={Calendar} label="Date of Birth" value={formatDate(user.dob)} />
                 </dl>
-                {/* Documents */}
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <DocumentField url={cnicUrl} label="CNIC / Passport" />
-                  <DocumentField url={avatarFileUrl} label="Student Photo" />
-                </div>
+                {/* NO DocumentField for CNIC or avatar - students cannot see documents */}
               </CardContent>
             </Card>
 
@@ -308,9 +249,7 @@ export default async function ProfilePage() {
                   <InfoField icon={GraduationCap} label="Degree Title" value={user.degree_title} />
                   <InfoField icon={Briefcase} label="Profession" value={user.profession} />
                 </dl>
-                <div className="mt-6">
-                  <DocumentField url={degreeUrl} label="Degree / Certificate" />
-                </div>
+                {/* NO DocumentField for degree - students cannot see documents */}
               </CardContent>
             </Card>
 
@@ -343,9 +282,7 @@ export default async function ProfilePage() {
                   <InfoField icon={CreditCard} label="Transaction ID" value={user.fee_transaction_id} />
                   <InfoField icon={Calendar} label="Payment Date" value={formatDate(user.fee_submission_date)} />
                 </dl>
-                <div className="mt-6">
-                  <DocumentField url={receiptUrl} label="Fee Receipt / Screenshot" />
-                </div>
+                {/* NO DocumentField for receipt - students cannot see documents */}
               </CardContent>
             </Card>
           </>
