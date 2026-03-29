@@ -61,6 +61,7 @@ function formatDate(date: string | null) {
 function hasProfileData(user: any): boolean {
   return !!(
     user.father_name ||
+    user.cnic_number ||
     user.dob ||
     user.education_level ||
     user.degree_title ||
@@ -69,6 +70,7 @@ function hasProfileData(user: any): boolean {
     user.postal_address ||
     user.fee_transaction_id ||
     user.fee_submission_date ||
+    user.bank_name ||
     user.cnic_file_path ||
     user.degree_file_path ||
     user.fee_receipt_file_path ||
@@ -229,6 +231,7 @@ export default async function ProfilePage() {
                 <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <InfoField icon={UserIcon} label="Full Name" value={user.full_name} />
                   <InfoField icon={UserIcon} label="Father's Name" value={user.father_name} />
+                  <InfoField icon={CreditCard} label="CNIC / Passport Number" value={user.cnic_number} />
                   <InfoField icon={Calendar} label="Date of Birth" value={formatDate(user.dob)} />
                 </dl>
                 {/* NO DocumentField for CNIC or avatar - students cannot see documents */}
@@ -281,6 +284,7 @@ export default async function ProfilePage() {
                 <dl className="grid gap-4 sm:grid-cols-2">
                   <InfoField icon={CreditCard} label="Transaction ID" value={user.fee_transaction_id} />
                   <InfoField icon={Calendar} label="Payment Date" value={formatDate(user.fee_submission_date)} />
+                  <InfoField icon={CreditCard} label="Bank Name" value={user.bank_name} />
                 </dl>
                 {/* NO DocumentField for receipt - students cannot see documents */}
               </CardContent>

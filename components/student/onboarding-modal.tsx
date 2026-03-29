@@ -1,126 +1,19 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useActionState, useEffect } from "react";
 import { completeOnboarding } from "@/app/actions/student";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, UploadCloud, FileType, CheckCircle2, AlertCircle, Lock, BookOpen, LogOut } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Lock, BookOpen, LogOut } from "lucide-react";
 
 export function OnboardingModal({ user, selectedCourse }: { user: any; selectedCourse: any }) {
   const [state, action, pending] = useActionState(completeOnboarding, undefined);
-  
-  // File upload states
-  const [cnicFile, setCnicFile] = useState<File | null>(null);
-  const [degreeFile, setDegreeFile] = useState<File | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  
-  // Uploaded paths
-  const [cnicPath, setCnicPath] = useState("");
-  const [degreePath, setDegreePath] = useState("");
-  const [receiptPath, setReceiptPath] = useState("");
-  const [avatarPath, setAvatarPath] = useState("");
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const supabase = createClient();
-
-  const handleFileUpload = async (file: File, type: string) => {
-    const fileExt = file.name.split('.').pop();
-    const filename = `${type}_${Date.now()}.${fileExt}`;
-    const filePath = `${user.id}/${filename}`;
-
-    const { data, error } = await supabase.storage
-      .from('student_documents')
-      .upload(filePath, file, { upsert: true });
-
-    if (error) throw error;
-    return data.path;
-  };
-
-  const uploadAllFiles = async () => {
-    if (!cnicFile || !degreeFile || !receiptFile || !avatarFile) {
-      alert("Please upload all 4 required files before submitting.");
-      return false;
-    }
-    
-    setIsUploading(true);
-    try {
-      setUploadProgress(10);
-      const cPath = await handleFileUpload(cnicFile, 'cnic');
-      setCnicPath(cPath);
-      
-      setUploadProgress(40);
-      const dPath = await handleFileUpload(degreeFile, 'degree');
-      setDegreePath(dPath);
-      
-      setUploadProgress(70);
-      const rPath = await handleFileUpload(receiptFile, 'receipt');
-      setReceiptPath(rPath);
-      
-      setUploadProgress(90);
-      const aPath = await handleFileUpload(avatarFile, 'avatar');
-      setAvatarPath(aPath);
-      
-      setUploadProgress(100);
-      return true;
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      alert("Failed to upload files: " + err.message);
-      return false;
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleSubmit = async (formData: FormData) => {
-    // Intercept standard submission to upload files first
-    if (!cnicPath || !degreePath || !receiptPath || !avatarPath) {
-      const success = await uploadAllFiles();
-      if (!success) return; // Cancel if uploads failed
-    }
-    
-    // Inject the final paths back into formData for the server action
-    // State isn't instantly available in formData, so we'll append standard state tracking 
-    // BUT actually formData won't have cnicPath right after setCnicPath unless we append explicitly:
-  };
-
-  // Better approach: wrap form action
   const formActionWrapper = async (formData: FormData) => {
-    let cp = cnicPath, dp = degreePath, rp = receiptPath, ap = avatarPath;
-    
-    if (!cp || !dp || !rp || !ap) {
-      if (!cnicFile || !degreeFile || !receiptFile || !avatarFile) {
-        alert("Please select all 4 required files first.");
-        return;
-      }
-      
-      setIsUploading(true);
-      try {
-        cp = await handleFileUpload(cnicFile, 'cnic');
-        dp = await handleFileUpload(degreeFile, 'degree');
-        rp = await handleFileUpload(receiptFile, 'receipt');
-        ap = await handleFileUpload(avatarFile, 'avatar');
-        setCnicPath(cp); setDegreePath(dp); setReceiptPath(rp); setAvatarPath(ap);
-      } catch(e: any) {
-        setIsUploading(false);
-        alert(e.message);
-        return;
-      }
-      setIsUploading(false);
-    }
-
-    formData.append("cnic_file_path", cp);
-    formData.append("degree_file_path", dp);
-    formData.append("fee_receipt_file_path", rp);
-    formData.append("avatar_file_path", ap);
-    
-    action(formData); // Call server action
+    action(formData);
   };
 
   // We explicitly block scrolling on body when this mounts
@@ -287,13 +180,11 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
                   <Input type="date" name="dob" required />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>CNIC/Passport Document (Max 10MB) *</Label>
-                <Input type="file" required accept=".pdf,image/*" onChange={e => setCnicFile(e.target.files?.[0] || null)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Student Picture (Passport Size) *</Label>
-                <Input type="file" required accept="image/*" onChange={e => setAvatarFile(e.target.files?.[0] || null)} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>CNIC / Passport Number *</Label>
+                  <Input name="cnic_number" required />
+                </div>
               </div>
             </div>
 
@@ -321,10 +212,6 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
                   <Input name="profession" required />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Last Degree/Certificate Document (Max 10MB) *</Label>
-                <Input type="file" required accept=".pdf,image/*" onChange={e => setDegreeFile(e.target.files?.[0] || null)} />
-              </div>
             </div>
 
             {/* Contact Section */}
@@ -347,7 +234,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
               <h3 className="text-xl font-bold border-b pb-2 pt-4">4. Fee Verification</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Fee Challan No / Transaction ID & Bank *</Label>
+                  <Label>Fee Challan No / Transaction ID *</Label>
                   <Input name="fee_transaction_id" required />
                 </div>
                 <div className="space-y-2">
@@ -355,9 +242,11 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
                   <Input type="date" name="fee_submission_date" required />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Fee Receipt / Screenshot (Max 10MB) *</Label>
-                <Input type="file" required accept=".pdf,image/*" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Bank Name *</Label>
+                  <Input name="bank_name" required />
+                </div>
               </div>
             </div>
 
@@ -375,14 +264,9 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
             <Button 
               type="submit" 
               className="w-full h-14 text-lg font-bold shadow-lg"
-              disabled={pending || isUploading}
+              disabled={pending}
             >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Uploading Files... Please wait
-                </>
-              ) : pending ? (
+              {pending ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Saving Profile...

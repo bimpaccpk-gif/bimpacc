@@ -18,6 +18,7 @@ export async function completeOnboarding(
 
     // Extract basic fields
     const father_name = formData.get("father_name") as string;
+    const cnic_number = formData.get("cnic_number") as string;
     const dob = formData.get("dob") as string;
     const education_level = formData.get("education_level") as string;
     const degree_title = formData.get("degree_title") as string;
@@ -26,30 +27,23 @@ export async function completeOnboarding(
     const postal_address = formData.get("postal_address") as string;
     const fee_transaction_id = formData.get("fee_transaction_id") as string;
     const fee_submission_date = formData.get("fee_submission_date") as string;
+    const bank_name = formData.get("bank_name") as string;
     const declaration_accepted = formData.get("declaration_accepted") === "on";
 
-    // Extract file paths that the client successfully uploaded directly to Supabase Storage
-    const cnic_file_path = formData.get("cnic_file_path") as string;
-    const degree_file_path = formData.get("degree_file_path") as string;
-    const fee_receipt_file_path = formData.get("fee_receipt_file_path") as string;
-    const avatar_file_path = formData.get("avatar_file_path") as string;
-
     if (
-      !father_name || 
-      !dob || 
-      !education_level || 
-      !degree_title || 
-      !profession || 
-      !whatsapp_number || 
-      !postal_address || 
-      !fee_transaction_id || 
-      !fee_submission_date
+      !father_name ||
+      !cnic_number ||
+      !dob ||
+      !education_level ||
+      !degree_title ||
+      !profession ||
+      !whatsapp_number ||
+      !postal_address ||
+      !fee_transaction_id ||
+      !fee_submission_date ||
+      !bank_name
     ) {
       return { error: "Please fill out all required text fields." };
-    }
-
-    if (!cnic_file_path || !degree_file_path || !fee_receipt_file_path || !avatar_file_path) {
-      return { error: "Please wait for all required files to complete uploading." };
     }
 
     if (!declaration_accepted) {
@@ -61,18 +55,16 @@ export async function completeOnboarding(
       .from("users")
       .update({
         father_name,
-        cnic_file_path,
+        cnic_number,
         dob,
         education_level,
         degree_title,
-        degree_file_path,
         profession,
         whatsapp_number,
         postal_address,
         fee_transaction_id,
         fee_submission_date,
-        fee_receipt_file_path,
-        avatar_file_path,
+        bank_name,
         declaration_accepted,
         onboarding_completed: true
       })
@@ -123,6 +115,7 @@ export async function completeBypassedProfile(
     
     // Text fields (optional)
     const fatherName = formData.get("father_name") as string;
+    const cnicNumber = formData.get("cnic_number") as string;
     const dob = formData.get("dob") as string;
     const educationLevel = formData.get("education_level") as string;
     const degreeTitle = formData.get("degree_title") as string;
@@ -131,8 +124,10 @@ export async function completeBypassedProfile(
     const postalAddress = formData.get("postal_address") as string;
     const feeTransactionId = formData.get("fee_transaction_id") as string;
     const feeSubmissionDate = formData.get("fee_submission_date") as string;
+    const bankName = formData.get("bank_name") as string;
 
     if (fatherName) updates.father_name = fatherName;
+    if (cnicNumber) updates.cnic_number = cnicNumber;
     if (dob) updates.dob = dob;
     if (educationLevel) updates.education_level = educationLevel;
     if (degreeTitle) updates.degree_title = degreeTitle;
@@ -141,17 +136,7 @@ export async function completeBypassedProfile(
     if (postalAddress) updates.postal_address = postalAddress;
     if (feeTransactionId) updates.fee_transaction_id = feeTransactionId;
     if (feeSubmissionDate) updates.fee_submission_date = feeSubmissionDate;
-
-    // File paths (optional)
-    const cnicPath = formData.get("cnic_file_path") as string;
-    const degreePath = formData.get("degree_file_path") as string;
-    const receiptPath = formData.get("fee_receipt_file_path") as string;
-    const avatarPath = formData.get("avatar_file_path") as string;
-
-    if (cnicPath) updates.cnic_file_path = cnicPath;
-    if (degreePath) updates.degree_file_path = degreePath;
-    if (receiptPath) updates.fee_receipt_file_path = receiptPath;
-    if (avatarPath) updates.avatar_file_path = avatarPath;
+    if (bankName) updates.bank_name = bankName;
 
     // Only update if there are changes
     if (Object.keys(updates).length === 0) {

@@ -21,8 +21,10 @@ export interface SessionUser {
 
 export interface FullUserProfile extends SessionUser {
   father_name: string | null;
+  cnic_number: string | null;
   cnic_file_path: string | null;
   dob: string | null;
+  bank_name: string | null;
   education_level: string | null;
   degree_title: string | null;
   degree_file_path: string | null;

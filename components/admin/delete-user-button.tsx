@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, useEffect } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,24 +12,23 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { adminDeleteUser } from "@/lib/supabase/actions";
-import { Trash2, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Trash2, AlertCircle, Loader2 } from "lucide-react";
 
 interface DeleteUserButtonProps {
   userId: string;
   userName: string;
+  onDeleteSuccess?: () => void;
 }
 
-export function DeleteUserButton({ userId, userName }: DeleteUserButtonProps) {
+export function DeleteUserButton({ userId, userName, onDeleteSuccess }: DeleteUserButtonProps) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(adminDeleteUser, undefined);
 
-  if (state?.success) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-success">{state.success}</span>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (state?.success && onDeleteSuccess) {
+      onDeleteSuccess();
+    }
+  }, [state?.success, onDeleteSuccess]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

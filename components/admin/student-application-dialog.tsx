@@ -439,6 +439,7 @@ export function StudentApplicationDialog({
                 <Section icon={User} title="Personal Information">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <EditableField label="Father's Name" name="father_name" value={app.father_name} editing={true} />
+                    <EditableField label="CNIC / Passport Number" name="cnic_number" value={app.cnic_number} editing={true} />
                     <EditableField label="Date of Birth" name="dob" value={app.dob} type="date" editing={true} />
                   </div>
                   <DocumentViewer url={app.cnic_url} label="CNIC / Passport" />
@@ -469,6 +470,7 @@ export function StudentApplicationDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <EditableField label="Transaction ID" name="fee_transaction_id" value={app.fee_transaction_id} editing={true} />
                     <EditableField label="Payment Date" name="fee_submission_date" value={app.fee_submission_date} type="date" editing={true} />
+                    <EditableField label="Bank Name" name="bank_name" value={app.bank_name} editing={true} />
                   </div>
                   <DocumentViewer url={app.fee_receipt_url} label="Fee Receipt / Screenshot" />
                 </Section>
@@ -526,6 +528,7 @@ export function StudentApplicationDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InfoRow icon={User} label="Full Name" value={app.full_name} />
                     <InfoRow icon={User} label="Father's Name" value={app.father_name} />
+                    <InfoRow icon={CreditCard} label="CNIC / Passport Number" value={app.cnic_number} />
                     <InfoRow icon={Calendar} label="Date of Birth" value={formatDate(app.dob)} />
                     <InfoRow icon={Mail} label="Email" value={app.email} />
                   </div>
@@ -555,6 +558,7 @@ export function StudentApplicationDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <InfoRow icon={CreditCard} label="Transaction ID" value={app.fee_transaction_id} />
                     <InfoRow icon={Calendar} label="Payment Date" value={formatDate(app.fee_submission_date)} />
+                    <InfoRow icon={CreditCard} label="Bank Name" value={app.bank_name} />
                   </div>
                   <DocumentViewer url={app.fee_receipt_url} label="Fee Receipt / Screenshot" />
                 </Section>

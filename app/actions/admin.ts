@@ -19,7 +19,9 @@ export interface StudentApplication {
 
   // Personal
   father_name: string | null;
+  cnic_number: string | null;
   dob: string | null;
+  bank_name: string | null;
 
   // Academic
   education_level: string | null;
@@ -147,7 +149,9 @@ export async function getStudentApplication(
       created_at: s.created_at,
       updated_at: s.updated_at,
       father_name: s.father_name,
+      cnic_number: s.cnic_number,
       dob: s.dob,
+      bank_name: s.bank_name,
       education_level: s.education_level,
       degree_title: s.degree_title,
       profession: s.profession,
@@ -192,12 +196,14 @@ export async function updateStudentProfile(
     "full_name",
     "email",
     "father_name",
+    "cnic_number",
     "education_level",
     "degree_title",
     "profession",
     "whatsapp_number",
     "postal_address",
     "fee_transaction_id",
+    "bank_name",
   ];
 
   for (const field of textFields) {

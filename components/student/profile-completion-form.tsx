@@ -1,83 +1,15 @@
 "use client";
 
-import { useState, useActionState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useActionState } from "react";
 import { completeBypassedProfile } from "@/app/actions/student";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, UploadCloud, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export function ProfileCompletionForm({ user }: { user: any }) {
   const [state, action, pending] = useActionState(completeBypassedProfile, undefined);
-  
-  // File upload states (all optional)
-  const [cnicFile, setCnicFile] = useState<File | null>(null);
-  const [degreeFile, setDegreeFile] = useState<File | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  
-  // Uploaded paths
-  const [cnicPath, setCnicPath] = useState("");
-  const [degreePath, setDegreePath] = useState("");
-  const [receiptPath, setReceiptPath] = useState("");
-  const [avatarPath, setAvatarPath] = useState("");
-
-  const [isUploading, setIsUploading] = useState(false);
-
-  const supabase = createClient();
-
-  const handleFileUpload = async (file: File, type: string) => {
-    const fileExt = file.name.split('.').pop();
-    const filename = `${type}_${Date.now()}.${fileExt}`;
-    const filePath = `${user.id}/${filename}`;
-
-    const { data, error } = await supabase.storage
-      .from('student_documents')
-      .upload(filePath, file, { upsert: true });
-
-    if (error) throw error;
-    return data.path;
-  };
-
-  const formActionWrapper = async (formData: FormData) => {
-    let cp = cnicPath, dp = degreePath, rp = receiptPath, ap = avatarPath;
-    
-    // Upload files only if selected (all optional)
-    setIsUploading(true);
-    try {
-      if (cnicFile && !cp) {
-        cp = await handleFileUpload(cnicFile, 'cnic');
-        setCnicPath(cp);
-      }
-      if (degreeFile && !dp) {
-        dp = await handleFileUpload(degreeFile, 'degree');
-        setDegreePath(dp);
-      }
-      if (receiptFile && !rp) {
-        rp = await handleFileUpload(receiptFile, 'receipt');
-        setReceiptPath(rp);
-      }
-      if (avatarFile && !ap) {
-        ap = await handleFileUpload(avatarFile, 'avatar');
-        setAvatarPath(ap);
-      }
-    } catch(e: any) {
-      setIsUploading(false);
-      alert(e.message);
-      return;
-    }
-    setIsUploading(false);
-
-    // Append file paths if they exist
-    if (cp) formData.append("cnic_file_path", cp);
-    if (dp) formData.append("degree_file_path", dp);
-    if (rp) formData.append("fee_receipt_file_path", rp);
-    if (ap) formData.append("avatar_file_path", ap);
-    
-    action(formData);
-  };
 
   if (state?.success) {
     return (
@@ -91,7 +23,7 @@ export function ProfileCompletionForm({ user }: { user: any }) {
   }
 
   return (
-    <form action={formActionWrapper} className="space-y-8">
+    <form action={action} className="space-y-8">
       {state?.error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -105,42 +37,29 @@ export function ProfileCompletionForm({ user }: { user: any }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label>Father Name</Label>
-            <Input 
-              name="father_name" 
+            <Input
+              name="father_name"
               defaultValue={user.father_name || ""}
-              className="uppercase" 
+              className="uppercase"
             />
           </div>
           <div className="space-y-2">
             <Label>Date of Birth</Label>
-            <Input 
-              type="date" 
-              name="dob" 
+            <Input
+              type="date"
+              name="dob"
               defaultValue={user.dob || ""}
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label>CNIC/Passport Document (Optional)</Label>
-          <Input 
-            type="file" 
-            accept=".pdf,image/*" 
-            onChange={e => setCnicFile(e.target.files?.[0] || null)} 
-          />
-          {user.cnic_file_path && (
-            <p className="text-xs text-muted-foreground">Document already uploaded</p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label>Student Picture (Optional)</Label>
-          <Input 
-            type="file" 
-            accept="image/*" 
-            onChange={e => setAvatarFile(e.target.files?.[0] || null)} 
-          />
-          {user.avatar_file_path && (
-            <p className="text-xs text-muted-foreground">Picture already uploaded</p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>CNIC / Passport Number</Label>
+            <Input
+              name="cnic_number"
+              defaultValue={user.cnic_number || ""}
+            />
+          </div>
         </div>
       </div>
 
@@ -179,17 +98,6 @@ export function ProfileCompletionForm({ user }: { user: any }) {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label>Last Degree/Certificate Document (Optional)</Label>
-          <Input 
-            type="file" 
-            accept=".pdf,image/*" 
-            onChange={e => setDegreeFile(e.target.files?.[0] || null)} 
-          />
-          {user.degree_file_path && (
-            <p className="text-xs text-muted-foreground">Document already uploaded</p>
-          )}
-        </div>
       </div>
 
       {/* Contact Details */}
@@ -219,45 +127,38 @@ export function ProfileCompletionForm({ user }: { user: any }) {
         <h3 className="text-lg font-bold border-b pb-2 pt-4">Fee Verification</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label>Fee Challan No / Transaction ID & Bank</Label>
-            <Input 
-              name="fee_transaction_id" 
+            <Label>Fee Challan No / Transaction ID</Label>
+            <Input
+              name="fee_transaction_id"
               defaultValue={user.fee_transaction_id || ""}
             />
           </div>
           <div className="space-y-2">
             <Label>Fee Submission Date</Label>
-            <Input 
-              type="date" 
-              name="fee_submission_date" 
+            <Input
+              type="date"
+              name="fee_submission_date"
               defaultValue={user.fee_submission_date || ""}
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label>Fee Receipt / Screenshot (Optional)</Label>
-          <Input 
-            type="file" 
-            accept=".pdf,image/*" 
-            onChange={e => setReceiptFile(e.target.files?.[0] || null)} 
-          />
-          {user.fee_receipt_file_path && (
-            <p className="text-xs text-muted-foreground">Receipt already uploaded</p>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>Bank Name</Label>
+            <Input
+              name="bank_name"
+              defaultValue={user.bank_name || ""}
+            />
+          </div>
         </div>
       </div>
 
       <Button 
         type="submit" 
         className="w-full h-12 text-base font-semibold"
-        disabled={pending || isUploading}
+        disabled={pending}
       >
-        {isUploading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Uploading Files...
-          </>
-        ) : pending ? (
+        {pending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Saving Profile...

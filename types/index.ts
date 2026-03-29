@@ -27,8 +27,10 @@ export interface UserProfile {
   selected_course_id?: string;
   // Student profile fields (populated after onboarding)
   father_name?: string;
+  cnic_number?: string;
   cnic_file_path?: string;
   dob?: string;
+  bank_name?: string;
   education_level?: string;
   degree_title?: string;
   degree_file_path?: string;

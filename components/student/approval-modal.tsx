@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { Clock, ShieldAlert } from "lucide-react";
+import { signOut } from "@/app/actions/auth";
+import { Button } from "@/components/ui/button";
+import { Clock, ShieldAlert, LogOut } from "lucide-react";
 
 interface ApprovalModalProps {
   user: any;
@@ -25,14 +27,21 @@ export function ApprovalPendingModal({ user }: ApprovalModalProps) {
         <div className="space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Under Review</h2>
           <p className="text-muted-foreground/80 leading-relaxed text-sm w-4/5 mx-auto">
-            Your profile has been secured and sent to the administration. You will unlock access to BIMPACC directly after an administrator verifies your documents and fee receipt.
+            Your profile has been secured and sent to the administration. You will unlock access to BIMPACC directly after an administrator verifies your information and approves your account.
           </p>
         </div>
 
         <div className="pt-4 border-t border-border mt-6 text-xs text-amber-600/80 dark:text-amber-500/80 flex items-center justify-center gap-2">
            <ShieldAlert className="h-4 w-4" />
-           Your submitted documents are permanently locked for your security.
+           Your submitted information is locked for your security.
         </div>
+
+        <form action={signOut}>
+          <Button type="submit" variant="outline" className="w-full">
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        </form>
         
       </div>
     </div>
