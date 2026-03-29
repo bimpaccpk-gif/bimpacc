@@ -85,3 +85,42 @@ export const getFullUserProfile = cache(async (): Promise<FullUserProfile> => {
   return profile as FullUserProfile;
 });
 
+/**
+ * Check if a user is enrolled in a specific course
+ * This is a server-side utility function for enrollment verification
+ * @param userId - The user ID to check
+ * @param courseId - The course ID to check enrollment for
+ * @returns Promise<boolean> - true if enrolled, false otherwise
+ */
+export const checkEnrollment = cache(async (userId: string, courseId: string): Promise<boolean> => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .single();
+
+  return !error && !!data;
+});
+
+/**
+ * Verify that a user is enrolled in a course, redirect if not
+ * This enforces the strict access control rule
+ * @param userId - The user ID to check
+ * @param courseId - The course ID to check enrollment for
+ * @param redirectTo - Where to redirect if not enrolled (default: /student/courses)
+ */
+export const verifyEnrollment = cache(async (
+  userId: string,
+  courseId: string,
+  redirectTo: string = "/student/courses"
+): Promise<void> => {
+  const isEnrolled = await checkEnrollment(userId, courseId);
+  
+  if (!isEnrolled) {
+    redirect(redirectTo);
+  }
+});
+

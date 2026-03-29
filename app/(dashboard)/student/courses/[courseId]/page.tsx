@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, verifyEnrollment } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   ChevronDown,
-  Shield,
 } from "lucide-react";
 
 // ─── YouTube no-cookie URL helper ─────────────────────────
@@ -136,18 +135,6 @@ async function getDirectLessons(courseId: string): Promise<LessonRow[]> {
   return (data ?? []) as LessonRow[];
 }
 
-async function isEnrolled(userId: string, courseId: string): Promise<boolean> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("enrollments")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("course_id", courseId)
-    .single();
-
-  return !!data;
-}
-
 // ─── Lesson Component ─────────────────────────────────────
 
 function LessonItem({ lesson, index }: { lesson: LessonRow; index: number }) {
@@ -260,7 +247,9 @@ export default async function CourseDetailPage({
     redirect("/student/courses");
   }
 
-  const enrolled = await isEnrolled(user.id, course.id);
+  // STRICT ACCESS CONTROL: Verify enrollment before showing any course content
+  // This is the LAW - students cannot view courses they are not enrolled in
+  await verifyEnrollment(user.id, course.id);
 
   // Fetch content based on hierarchy type
   let subjects: SubjectWithLessons[] = [];
@@ -311,12 +300,10 @@ export default async function CourseDetailPage({
               <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                 Batch {course.batch}
               </span>
-              {enrolled && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold shadow-lg">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Enrolled
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold shadow-lg">
+                <CheckCircle2 className="h-3 w-3" />
+                Enrolled
+              </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold">{course.title}</h1>
           </div>
@@ -336,13 +323,6 @@ export default async function CourseDetailPage({
               {totalLessons} Lesson{totalLessons !== 1 ? "s" : ""}
             </span>
           </div>
-
-          {!enrolled && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
-              <Shield className="h-4 w-4" />
-              <span>Enrollment is managed by the administrator.</span>
-            </div>
-          )}
         </div>
       </div>
 

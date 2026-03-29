@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BookOpen, Layers, FileText, CheckCircle2, ArrowRight, Lock } from "lucide-react";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 
 interface CourseWithCounts {
   id: string;
@@ -176,10 +177,21 @@ export default async function StudentCoursesPage() {
                     </Button>
                   </Link>
                 ) : (
-                  <Button size="sm" variant="secondary" className="w-full gap-2" disabled>
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    Locked (Not Enrolled)
-                  </Button>
+                  <div className="space-y-2">
+                    <Button size="sm" variant="secondary" className="w-full gap-2" disabled>
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      Locked (Not Enrolled)
+                    </Button>
+                    <a
+                      href="https://wa.me/923230191737"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full rounded-md bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+                    >
+                      <WhatsAppIcon className="h-4 w-4" />
+                      Contact for Enrollment
+                    </a>
+                  </div>
                 )}
               </CardContent>
             </Card>

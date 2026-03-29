@@ -240,23 +240,22 @@ export default async function StudentDashboardPage() {
             ) : (
               <div className="space-y-3">
                 {availableCourses.map((course) => (
-                  <Link
+                  <div
                     key={course.id}
-                    href={`/student/courses/${course.id}`}
-                    className="block"
+                    className="flex items-center justify-between rounded-lg border p-3 bg-muted/30"
                   >
-                    <div className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">
-                          {course.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Batch {course.batch}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">
+                        {course.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Batch {course.batch}
+                      </p>
                     </div>
-                  </Link>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                      Not Enrolled
+                    </span>
+                  </div>
                 ))}
               </div>
             )}
