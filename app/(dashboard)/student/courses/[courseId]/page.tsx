@@ -13,8 +13,8 @@ import {
   CheckCircle2,
   ArrowLeft,
   ChevronDown,
+  Shield,
 } from "lucide-react";
-import { EnrollButton } from "./enroll-button";
 
 // ─── YouTube no-cookie URL helper ─────────────────────────
 
@@ -337,7 +337,12 @@ export default async function CourseDetailPage({
             </span>
           </div>
 
-          {!enrolled && <EnrollButton courseId={course.id} />}
+          {!enrolled && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
+              <Shield className="h-4 w-4" />
+              <span>Enrollment is managed by the administrator.</span>
+            </div>
+          )}
         </div>
       </div>
 

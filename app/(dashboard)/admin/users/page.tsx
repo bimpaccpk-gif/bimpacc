@@ -7,6 +7,7 @@ import { CreateUserDialog } from "@/components/admin/create-user-dialog";
 import { DeleteUserButton } from "@/components/admin/delete-user-button";
 import { ApprovalToggle } from "@/components/admin/approval-toggle";
 import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
+import { EnrollStudentDialog } from "@/components/admin/enroll-student-dialog";
 import { Users, ShieldCheck, Clock, ClipboardList } from "lucide-react";
 import type { UserRole } from "@/types";
 
@@ -21,6 +22,13 @@ interface UserRow {
   created_at: string;
 }
 
+interface CourseRow {
+  id: string;
+  title: string;
+  batch: string;
+  status: string;
+}
+
 async function getAllUsers(): Promise<UserRow[]> {
   const supabase = await createClient();
 
@@ -31,6 +39,22 @@ async function getAllUsers(): Promise<UserRow[]> {
 
   if (error) {
     console.error("Error fetching users:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+async function getAllCourses(): Promise<CourseRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("courses")
+    .select("id, title, batch, status")
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching courses:", error);
     return [];
   }
 
@@ -57,6 +81,7 @@ function formatDate(date: string) {
 export default async function AdminUsersPage() {
   const currentUser = await getCurrentUser();
   const users = await getAllUsers();
+  const courses = await getAllCourses();
 
   const roleCounts = users.reduce(
     (acc, u) => {
@@ -238,10 +263,19 @@ export default async function AdminUsersPage() {
                         {formatDate(user.created_at)}
                       </td>
                       <td className="py-3">
-                        <DeleteUserButton
-                          userId={user.id}
-                          userName={user.full_name}
-                        />
+                        <div className="flex items-center gap-2">
+                          {user.role === "student" && (
+                            <EnrollStudentDialog
+                              studentId={user.id}
+                              studentName={user.full_name}
+                              courses={courses}
+                            />
+                          )}
+                          <DeleteUserButton
+                            userId={user.id}
+                            userName={user.full_name}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}

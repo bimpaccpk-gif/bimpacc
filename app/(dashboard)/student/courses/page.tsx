@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookOpen, Layers, FileText, CheckCircle2, ArrowRight } from "lucide-react";
+import { BookOpen, Layers, FileText, CheckCircle2, ArrowRight, Lock } from "lucide-react";
 
 interface CourseWithCounts {
   id: string;
@@ -91,7 +91,7 @@ export default async function StudentCoursesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Available Courses</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Browse and enroll in published courses
+          Browse published courses. Enrollment is managed by the administrator.
         </p>
       </div>
 
@@ -168,16 +168,19 @@ export default async function StudentCoursesPage() {
                 </div>
 
                 {/* Action */}
-                <Link href={`/student/courses/${course.id}`}>
-                  <Button
-                    size="sm"
-                    className="w-full gap-2"
-                    variant={course.is_enrolled ? "outline" : "default"}
-                  >
-                    {course.is_enrolled ? "Continue Learning" : "View Course"}
-                    <ArrowRight className="h-4 w-4" />
+                {course.is_enrolled ? (
+                  <Link href={`/student/courses/${course.id}`}>
+                    <Button size="sm" className="w-full gap-2" variant="default">
+                      Continue Learning
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button size="sm" variant="secondary" className="w-full gap-2" disabled>
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    Locked (Not Enrolled)
                   </Button>
-                </Link>
+                )}
               </CardContent>
             </Card>
           ))}
