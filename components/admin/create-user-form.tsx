@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { adminCreateUser } from "@/lib/supabase/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AlertCircle, Check, Loader2, UserPlus, ChevronDown, Info, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import type { UserRole } from "@/types";
+import { usePasswordStrength } from "@/hooks/use-password-strength";
 
 const roles: { value: UserRole; label: string }[] = [
   { value: "student", label: "Student" },
@@ -22,41 +24,19 @@ const roles: { value: UserRole; label: string }[] = [
 ];
 
 export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void; courses?: any[] } = {}) {
+  const router = useRouter();
   const [state, action, pending] = useActionState(adminCreateUser, undefined);
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const getPasswordStrength = (pw: string) => {
-    let score = 0;
-    if (pw.length >= 8) score++;
-    if (/[A-Z]/.test(pw)) score++;
-    if (/[0-9]/.test(pw)) score++;
-    if (/[^A-Za-z0-9]/.test(pw)) score++;
-    return score;
-  };
-
-  const passwordStrength = getPasswordStrength(password);
-  const strengthLabels = ["Weak", "Fair", "Good", "Strong"];
-  const strengthColorVars = [
-    "bg-destructive",
-    "bg-amber-500",
-    "bg-blue-500",
-    "bg-green-500",
-  ];
-
-  const passwordRequirements = [
-    { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "One number", met: /[0-9]/.test(password) },
-    { label: "One special character", met: /[^A-Za-z0-9]/.test(password) },
-  ];
+  const { score: passwordStrength, label: strengthLabel, colorClass: strengthColorVar, textClass: strengthTextColor, requirements: passwordRequirements } = usePasswordStrength(password);
 
   useEffect(() => {
     if (state?.success && onSuccess) {
       const timer = setTimeout(() => {
         onSuccess();
-        window.location.reload();
+        router.refresh();
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -163,7 +143,7 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
                     key={i}
                     className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
                       i < passwordStrength
-                        ? strengthColorVars[passwordStrength - 1] || "bg-destructive"
+                        ? strengthColorVar
                         : "bg-muted dark:bg-zinc-800"
                     }`}
                   />
@@ -172,17 +152,9 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
               <p className="text-xs font-medium text-muted-foreground">
                 Strength:{" "}
                 <span
-                  className={`font-semibold ${
-                    passwordStrength === 1
-                      ? "text-red-500"
-                      : passwordStrength === 2
-                      ? "text-amber-500"
-                      : passwordStrength === 3
-                      ? "text-blue-500"
-                      : "text-green-500"
-                  }`}
+                  className={`font-semibold ${strengthTextColor}`}
                 >
-                  {strengthLabels[passwordStrength - 1] || "Too weak"}
+                  {strengthLabel}
                 </span>
               </p>
             </div>

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -79,7 +79,8 @@ export async function enrollStudentInCourse(
       return { error: "Cannot enroll in unpublished courses.", success: "" };
     }
 
-    const { error: insertError } = await supabase.from("enrollments").insert({
+    const admin = createAdminClient();
+    const { error: insertError } = await admin.from("enrollments").insert({
       user_id: studentId,
       course_id: courseId,
     } as never);
@@ -92,10 +93,10 @@ export async function enrollStudentInCourse(
     revalidatePath("/student");
     revalidatePath("/student/courses");
     revalidatePath("/student/my-courses");
-    
-    return { 
-      error: "", 
-      success: `Successfully enrolled ${(student as any).full_name} in "${(course as any).title}".` 
+
+    return {
+      error: "",
+      success: `Successfully enrolled ${(student as any).full_name} in "${(course as any).title}".`,
     };
   } catch (err: any) {
     return { error: err.message || "An unexpected error occurred.", success: "" };

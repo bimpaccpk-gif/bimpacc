@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/lib/dal";
+import { verifySession, verifyAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { HierarchyType } from "@/types";
@@ -11,7 +11,11 @@ export async function createCourse(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim() ?? "";
@@ -53,7 +57,11 @@ export async function updateCourse(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("courseId") as string;
   const title = (formData.get("title") as string)?.trim();
@@ -86,7 +94,11 @@ export async function deleteCourse(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("courseId") as string;
 
@@ -121,7 +133,11 @@ export async function createSubject(
   _prevState: { error: string; success: string; subject?: any } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string; subject?: any }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const courseId = formData.get("courseId") as string;
   const title = (formData.get("title") as string)?.trim();
@@ -157,7 +173,11 @@ export async function updateSubject(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("subjectId") as string;
   const courseId = formData.get("courseId") as string;
@@ -187,7 +207,11 @@ export async function deleteSubject(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("subjectId") as string;
   const courseId = formData.get("courseId") as string;
@@ -256,7 +280,11 @@ export async function createLesson(
   _prevState: { error: string; success: string; lesson?: any } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string; lesson?: any }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const subjectId = formData.get("subjectId") as string;
   const courseId = formData.get("courseId") as string;
@@ -341,7 +369,11 @@ export async function updateLesson(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("lessonId") as string;
   const subjectId = formData.get("subjectId") as string;
@@ -389,7 +421,11 @@ export async function deleteLesson(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
 
   const id = formData.get("lessonId") as string;
   const subjectId = formData.get("subjectId") as string;

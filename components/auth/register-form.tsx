@@ -23,6 +23,7 @@ import {
   BookOpen,
   ChevronDown,
 } from "lucide-react";
+import { usePasswordStrength } from "@/hooks/use-password-strength";
 
 export interface Course {
   id: string;
@@ -37,36 +38,7 @@ export function RegisterForm({ courses }: { courses: Course[] }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [state, action, pending] = useActionState(signUp, undefined);
 
-  const getPasswordStrength = (pw: string) => {
-    let score = 0;
-    if (pw.length >= 8) score++;
-    if (/[A-Z]/.test(pw)) score++;
-    if (/[0-9]/.test(pw)) score++;
-    if (/[^A-Za-z0-9]/.test(pw)) score++;
-    return score;
-  };
-
-  const passwordStrength = getPasswordStrength(password);
-  const strengthLabels = ["Weak", "Fair", "Good", "Strong"];
-  const strengthColors = [
-    "bg-red-500",
-    "bg-amber-500",
-    "bg-blue-500",
-    "bg-green-500",
-  ];
-  const strengthColorVars = [
-    "bg-destructive",
-    "bg-amber-500",
-    "bg-blue-500",
-    "bg-green-500",
-  ];
-
-  const passwordRequirements = [
-    { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "One number", met: /[0-9]/.test(password) },
-    { label: "One special character", met: /[^A-Za-z0-9]/.test(password) },
-  ];
+  const { score: passwordStrength, label: strengthLabel, colorClass: strengthColorVar, textClass: strengthTextColor, requirements: passwordRequirements } = usePasswordStrength(password);
 
   return (
     <div className="flex flex-col space-y-8">
@@ -199,7 +171,7 @@ export function RegisterForm({ courses }: { courses: Course[] }) {
                         key={i}
                         className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
                           i < passwordStrength
-                            ? strengthColorVars[passwordStrength - 1] || "bg-destructive"
+                            ? strengthColorVar
                             : "bg-muted dark:bg-zinc-800"
                         }`}
                       />
@@ -208,17 +180,9 @@ export function RegisterForm({ courses }: { courses: Course[] }) {
                   <p className="text-xs font-medium text-muted-foreground">
                     Strength:{" "}
                     <span
-                      className={`font-semibold ${
-                        passwordStrength === 1
-                          ? "text-red-500"
-                          : passwordStrength === 2
-                          ? "text-amber-500"
-                          : passwordStrength === 3
-                          ? "text-blue-500"
-                          : "text-green-500"
-                      }`}
+                      className={`font-semibold ${strengthTextColor}`}
                     >
-                      {strengthLabels[passwordStrength - 1] || "Too weak"}
+                      {strengthLabel}
                     </span>
                   </p>
                 </div>

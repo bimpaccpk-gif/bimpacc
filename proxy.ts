@@ -4,6 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 const protectedRoutes = ["/admin", "/instructor", "/student", "/courses"];
 const authRoutes = ["/login", "/register"];
 
+const DASHBOARD_MAP: Record<string, string> = {
+  admin: "/admin",
+  instructor: "/instructor",
+  student: "/student",
+};
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request: {
@@ -40,14 +46,53 @@ export async function proxy(request: NextRequest) {
   );
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
+  // Unauthenticated users on protected routes → login
   if (isProtectedRoute && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // Only query DB when we actually need the role:
+  //   - auth routes with a logged-in user (to pick the right dashboard)
+  //   - /admin or /instructor routes (to enforce role access)
+  const needsRoleCheck =
+    (isAuthRoute && !!user) ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/instructor");
+
+  let role: string | null = null;
+
+  if (needsRoleCheck) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user!.id)
+      .single();
+
+    role = profile?.role ?? null;
+  }
+
+  // Authenticated users on auth routes → their role-specific dashboard
   if (isAuthRoute && user) {
-    return NextResponse.redirect(new URL("/student", request.url));
+    const dashboard = DASHBOARD_MAP[role ?? ""] ?? "/student";
+    return NextResponse.redirect(new URL(dashboard, request.url));
+  }
+
+  // /admin routes → admin only
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
+    return NextResponse.redirect(new URL(fallback, request.url));
+  }
+
+  // /instructor routes → admin or instructor
+  if (
+    pathname.startsWith("/instructor") &&
+    role !== "admin" &&
+    role !== "instructor"
+  ) {
+    const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
+    return NextResponse.redirect(new URL(fallback, request.url));
   }
 
   return response;

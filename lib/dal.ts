@@ -122,9 +122,30 @@ export const verifyEnrollment = cache(async (
   redirectTo: string = "/student/courses"
 ): Promise<void> => {
   const isEnrolled = await checkEnrollment(userId, courseId);
-  
+
   if (!isEnrolled) {
     redirect(redirectTo);
   }
+});
+
+/**
+ * Verify that the current user is an admin, throw error if not
+ * Use this in server actions that require admin access
+ */
+export const verifyAdmin = cache(async (): Promise<{ userId: string; role: UserRole }> => {
+  const session = await verifySession();
+  const supabase = await createClient();
+
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", session.userId)
+    .single();
+
+  if (error || !profile || profile.role !== "admin") {
+    throw new Error("Unauthorized. Admin access required.");
+  }
+
+  return { userId: session.userId, role: profile.role as UserRole };
 });
 

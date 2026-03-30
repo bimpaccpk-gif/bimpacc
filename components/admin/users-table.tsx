@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RoleSelect } from "@/components/admin/role-select";
@@ -31,9 +31,20 @@ interface CourseRow {
   status: string;
 }
 
+interface EnrollmentRow {
+  user_id: string;
+  course_id: string;
+  courses: {
+    id: string;
+    title: string;
+    batch: string | null;
+  } | null;
+}
+
 interface UsersTableProps {
   initialUsers: UserRow[];
   courses: CourseRow[];
+  enrollments: EnrollmentRow[];
   currentUserId: string;
 }
 
@@ -54,8 +65,23 @@ function formatDate(date: string) {
   });
 }
 
-export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableProps) {
+export function UsersTable({ initialUsers, courses, enrollments, currentUserId }: UsersTableProps) {
   const [users, setUsers] = useState(initialUsers);
+
+  const enrollmentsByUser = useMemo(() => {
+    const map: Record<string, { course_id: string; title: string; batch: string | null }[]> = {};
+    const list = Array.isArray(enrollments) ? enrollments : [];
+    for (const e of list) {
+      if (!e.courses) continue;
+      if (!map[e.user_id]) map[e.user_id] = [];
+      map[e.user_id].push({
+        course_id: e.course_id,
+        title: e.courses.title,
+        batch: e.courses.batch,
+      });
+    }
+    return map;
+  }, [enrollments]);
 
   const handleDeleteSuccess = useCallback((userId: string) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
@@ -68,32 +94,19 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No users found.
-          </p>
+          <p className="text-muted-foreground py-8 text-center text-sm">No users found.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    User
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Email
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Status / Approval
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Role
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Joined
-                  </th>
-                  <th className="pb-3 font-medium text-muted-foreground">
-                    Actions
-                  </th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">User</th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">Email</th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">Status / Approval</th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">Enrolled Courses</th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">Role</th>
+                  <th className="text-muted-foreground pr-4 pb-3 font-medium">Joined</th>
+                  <th className="text-muted-foreground pb-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,21 +116,16 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           {user.avatar_url && (
-                            <AvatarImage
-                              src={user.avatar_url}
-                              alt={user.full_name}
-                            />
+                            <AvatarImage src={user.avatar_url} alt={user.full_name} />
                           )}
-                          <AvatarFallback className="bg-brand-100 text-xs font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                          <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-xs font-medium">
                             {getInitials(user.full_name)}
                           </AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{user.full_name}</span>
                       </div>
                     </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {user.email}
-                    </td>
+                    <td className="text-muted-foreground py-3 pr-4">{user.email}</td>
                     <td className="py-3 pr-4">
                       {user.role === "student" ? (
                         <div className="flex items-center gap-2">
@@ -128,11 +136,11 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                                 isApproved={user.is_approved}
                                 disabled={false}
                               />
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-muted-foreground text-xs">
                                 {user.is_approved ? (
-                                  <span className="text-green-500 font-bold">Approved</span>
+                                  <span className="font-bold text-green-500">Approved</span>
                                 ) : (
-                                  <span className="text-indigo-500 font-bold">Under Review</span>
+                                  <span className="font-bold text-indigo-500">Under Review</span>
                                 )}
                               </span>
                               <StudentApplicationDialog
@@ -143,8 +151,8 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                             </div>
                           ) : user.onboarding_bypassed ? (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center text-xs font-semibold text-blue-500 bg-blue-500/10 px-2 py-1 rounded-md">
-                                <ShieldCheck className="h-3 w-3 mr-1" />
+                              <span className="flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-500">
+                                <ShieldCheck className="mr-1 h-3 w-3" />
                                 Onboarding Bypassed
                               </span>
                               <BypassOnboardingToggle
@@ -155,8 +163,8 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center text-xs font-semibold text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
-                                <Clock className="h-3 w-3 mr-1" />
+                              <span className="flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500">
+                                <Clock className="mr-1 h-3 w-3" />
                                 Pending Setup
                               </span>
                               <BypassOnboardingToggle
@@ -168,10 +176,35 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                           )}
                         </div>
                       ) : (
-                        <span className="flex items-center text-xs font-semibold text-emerald-500 bg-emerald-500/10 w-fit px-2 py-1 rounded-md">
-                          <ShieldCheck className="h-3 w-3 mr-1" />
+                        <span className="flex w-fit items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-500">
+                          <ShieldCheck className="mr-1 h-3 w-3" />
                           Auto-Approved
                         </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      {user.role === "student" ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(enrollmentsByUser[user.id] ?? []).length > 0 ? (
+                            enrollmentsByUser[user.id].map((enrollment) => (
+                              <span
+                                key={enrollment.course_id}
+                                className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400"
+                              >
+                                {enrollment.title}
+                                {enrollment.batch && (
+                                  <span className="ml-1 text-blue-400/60 dark:text-blue-300/60">
+                                    (Batch {enrollment.batch})
+                                  </span>
+                                )}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Not enrolled</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </td>
                     <td className="py-3 pr-4">
@@ -181,7 +214,7 @@ export function UsersTable({ initialUsers, courses, currentUserId }: UsersTableP
                         currentUserId={currentUserId}
                       />
                     </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
+                    <td className="text-muted-foreground py-3 pr-4">
                       {formatDate(user.created_at)}
                     </td>
                     <td className="py-3">

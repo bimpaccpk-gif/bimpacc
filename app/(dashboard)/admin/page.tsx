@@ -1,75 +1,67 @@
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Users,
   BookOpen,
-  DollarSign,
   Activity,
   UserPlus,
-  BookCheck,
-  ShieldCheck,
-  Settings,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/dal";
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  await getCurrentUser();
+
+  const supabase = await createClient();
+
+  const [usersCount, coursesCount, enrollmentsCount, recentUsers] =
+    await Promise.all([
+      supabase.from("users").select("*", { count: "exact", head: true }),
+      supabase
+        .from("courses")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "published"),
+      supabase.from("enrollments").select("*", { count: "exact", head: true }),
+      supabase
+        .from("users")
+        .select("id, full_name, email, role, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
+
+  const totalUsers = usersCount.count ?? 0;
+  const publishedCourses = coursesCount.count ?? 0;
+  const totalEnrollments = enrollmentsCount.count ?? 0;
+  const recentUsersList = recentUsers.data ?? [];
+
   const stats = [
     {
       title: "Total Users",
-      value: "1,234",
-      change: "+12%",
+      value: totalUsers.toLocaleString(),
       icon: Users,
       bgColor: "bg-brand-50 dark:bg-brand-950",
       iconColor: "text-brand-600 dark:text-brand-400",
     },
     {
-      title: "Active Courses",
-      value: "56",
-      change: "+3%",
+      title: "Published Courses",
+      value: publishedCourses.toLocaleString(),
       icon: BookOpen,
       bgColor: "bg-success/10",
       iconColor: "text-success",
     },
     {
       title: "Enrollments",
-      value: "3,456",
-      change: "+18%",
+      value: totalEnrollments.toLocaleString(),
       icon: Activity,
       bgColor: "bg-info/10",
       iconColor: "text-info",
     },
     {
-      title: "Revenue",
-      value: "$45,678",
-      change: "+8%",
-      icon: DollarSign,
+      title: "Recent Users",
+      value: recentUsersList.length.toLocaleString(),
+      icon: UserPlus,
       bgColor: "bg-warning/10",
       iconColor: "text-warning",
-    },
-  ];
-
-  const activities = [
-    {
-      text: "New user registered: john@example.com",
-      icon: UserPlus,
-      iconColor: "text-brand-600 dark:text-brand-400",
-      bgColor: "bg-brand-50 dark:bg-brand-950",
-    },
-    {
-      text: "Course published: Introduction to React",
-      icon: BookCheck,
-      iconColor: "text-success",
-      bgColor: "bg-success/10",
-    },
-    {
-      text: "Instructor approved: Jane Smith",
-      icon: ShieldCheck,
-      iconColor: "text-info",
-      bgColor: "bg-info/10",
-    },
-    {
-      text: "System backup completed",
-      icon: Settings,
-      iconColor: "text-muted-foreground",
-      bgColor: "bg-muted",
     },
   ];
 
@@ -98,7 +90,6 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="mt-1 text-xs text-success">{stat.change} from last month</p>
             </CardContent>
           </Card>
         ))}
@@ -107,20 +98,31 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Recent Activity</CardTitle>
+            <CardTitle className="text-lg">Recent Users</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {activities.map((activity, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className={`rounded-lg p-1.5 ${activity.bgColor}`}>
-                    <activity.icon className={`h-4 w-4 ${activity.iconColor}`} />
+              {recentUsersList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No users registered yet.
+                </p>
+              ) : (
+                recentUsersList.map((user) => (
+                  <div key={user.id} className="flex items-center gap-3">
+                    <div className="rounded-lg p-1.5 bg-brand-50 dark:bg-brand-950">
+                      <UserPlus className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm text-foreground">
+                        {user.full_name || user.email}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {user.email} &middot; {user.role}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {activity.text}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -131,19 +133,18 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
-              {[
-                "Manage Users",
-                "Review Courses",
-                "View Reports",
-                "System Settings",
-              ].map((action) => (
-                <button
-                  key={action}
-                  className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"
-                >
-                  {action}
-                </button>
-              ))}
+              <Link
+                href="/admin/users"
+                className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"
+              >
+                Manage Users
+              </Link>
+              <Link
+                href="/admin/courses"
+                className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"
+              >
+                Review Courses
+              </Link>
             </div>
           </CardContent>
         </Card>

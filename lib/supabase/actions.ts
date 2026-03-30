@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/lib/dal";
+import { verifySession, verifyAdmin } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
@@ -182,7 +182,11 @@ export async function adminBulkCreateUsers(
     if (!line) continue;
 
     // Skip header row if present
-    if (i === 0 && (line.toLowerCase().includes("email") && line.toLowerCase().includes("fullname"))) {
+    if (
+      i === 0 &&
+      line.toLowerCase().includes("email") &&
+      line.toLowerCase().includes("fullname")
+    ) {
       continue;
     }
 
@@ -321,10 +325,7 @@ export async function adminDeleteUser(
     .eq("id", userId)
     .single();
 
-  const { error: dbError } = await supabase
-    .from("users")
-    .delete()
-    .eq("id", userId);
+  const { error: dbError } = await supabase.from("users").delete().eq("id", userId);
 
   if (dbError) {
     return { error: dbError.message, success: "" };
@@ -343,9 +344,7 @@ export async function adminDeleteUser(
   };
 }
 
-export async function updateUserProfile(
-  updates: { full_name?: string; avatar_url?: string }
-) {
+export async function updateUserProfile(updates: { full_name?: string; avatar_url?: string }) {
   const session = await verifySession();
   const supabase = await createClient();
 
@@ -399,7 +398,8 @@ export async function toggleStudentApproval(
 
       // Only enroll if not already enrolled
       if (!existingEnrollment) {
-        await supabase.from("enrollments").insert({
+        const admin = createAdminClient();
+        await admin.from("enrollments").insert({
           user_id: userId,
           course_id: (user as any).selected_course_id,
         } as never);
@@ -430,20 +430,15 @@ export async function adminBypassOnboarding(
     return { error: "User ID is required.", success: "" };
   }
 
-  const session = await verifySession();
-
-  const supabase = await createClient();
-
-  // Verify the caller is an admin
-  const { data: callerProfile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", session.userId)
-    .single();
-
-  if ((callerProfile as any)?.role !== "admin") {
+  let session: { userId: string };
+  try {
+    const result = await verifyAdmin();
+    session = { userId: result.userId };
+  } catch {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
+
+  const supabase = await createClient();
 
   // Prevent admin from bypassing their own onboarding
   if (session.userId === userId) {
