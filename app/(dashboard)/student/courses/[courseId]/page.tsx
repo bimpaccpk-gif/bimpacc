@@ -13,43 +13,8 @@ import {
   CheckCircle2,
   ArrowLeft,
   ChevronDown,
+  ArrowRight,
 } from "lucide-react";
-
-// ─── YouTube no-cookie URL helper ─────────────────────────
-
-function getYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-
-  let videoId: string | null = null;
-
-  // youtube.com/watch?v=VIDEO_ID
-  const watchMatch = url.match(
-    /(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.+&v=)([^&\s]+)/
-  );
-  if (watchMatch) videoId = watchMatch[1];
-
-  // youtu.be/VIDEO_ID
-  if (!videoId) {
-    const shortMatch = url.match(/youtu\.be\/([^?\s]+)/);
-    if (shortMatch) videoId = shortMatch[1];
-  }
-
-  // youtube.com/embed/VIDEO_ID
-  if (!videoId) {
-    const embedMatch = url.match(/youtube\.com\/embed\/([^?\s]+)/);
-    if (embedMatch) videoId = embedMatch[1];
-  }
-
-  // youtube-nocookie.com/embed/VIDEO_ID (already correct)
-  if (!videoId) {
-    const nocookieMatch = url.match(/youtube-nocookie\.com\/embed\/([^?\s]+)/);
-    if (nocookieMatch) videoId = nocookieMatch[1];
-  }
-
-  if (!videoId) return null;
-
-  return `https://www.youtube-nocookie.com/embed/${videoId}`;
-}
 
 // ─── Data fetchers ────────────────────────────────────────
 
@@ -104,7 +69,7 @@ async function getSubjectsWithLessons(courseId: string): Promise<SubjectWithLess
 
   if (!subjects || subjects.length === 0) return [];
 
-  const subjectIds = subjects.map((s: any) => s.id);
+  const subjectIds = subjects.map((s) => s.id);
   const { data: lessons } = await supabase
     .from("lessons")
     .select("id, title, description, video_url, content, order_index, duration_minutes, subject_id")
@@ -112,13 +77,13 @@ async function getSubjectsWithLessons(courseId: string): Promise<SubjectWithLess
     .order("order_index", { ascending: true });
 
   const lessonsBySubject = new Map<string, LessonRow[]>();
-  (lessons ?? []).forEach((l: any) => {
+  (lessons ?? []).forEach((l) => {
     const list = lessonsBySubject.get(l.subject_id) ?? [];
     list.push(l);
     lessonsBySubject.set(l.subject_id, list);
   });
 
-  return subjects.map((s: any) => ({
+  return subjects.map((s) => ({
     ...s,
     lessons: lessonsBySubject.get(s.id) ?? [],
   }));
@@ -135,96 +100,129 @@ async function getDirectLessons(courseId: string): Promise<LessonRow[]> {
   return (data ?? []) as LessonRow[];
 }
 
+async function getCompletedLessonIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  courseId: string
+): Promise<Set<string>> {
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .single();
+
+  if (!enrollment) return new Set();
+
+  const { data: progressRecords } = await supabase
+    .from("lesson_progress")
+    .select("lesson_id, completed")
+    .eq("enrollment_id", enrollment.id)
+    .eq("completed", true);
+
+  return new Set((progressRecords ?? []).map((p) => p.lesson_id));
+}
+
 // ─── Lesson Component ─────────────────────────────────────
 
-function LessonItem({ lesson, index }: { lesson: LessonRow; index: number }) {
-  const embedUrl = lesson.video_url ? getYouTubeEmbedUrl(lesson.video_url) : null;
-
+function LessonItem({
+  lesson,
+  index,
+  courseId,
+  isCompleted,
+}: {
+  lesson: LessonRow;
+  index: number;
+  courseId: string;
+  isCompleted: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-background overflow-hidden">
-      {/* Lesson Header */}
+    <div className="border-border bg-background overflow-hidden rounded-xl border transition-colors hover:border-indigo-500/30">
       <div className="flex items-center gap-3 px-5 py-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-600 dark:text-indigo-400">
-          {index + 1}
+        <div
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+            isCompleted
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+          }`}
+        >
+          {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-foreground">{lesson.title}</h4>
+        <div className="min-w-0 flex-1">
+          <h4 className="text-foreground font-semibold">{lesson.title}</h4>
           {lesson.description && (
-            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
               {lesson.description}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex shrink-0 items-center gap-3">
           {lesson.duration_minutes && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" />
               {lesson.duration_minutes} min
             </span>
           )}
-          {lesson.video_url && (
-            <PlayCircle className="h-5 w-5 text-indigo-500" />
-          )}
+          {lesson.video_url && <PlayCircle className="h-5 w-5 text-indigo-500" />}
         </div>
+        <Link href={`/student/courses/${courseId}/lessons/${lesson.id}`}>
+          <Button size="sm" variant="secondary" className="gap-1.5">
+            {lesson.video_url ? "Watch" : "View"}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
       </div>
-
-      {/* Video Player */}
-      {embedUrl && (
-        <div className="border-t border-border">
-          <div className="aspect-video w-full bg-black">
-            <iframe
-              src={embedUrl}
-              title={lesson.title}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Text Content */}
-      {lesson.content && !embedUrl && (
-        <div className="border-t border-border px-5 py-4">
-          <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-            {lesson.content}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ─── Subject Accordion ────────────────────────────────────
 
-function SubjectAccordion({ subject, index }: { subject: SubjectWithLessons; index: number }) {
+function SubjectAccordion({
+  subject,
+  index,
+  courseId,
+  completedIds,
+}: {
+  subject: SubjectWithLessons;
+  index: number;
+  courseId: string;
+  completedIds: Set<string>;
+}) {
   return (
-    <details className="group rounded-xl border border-border overflow-hidden" open={index === 0}>
-      <summary className="flex cursor-pointer items-center gap-3 px-5 py-4 bg-muted/30 hover:bg-muted/50 transition-colors list-none [&::-webkit-details-marker]:hidden">
+    <details className="group border-border overflow-hidden rounded-xl border" open={index === 0}>
+      <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors [&::-webkit-details-marker]:hidden">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-sm font-bold text-indigo-600 dark:text-indigo-400">
           {index + 1}
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground">{subject.title}</h3>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-foreground font-semibold">{subject.title}</h3>
           {subject.description && (
-            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{subject.description}</p>
+            <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
+              {subject.description}
+            </p>
           )}
         </div>
-        <span className="text-xs text-muted-foreground mr-2">
+        <span className="text-muted-foreground mr-2 text-xs">
           {subject.lessons.length} lesson{subject.lessons.length !== 1 ? "s" : ""}
         </span>
-        <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180" />
+        <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
       </summary>
 
-      <div className="space-y-3 p-4 bg-background">
+      <div className="bg-background space-y-3 p-4">
         {subject.lessons.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-muted-foreground py-4 text-center text-sm">
             No lessons in this subject yet.
           </p>
         ) : (
           subject.lessons.map((lesson, i) => (
-            <LessonItem key={lesson.id} lesson={lesson} index={i} />
+            <LessonItem
+              key={lesson.id}
+              lesson={lesson}
+              index={i}
+              courseId={courseId}
+              isCompleted={completedIds.has(lesson.id)}
+            />
           ))
         )}
       </div>
@@ -263,26 +261,36 @@ export default async function CourseDetailPage({
     directLessons = await getDirectLessons(course.id);
   }
 
+  // Fetch completed lesson IDs
+  const supabase = await createClient();
+  const completedIds = await getCompletedLessonIds(supabase, user.id, course.id);
+
   const totalLessons =
     course.hierarchy_type === 1
       ? subjects.reduce((sum, s) => sum + s.lessons.length, 0)
       : directLessons.length;
 
+  // Find first incomplete lesson for "Continue Learning" button
+  const allLessonsFlat =
+    course.hierarchy_type === 1 ? subjects.flatMap((s) => s.lessons) : directLessons;
+  const firstIncomplete = allLessonsFlat.find((l) => !completedIds.has(l.id));
+  const continueLesson = firstIncomplete ?? allLessonsFlat[0];
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-6">
       {/* Back nav */}
       <Link
         href="/student/courses"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Courses
       </Link>
 
       {/* Course Header */}
-      <div className="rounded-2xl border border-border overflow-hidden">
+      <div className="border-border overflow-hidden rounded-2xl border">
         {/* Hero */}
-        <div className="aspect-[3/1] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative">
+        <div className="relative aspect-[3/1] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -295,8 +303,8 @@ export default async function CourseDetailPage({
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="absolute right-0 bottom-0 left-0 p-6 text-white">
+            <div className="mb-2 flex items-center gap-2">
               <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                 Batch {course.batch}
               </span>
@@ -305,13 +313,13 @@ export default async function CourseDetailPage({
                 Enrolled
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold">{course.title}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">{course.title}</h1>
           </div>
         </div>
 
         {/* Course Info Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-background border-t border-border">
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+        <div className="bg-background border-border flex flex-wrap items-center justify-between gap-4 border-t px-6 py-4">
+          <div className="text-muted-foreground flex items-center gap-6 text-sm">
             {subjects.length > 0 && (
               <span className="flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
@@ -322,7 +330,21 @@ export default async function CourseDetailPage({
               <FileText className="h-4 w-4" />
               {totalLessons} Lesson{totalLessons !== 1 ? "s" : ""}
             </span>
+            {completedIds.size > 0 && (
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                {completedIds.size}/{totalLessons} completed
+              </span>
+            )}
           </div>
+          {continueLesson && (
+            <Link href={`/student/courses/${course.id}/lessons/${continueLesson.id}`}>
+              <Button size="sm" className="gap-2">
+                {firstIncomplete ? "Continue Learning" : "Review Lessons"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -333,7 +355,7 @@ export default async function CourseDetailPage({
             <CardTitle className="text-lg">About this Course</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
               {course.description}
             </p>
           </CardContent>
@@ -342,12 +364,12 @@ export default async function CourseDetailPage({
 
       {/* Course Content */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Course Content</h2>
+        <h2 className="text-foreground text-xl font-bold">Course Content</h2>
 
         {totalLessons === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-            <FileText className="h-10 w-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm text-muted-foreground">
+            <FileText className="text-muted-foreground/50 h-10 w-10" />
+            <p className="text-muted-foreground mt-3 text-sm">
               No content has been added to this course yet.
             </p>
           </div>
@@ -355,14 +377,26 @@ export default async function CourseDetailPage({
           /* Type 1: Subject accordion with nested lessons */
           <div className="space-y-3">
             {subjects.map((subject, i) => (
-              <SubjectAccordion key={subject.id} subject={subject} index={i} />
+              <SubjectAccordion
+                key={subject.id}
+                subject={subject}
+                index={i}
+                courseId={course.id}
+                completedIds={completedIds}
+              />
             ))}
           </div>
         ) : (
           /* Type 2 & 3: Direct lesson list */
           <div className="space-y-3">
             {directLessons.map((lesson, i) => (
-              <LessonItem key={lesson.id} lesson={lesson} index={i} />
+              <LessonItem
+                key={lesson.id}
+                lesson={lesson}
+                index={i}
+                courseId={course.id}
+                isCompleted={completedIds.has(lesson.id)}
+              />
             ))}
           </div>
         )}
