@@ -2,22 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-
-async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) return false;
-
-  const { data: callerProfile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", authUser.id)
-    .single();
-
-  return (callerProfile as any)?.role === "admin";
-}
+import { logAuditEvent } from "@/app/actions/admin";
 
 export async function enrollStudentInCourse(
   _prevState: { error: string; success: string } | undefined,
@@ -26,7 +11,19 @@ export async function enrollStudentInCourse(
   try {
     const supabase = await createClient();
 
-    if (!(await verifyAdmin(supabase))) {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+
+    if (!authUser) return { error: "Unauthorized. Admin access required.", success: "" };
+
+    const { data: callerProfile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", authUser.id)
+      .single();
+
+    if ((callerProfile as any)?.role !== "admin") {
       return { error: "Unauthorized. Admin access required.", success: "" };
     }
 
@@ -83,11 +80,18 @@ export async function enrollStudentInCourse(
     const { error: insertError } = await admin.from("enrollments").insert({
       user_id: studentId,
       course_id: courseId,
+      enrolled_by: authUser.id,
     } as never);
 
     if (insertError) {
       return { error: insertError.message, success: "" };
     }
+
+    // Audit log
+    await logAuditEvent(authUser.id, studentId, "enrollment.created", {
+      course_id: courseId,
+      course_title: (course as any).title,
+    });
 
     revalidatePath("/admin/users");
     revalidatePath("/student");

@@ -2,6 +2,7 @@
 
 import { verifySession, verifyAdmin } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { logAuditEvent } from "@/app/actions/admin";
 import type { UserRole } from "@/types";
 
 interface UserProfile {
@@ -64,6 +65,14 @@ export async function adminChangeUserRole(
 
   const supabase = await createClient();
 
+  // Get current role for audit log
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
+  const oldRole = (currentUser as any)?.role;
+
   const { error } = await supabase
     .from("users")
     .update({ role } as never)
@@ -73,6 +82,11 @@ export async function adminChangeUserRole(
     return { error: error.message, success: "" };
   }
 
+  await logAuditEvent(session.userId, userId, "user.role_changed", {
+    old_role: oldRole,
+    new_role: role,
+  });
+
   return { error: "", success: `Role updated to ${role}.` };
 }
 
@@ -80,7 +94,7 @@ export async function adminCreateUser(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
+  const session = await verifySession();
 
   const fullName = (formData.get("fullName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
@@ -147,8 +161,17 @@ export async function adminCreateUser(
       await admin.from("enrollments").insert({
         user_id: data.user.id,
         course_id: courseId,
+        enrolled_by: session.userId,
       } as never);
     }
+
+    // Audit log
+    await logAuditEvent(session.userId, data.user.id, "user.created", {
+      full_name: fullName,
+      role,
+      course_id: courseId,
+      onboarding_bypassed: bypassOnboarding,
+    });
   }
 
   return {
@@ -161,7 +184,7 @@ export async function adminBulkCreateUsers(
   _prevState: { error: string; success: string; results?: any[] } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string; results?: any[] }> {
-  await verifySession();
+  const session = await verifySession();
 
   const csvContent = (formData.get("csvContent") as string)?.trim();
   const role = (formData.get("role") as UserRole) ?? "student";
@@ -283,8 +306,17 @@ export async function adminBulkCreateUsers(
           await admin.from("enrollments").insert({
             user_id: data.user.id,
             course_id: courseId,
+            enrolled_by: session.userId,
           } as never);
         }
+
+        // Audit log
+        await logAuditEvent(session.userId, data.user.id, "user.created", {
+          full_name: fullName,
+          role,
+          course_id: courseId,
+          bulk: true,
+        });
 
         results.push({
           line: i + 1,
@@ -338,6 +370,11 @@ export async function adminDeleteUser(
     .eq("id", userId)
     .single();
 
+  // Log audit event before deletion (target_user_id will be set to NULL by ON DELETE SET NULL)
+  await logAuditEvent(session.userId, userId, "user.deleted", {
+    full_name: (profile as any)?.full_name ?? userId,
+  });
+
   const { error: dbError } = await supabase.from("users").delete().eq("id", userId);
 
   if (dbError) {
@@ -387,7 +424,7 @@ export async function toggleStudentApproval(
     return { error: "User ID is required.", success: "" };
   }
 
-  await verifySession();
+  const session = await verifySession();
 
   const supabase = await createClient();
 
@@ -415,6 +452,7 @@ export async function toggleStudentApproval(
         await admin.from("enrollments").insert({
           user_id: userId,
           course_id: (user as any).selected_course_id,
+          enrolled_by: session.userId,
         } as never);
       }
     }
@@ -428,6 +466,10 @@ export async function toggleStudentApproval(
   if (error) {
     return { error: error.message, success: "" };
   }
+
+  await logAuditEvent(session.userId, userId, isApproved ? "user.approved" : "user.unapproved", {
+    action: isApproved ? "approved" : "unapproved",
+  });
 
   return { error: "", success: `User has been ${isApproved ? "Approved" : "Unapproved"}.` };
 }
@@ -482,6 +524,15 @@ export async function adminBypassOnboarding(
   if (error) {
     return { error: error.message, success: "" };
   }
+
+  await logAuditEvent(
+    session.userId,
+    userId,
+    bypass ? "user.onboarding_bypassed" : "user.onboarding_restored",
+    {
+      action: bypass ? "bypassed" : "restored",
+    }
+  );
 
   const action = bypass ? "bypassed" : "restored";
   return { error: "", success: `Onboarding has been ${action} for this student.` };

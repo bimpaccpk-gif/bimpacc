@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RoleSelect } from "@/components/admin/role-select";
@@ -114,7 +115,10 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                 {users.map((user) => (
                   <tr key={user.id} className="border-b last:border-0">
                     <td className="py-3 pr-4">
-                      <div className="flex items-center gap-3">
+                      <Link
+                        href={`/admin/users/${user.id}`}
+                        className="group/userlink flex items-center gap-3"
+                      >
                         <Avatar className="h-8 w-8">
                           {user.avatar_url && (
                             <AvatarImage src={user.avatar_url} alt={user.full_name} />
@@ -123,8 +127,10 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             {getInitials(user.full_name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{user.full_name}</span>
-                      </div>
+                        <span className="font-medium group-hover/userlink:underline">
+                          {user.full_name}
+                        </span>
+                      </Link>
                     </td>
                     <td className="text-muted-foreground py-3 pr-4">{user.email}</td>
                     <td className="py-3 pr-4">
