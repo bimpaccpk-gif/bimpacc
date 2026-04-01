@@ -330,17 +330,6 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   courseId={course.id}
                                   courseTitle={course.title}
                                 />
-                                <div className="w-[160px] sm:w-[150px]">
-                                  <ManageContentDialog
-                                    courseId={course.id}
-                                    courseTitle={course.title}
-                                    hierarchyType={course.hierarchy_type}
-                                  />
-                                </div>
-                                <CourseDeleteButton
-                                  courseId={course.id}
-                                  courseTitle={course.title}
-                                />
                               </div>
                             </div>
                           )}
