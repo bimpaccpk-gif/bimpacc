@@ -7,6 +7,7 @@ import { CourseCreateDialog } from "@/components/admin/course-create-dialog";
 import { CourseEditDialog } from "@/components/admin/course-edit-dialog";
 import { CourseDeleteButton } from "@/components/admin/course-delete-button";
 import { ManageContentDialog } from "@/components/admin/manage-content-dialog";
+import { CourseAccessDialog } from "@/components/admin/course-access-dialog";
 import { getHierarchyConfig } from "@/lib/hierarchy-config";
 import { HierarchyType } from "@/types";
 import { cn } from "@/lib/utils";
@@ -34,17 +35,20 @@ interface CourseListProps {
 const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
   draft: {
     label: "Draft",
-    className: "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 ring-1 ring-zinc-500/20",
+    className:
+      "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 ring-1 ring-zinc-500/20",
     dotClass: "bg-zinc-500",
   },
   published: {
     label: "Published",
-    className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-500/20",
+    className:
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-500/20",
     dotClass: "bg-emerald-500 animate-pulse",
   },
   archived: {
     label: "Archived",
-    className: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 ring-1 ring-amber-500/20",
+    className:
+      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 ring-1 ring-amber-500/20",
     dotClass: "bg-amber-500",
   },
 };
@@ -58,7 +62,7 @@ const hierarchyIcons: Record<number, React.ReactNode> = {
 const hierarchyGroups = [
   { type: 1 as HierarchyType, title: "Course, Subject and Lesson Hierarchy" },
   { type: 2 as HierarchyType, title: "Subject and Lesson Hierarchy" },
-  { type: 3 as HierarchyType, title: "Lesson Hierarchy" }
+  { type: 3 as HierarchyType, title: "Lesson Hierarchy" },
 ];
 
 function formatDate(date: string) {
@@ -68,7 +72,6 @@ function formatDate(date: string) {
     day: "numeric",
   });
 }
-
 
 export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
   // Sort courses by order_index primarily, then fallback to creation date (handled by server query initially)
@@ -83,60 +86,68 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
   });
 
   useEffect(() => {
-    setCourses([...initialCourses].sort((a, b) => {
-      const aOrder = a.order_index ?? 0;
-      const bOrder = b.order_index ?? 0;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }));
+    setCourses(
+      [...initialCourses].sort((a, b) => {
+        const aOrder = a.order_index ?? 0;
+        const bOrder = b.order_index ?? 0;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      })
+    );
   }, [initialCourses]);
 
-  const handleDragEnd = useCallback(async (result: DropResult, hierarchyType: HierarchyType) => {
-    if (!result.destination) return;
-    
-    // Process only items belonging to this specific hierarchy group
-    const typeCourses = courses.filter(c => c.hierarchy_type === hierarchyType);
-    
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
-    if (sourceIndex === destinationIndex) return;
+  const handleDragEnd = useCallback(
+    async (result: DropResult, hierarchyType: HierarchyType) => {
+      if (!result.destination) return;
 
-    // Optimistically reorder within the filtered group
-    const newTypeCourses = Array.from(typeCourses);
-    const [reorderedItem] = newTypeCourses.splice(sourceIndex, 1);
-    newTypeCourses.splice(destinationIndex, 0, reorderedItem);
+      // Process only items belonging to this specific hierarchy group
+      const typeCourses = courses.filter((c) => c.hierarchy_type === hierarchyType);
 
-    // Give them new sequential orders naturally based on their filtered array
-    const updates = newTypeCourses.map((c, idx) => ({
-      ...c,
-      order_index: idx + 1,
-    }));
-    
-    // Merge back into the master array
-    setCourses(prev => prev.map(c => {
-      const update = updates.find(u => u.id === c.id);
-      return update ? update : c;
-    }));
+      const sourceIndex = result.source.index;
+      const destinationIndex = result.destination.index;
 
-    // Persist batch to server
-    await reorderCourses(
-      updates.map((u) => ({ id: u.id, order_index: u.order_index! }))
-    );
-  }, [courses]);
+      if (sourceIndex === destinationIndex) return;
+
+      // Optimistically reorder within the filtered group
+      const newTypeCourses = Array.from(typeCourses);
+      const [reorderedItem] = newTypeCourses.splice(sourceIndex, 1);
+      newTypeCourses.splice(destinationIndex, 0, reorderedItem);
+
+      // Give them new sequential orders naturally based on their filtered array
+      const updates = newTypeCourses.map((c, idx) => ({
+        ...c,
+        order_index: idx + 1,
+      }));
+
+      // Merge back into the master array
+      setCourses((prev) =>
+        prev.map((c) => {
+          const update = updates.find((u) => u.id === c.id);
+          return update ? update : c;
+        })
+      );
+
+      // Persist batch to server
+      await reorderCourses(updates.map((u) => ({ id: u.id, order_index: u.order_index! })));
+    },
+    [courses]
+  );
 
   if (courses.length === 0) {
     return (
-      <div className="relative overflow-hidden flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/10 px-6 py-24 backdrop-blur-sm animate-in zoom-in-95 duration-700">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
-        <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/20 group hover:scale-105 transition-transform duration-500">
+      <div className="animate-in zoom-in-95 relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-dashed border-indigo-500/30 bg-indigo-50/50 px-6 py-24 backdrop-blur-sm duration-700 dark:bg-indigo-950/10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
+        <div className="group relative z-10 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/20 transition-transform duration-500 hover:scale-105">
           <Sparkles className="h-10 w-10 text-white" />
         </div>
-        <h3 className="relative z-10 mt-6 text-2xl font-semibold tracking-tight">Create your first course</h3>
-        <p className="relative z-10 mt-2 text-center text-muted-foreground max-w-sm mb-6">
-          Get started by designing a new course. Choose from versatile hierarchy structures to best organize your content.
+        <h3 className="relative z-10 mt-6 text-2xl font-semibold tracking-tight">
+          Create your first course
+        </h3>
+        <p className="text-muted-foreground relative z-10 mt-2 mb-6 max-w-sm text-center">
+          Get started by designing a new course. Choose from versatile hierarchy structures to best
+          organize your content.
         </p>
-        <div className="relative z-10 group">
+        <div className="group relative z-10">
           <CourseCreateDialog />
         </div>
       </div>
@@ -150,22 +161,21 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
         if (groupCourses.length === 0) return null;
 
         return (
-          <div key={group.type} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
-            <h2 className="text-xl font-bold tracking-tight text-foreground/90 pl-1">
+          <div
+            key={group.type}
+            className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4"
+          >
+            <h2 className="text-foreground/90 pl-1 text-xl font-bold tracking-tight">
               {group.title}
             </h2>
             <DragDropContext onDragEnd={(result) => handleDragEnd(result, group.type)}>
               <Droppable droppableId={`courses-list-${group.type}`}>
                 {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-4"
-                  >
+                  <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
                     {groupCourses.map((course, index) => {
                       const status = statusConfig[course.status] ?? statusConfig.draft;
                       const config = getHierarchyConfig(course.hierarchy_type);
-                      
+
                       return (
                         <Draggable key={course.id} draggableId={course.id} index={index}>
                           {(provided, snapshot) => (
@@ -173,103 +183,130 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "group relative flex flex-col sm:flex-row sm:items-center gap-5 overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/60 dark:bg-zinc-950/60 p-4 backdrop-blur-xl",
-                                snapshot.isDragging 
-                                  ? "shadow-2xl ring-2 ring-indigo-500 scale-[1.02] z-50 bg-background/95 will-change-transform" 
-                                  : "shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 hover:-translate-y-0.5 transition-[shadow,border-color,opacity] duration-300"
+                                "group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 bg-white/60 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10 dark:bg-zinc-950/60",
+                                snapshot.isDragging
+                                  ? "bg-background/95 z-50 scale-[1.02] shadow-2xl ring-2 ring-indigo-500 will-change-transform"
+                                  : "shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/5"
                               )}
                               style={provided.draggableProps.style}
                             >
                               {/* Left Edge Accent */}
-                              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-indigo-500 to-purple-600 opacity-60 group-hover:opacity-100 transition-opacity" />
-                              
+                              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-indigo-500 to-purple-600 opacity-60 transition-opacity group-hover:opacity-100" />
+
                               {/* Drag Handle */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="pl-2 pr-1 cursor-grab active:cursor-grabbing hover:bg-indigo-500/10 rounded-lg p-2 transition-colors -ml-1"
+                                className="-ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors hover:bg-indigo-500/10 active:cursor-grabbing"
                               >
-                                <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-indigo-500" />
+                                <GripVertical className="text-muted-foreground/50 h-5 w-5 hover:text-indigo-500" />
                               </div>
 
                               {/* Icon Container */}
-                              <div className="hidden sm:flex shrink-0 h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/10 group-hover:scale-110 transition-transform duration-300">
+                              <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/10 bg-indigo-500/10 transition-transform duration-300 group-hover:scale-110 sm:flex dark:bg-indigo-500/20">
                                 {hierarchyIcons[course.hierarchy_type]}
                               </div>
 
                               {/* Main Details (Title, Description) */}
-                              <div className="flex-1 min-w-0 pr-4 sm:ml-0 ml-4 py-1">
-                                <div className="flex items-center gap-2 mb-1 sm:hidden">
+                              <div className="ml-4 min-w-0 flex-1 py-1 pr-4 sm:ml-0">
+                                <div className="mb-1 flex items-center gap-2 sm:hidden">
                                   <span
                                     className={cn(
-                                      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-bold shadow-sm",
+                                      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase shadow-sm",
                                       status.className
                                     )}
                                   >
-                                    <span className={cn("relative flex h-1.5 w-1.5 rounded-full", status.dotClass)} />
+                                    <span
+                                      className={cn(
+                                        "relative flex h-1.5 w-1.5 rounded-full",
+                                        status.dotClass
+                                      )}
+                                    />
                                     {status.label}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <h3 className="font-bold text-xl truncate tracking-tight text-foreground transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                  <h3 className="text-foreground truncate text-xl font-bold tracking-tight transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                                     {course.title}
                                   </h3>
                                   {course.batch && (
-                                    <span className="inline-flex shrink-0 items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 ring-1 ring-indigo-500/20 shadow-sm uppercase tracking-wider">
+                                    <span className="inline-flex shrink-0 items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-bold tracking-wider text-indigo-700 uppercase shadow-sm ring-1 ring-indigo-500/20 dark:bg-indigo-900/30 dark:text-indigo-300">
                                       Batch {course.batch}
                                     </span>
                                   )}
                                 </div>
-                                <p className="mt-1 text-sm text-muted-foreground/80 truncate leading-relaxed max-w-2xl">
+                                <p className="text-muted-foreground/80 mt-1 max-w-2xl truncate text-sm leading-relaxed">
                                   {course.description || "No description provided."}
                                 </p>
-                                
+
                                 {/* Inline Stats for Mobile */}
-                                <div className="flex sm:hidden items-center gap-4 mt-3 text-xs font-semibold text-muted-foreground/80">
+                                <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
                                   <div className="flex items-center gap-1.5">
                                     <Activity className="h-4 w-4 text-indigo-500" />
-                                    <span>{itemCounts[course.id] ?? 0} {course.hierarchy_type === 1 ? 'Subjects' : 'Lessons'}</span>
+                                    <span>
+                                      {itemCounts[course.id] ?? 0}{" "}
+                                      {course.hierarchy_type === 1 ? "Subjects" : "Lessons"}
+                                    </span>
                                   </div>
-                                  <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
+                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md px-2 py-1">
                                     <span>{config.name} Setup</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Badges / Stats (Desktop) */}
-                              <div className="hidden sm:flex flex-col items-start xl:items-end justify-center gap-2 shrink-0 w-48 border-l border-border/50 pl-6 border-dashed">
+                              <div className="border-border/50 hidden w-48 shrink-0 flex-col items-start justify-center gap-2 border-l border-dashed pl-6 sm:flex xl:items-end">
                                 <span
                                   className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider shadow-sm",
+                                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold tracking-wider uppercase shadow-sm",
                                     status.className
                                   )}
                                 >
-                                  <span className={cn("relative flex h-1.5 w-1.5 rounded-full", status.dotClass)} />
+                                  <span
+                                    className={cn(
+                                      "relative flex h-1.5 w-1.5 rounded-full",
+                                      status.dotClass
+                                    )}
+                                  />
                                   {status.label}
                                 </span>
                                 {course.registration_open ? (
-                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 ring-1 ring-emerald-500/20 shadow-sm uppercase tracking-wider">
+                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold tracking-wider text-emerald-700 uppercase shadow-sm ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-300">
                                     Enrolling
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-300 ring-1 ring-zinc-500/20 shadow-sm uppercase tracking-wider">
+                                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold tracking-wider text-zinc-700 uppercase shadow-sm ring-1 ring-zinc-500/20 dark:bg-zinc-900/30 dark:text-zinc-300">
                                     Closed
                                   </span>
                                 )}
-                                
-                                <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground/80">
-                                  <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md border border-border/50" title={`${itemCounts[course.id] ?? 0} active content items`}>
+
+                                <div className="text-muted-foreground/80 flex items-center gap-3 text-xs font-bold">
+                                  <div
+                                    className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
+                                    title={`${itemCounts[course.id] ?? 0} active content items`}
+                                  >
                                     <Activity className="h-3 w-3 text-indigo-500" />
-                                    <span>{itemCounts[course.id] ?? 0} {course.hierarchy_type === 1 ? 'Subj' : 'Less.'}</span>
+                                    <span>
+                                      {itemCounts[course.id] ?? 0}{" "}
+                                      {course.hierarchy_type === 1 ? "Subj" : "Less."}
+                                    </span>
                                   </div>
-                                  <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-md border border-border/50" title={`Created on ${formatDate(course.created_at)}`}>
+                                  <div
+                                    className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
+                                    title={`Created on ${formatDate(course.created_at)}`}
+                                  >
                                     <Calendar className="h-3 w-3 text-purple-500" />
-                                    <span>{new Date(course.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                                    <span>
+                                      {new Date(course.created_at).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                      })}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Actions */}
-                              <div className="shrink-0 flex items-center gap-2 p-1 pl-4 sm:pl-2">
+                              <div className="flex shrink-0 items-center gap-2 p-1 pl-4 sm:pl-2">
                                 <CourseEditDialog
                                   courseId={course.id}
                                   initialTitle={course.title}
@@ -277,6 +314,21 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   initialBatch={course.batch}
                                   initialStatus={course.status}
                                   initialRegistrationOpen={course.registration_open}
+                                />
+                                <div className="w-[160px] sm:w-[150px]">
+                                  <ManageContentDialog
+                                    courseId={course.id}
+                                    courseTitle={course.title}
+                                    hierarchyType={course.hierarchy_type}
+                                  />
+                                </div>
+                                <CourseAccessDialog
+                                  courseId={course.id}
+                                  courseTitle={course.title}
+                                />
+                                <CourseDeleteButton
+                                  courseId={course.id}
+                                  courseTitle={course.title}
                                 />
                                 <div className="w-[160px] sm:w-[150px]">
                                   <ManageContentDialog

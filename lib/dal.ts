@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
 export interface SessionUser {
@@ -61,7 +61,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser> => {
 
   const { data: profile, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, is_paused, selected_course_id, created_at, updated_at")
+    .select(
+      "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, is_paused, selected_course_id, created_at, updated_at"
+    )
     .eq("id", session.userId)
     .single();
 
@@ -117,17 +119,19 @@ export const checkEnrollment = cache(async (userId: string, courseId: string): P
  * @param courseId - The course ID to check enrollment for
  * @param redirectTo - Where to redirect if not enrolled (default: /student/courses)
  */
-export const verifyEnrollment = cache(async (
-  userId: string,
-  courseId: string,
-  redirectTo: string = "/student/courses"
-): Promise<void> => {
-  const isEnrolled = await checkEnrollment(userId, courseId);
+export const verifyEnrollment = cache(
+  async (
+    userId: string,
+    courseId: string,
+    redirectTo: string = "/student/courses"
+  ): Promise<void> => {
+    const isEnrolled = await checkEnrollment(userId, courseId);
 
-  if (!isEnrolled) {
-    redirect(redirectTo);
+    if (!isEnrolled) {
+      redirect(redirectTo);
+    }
   }
-});
+);
 
 /**
  * Verify that the current user is an admin, throw error if not
@@ -162,48 +166,105 @@ export const verifyNotPaused = cache(async (): Promise<void> => {
 });
 
 /**
+ * Check if content is paused for a specific student.
+ * Priority: per-student override > global is_paused.
+ * Also checks parent-level overrides/cascades.
+ * Returns { isPaused: boolean, blockedAt: string|null }
+ */
+export const resolveContentAccess = cache(
+  async (
+    userId: string,
+    courseId: string,
+    lessonId?: string
+  ): Promise<{ isPaused: boolean; blockedAt: string | null }> => {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    // 1. Check account-level pause (highest priority)
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_paused")
+      .eq("id", userId)
+      .single();
+
+    if ((userRow as any)?.is_paused) {
+      return { isPaused: true, blockedAt: "account" };
+    }
+
+    // 2. Fetch all overrides for this user in one query
+    const { data: overrides } = await admin
+      .from("student_content_access")
+      .select("*")
+      .eq("user_id", userId);
+
+    const overrideMap = new Map<string, boolean>();
+    for (const o of (overrides as any[]) ?? []) {
+      overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
+    }
+
+    // 3. Check course-level (override first, then global)
+    const courseOverride = overrideMap.get(`course:${courseId}`);
+    const { data: course } = await admin
+      .from("courses")
+      .select("is_paused")
+      .eq("id", courseId)
+      .single();
+
+    const coursePaused =
+      courseOverride !== undefined ? courseOverride : ((course as any)?.is_paused ?? false);
+    if (coursePaused) {
+      return { isPaused: true, blockedAt: "course" };
+    }
+
+    // 4. If a lesson is specified, check subject and lesson levels
+    if (lessonId) {
+      const { data: lesson } = await admin
+        .from("lessons")
+        .select("is_paused, subject_id")
+        .eq("id", lessonId)
+        .single();
+
+      if (lesson?.subject_id) {
+        const subjectOverride = overrideMap.get(`subject:${lesson.subject_id}`);
+        const { data: subject } = await admin
+          .from("subjects")
+          .select("is_paused")
+          .eq("id", lesson.subject_id)
+          .single();
+
+        const subjectPaused =
+          subjectOverride !== undefined ? subjectOverride : ((subject as any)?.is_paused ?? false);
+        if (subjectPaused) {
+          return { isPaused: true, blockedAt: "subject" };
+        }
+      }
+
+      const lessonOverride = overrideMap.get(`lesson:${lessonId}`);
+      const lessonPaused =
+        lessonOverride !== undefined ? lessonOverride : ((lesson as any)?.is_paused ?? false);
+      if (lessonPaused) {
+        return { isPaused: true, blockedAt: "lesson" };
+      }
+    }
+
+    return { isPaused: false, blockedAt: null };
+  }
+);
+
+/**
  * Verify that course/subject/lesson content is not paused for the user
  * Redirects to the course page or course list if any level is paused
  */
-export const verifyContentNotPaused = cache(async (
-  courseId: string,
-  lessonId: string
-): Promise<void> => {
-  const supabase = await createClient();
+export const verifyContentNotPaused = cache(
+  async (courseId: string, lessonId: string): Promise<void> => {
+    const session = await verifySession();
+    const result = await resolveContentAccess(session.userId, courseId, lessonId);
 
-  // Check lesson-level pause
-  const { data: lesson } = await supabase
-    .from("lessons")
-    .select("is_paused, subject_id")
-    .eq("id", lessonId)
-    .single();
-
-  if (lesson?.is_paused) {
-    redirect(`/student/courses/${courseId}`);
-  }
-
-  // Check subject-level pause
-  if (lesson?.subject_id) {
-    const { data: subject } = await supabase
-      .from("subjects")
-      .select("is_paused")
-      .eq("id", lesson.subject_id)
-      .single();
-
-    if (subject?.is_paused) {
+    if (result.isPaused) {
+      if (result.blockedAt === "course") {
+        redirect("/student/courses");
+      }
       redirect(`/student/courses/${courseId}`);
     }
   }
-
-  // Check course-level pause
-  const { data: course } = await supabase
-    .from("courses")
-    .select("is_paused")
-    .eq("id", courseId)
-    .single();
-
-  if (course?.is_paused) {
-    redirect("/student/courses");
-  }
-});
-
+);

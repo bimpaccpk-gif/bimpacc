@@ -62,6 +62,10 @@ function getAuditActionLabel(action: string): string {
     "user.onboarding_bypassed": "Onboarding bypassed",
     "user.onboarding_restored": "Onboarding restored",
     "enrollment.created": "Enrolled in course",
+    "content_access.paused": "Content paused for student",
+    "content_access.unpaused": "Content resumed for student",
+    "content_access.bulk_update": "Bulk content access update",
+    "content_access.override_removed": "Content access override removed",
   };
   return labels[action] ?? action;
 }
@@ -427,6 +431,33 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                         <span className="text-muted-foreground">
                           {" "}
                           — <span className="font-medium">{entry.details.course_title}</span>
+                        </span>
+                      )}
+                      {(entry.action === "content_access.paused" ||
+                        entry.action === "content_access.unpaused") &&
+                        entry.details?.content_type && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            —{" "}
+                            <span className="font-medium capitalize">
+                              {entry.details.content_type}
+                            </span>
+                            {entry.details?.cascade && <span className="text-xs"> (cascade)</span>}
+                          </span>
+                        )}
+                      {entry.action === "content_access.bulk_update" && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          —{" "}
+                          <span className="font-medium capitalize">
+                            {entry.details?.content_type}
+                          </span>
+                          {entry.details?.student_count && (
+                            <span className="text-xs">
+                              {" "}
+                              ({entry.details.student_count} students)
+                            </span>
+                          )}
                         </span>
                       )}
                     </p>

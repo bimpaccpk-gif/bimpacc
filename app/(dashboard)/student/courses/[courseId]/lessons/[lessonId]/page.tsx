@@ -1,7 +1,14 @@
-import { getCurrentUser, getFullUserProfile, verifyEnrollment, verifyNotPaused } from "@/lib/dal";
+import {
+  getCurrentUser,
+  getFullUserProfile,
+  verifyEnrollment,
+  verifyNotPaused,
+  resolveContentAccess,
+} from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LessonPlayerClient } from "./lesson-player-client";
+import { ContentPausedBanner } from "@/components/student/content-paused-banner";
 
 // ─── YouTube video ID extractor ───────────────────────────
 
@@ -162,41 +169,16 @@ export default async function LessonPlayerPage({
   // Check if user account is paused
   await verifyNotPaused();
 
-  // Check if lesson content is paused
-  const supabase = await createClient();
+  // Check content access (per-student overrides + global pause)
+  const accessResult = await resolveContentAccess(user.id, courseId, lessonId);
 
-  const { data: lessonCheck } = await supabase
-    .from("lessons")
-    .select("is_paused, subject_id")
-    .eq("id", lessonId)
-    .single();
-
-  if (lessonCheck?.is_paused) {
-    redirect(`/student/courses/${courseId}`);
-  }
-
-  // Check if parent subject is paused
-  if (lessonCheck?.subject_id) {
-    const { data: subjectCheck } = await supabase
-      .from("subjects")
-      .select("is_paused")
-      .eq("id", lessonCheck.subject_id)
-      .single();
-
-    if (subjectCheck?.is_paused) {
-      redirect(`/student/courses/${courseId}`);
-    }
-  }
-
-  // Check if course is paused
-  const { data: courseCheck } = await supabase
-    .from("courses")
-    .select("is_paused")
-    .eq("id", courseId)
-    .single();
-
-  if (courseCheck?.is_paused) {
-    redirect("/student/courses");
+  if (accessResult.isPaused) {
+    return (
+      <ContentPausedBanner
+        blockedAt={accessResult.blockedAt as "account" | "course" | "subject" | "lesson"}
+        courseId={courseId}
+      />
+    );
   }
 
   const { current, allLessons, completedIds } = await getLessonWithSiblings(

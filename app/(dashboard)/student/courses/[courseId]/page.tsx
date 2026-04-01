@@ -1,5 +1,5 @@
 import { getCurrentUser, verifyEnrollment } from "@/lib/dal";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ArrowRight,
+  Pause,
 } from "lucide-react";
 
 // ─── Data fetchers ────────────────────────────────────────
@@ -33,6 +34,7 @@ interface SubjectWithLessons {
   title: string;
   description: string;
   order_index: number;
+  isPaused: boolean;
   lessons: LessonRow[];
 }
 
@@ -44,6 +46,7 @@ interface LessonRow {
   content: string | null;
   order_index: number;
   duration_minutes: number | null;
+  isPaused: boolean;
 }
 
 async function getCourseDetail(courseId: string): Promise<CourseDetail | null> {
@@ -58,12 +61,27 @@ async function getCourseDetail(courseId: string): Promise<CourseDetail | null> {
   return data as CourseDetail;
 }
 
-async function getSubjectsWithLessons(courseId: string): Promise<SubjectWithLessons[]> {
+async function getSubjectsWithLessons(
+  courseId: string,
+  userId: string
+): Promise<SubjectWithLessons[]> {
   const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Fetch per-student overrides
+  const { data: overrides } = await admin
+    .from("student_content_access")
+    .select("*")
+    .eq("user_id", userId);
+
+  const overrideMap = new Map<string, boolean>();
+  for (const o of (overrides as any[]) ?? []) {
+    overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
+  }
 
   const { data: subjects } = await supabase
     .from("subjects")
-    .select("id, title, description, order_index")
+    .select("id, title, description, order_index, is_paused")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
 
@@ -72,32 +90,76 @@ async function getSubjectsWithLessons(courseId: string): Promise<SubjectWithLess
   const subjectIds = subjects.map((s) => s.id);
   const { data: lessons } = await supabase
     .from("lessons")
-    .select("id, title, description, video_url, content, order_index, duration_minutes, subject_id")
+    .select(
+      "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
+    )
     .in("subject_id", subjectIds)
     .order("order_index", { ascending: true });
 
   const lessonsBySubject = new Map<string, LessonRow[]>();
-  (lessons ?? []).forEach((l) => {
+  (lessons ?? []).forEach((l: any) => {
     const list = lessonsBySubject.get(l.subject_id) ?? [];
-    list.push(l);
+    const lessonOverride = overrideMap.get(`lesson:${l.id}`);
+    list.push({
+      id: l.id,
+      title: l.title,
+      description: l.description,
+      video_url: l.video_url,
+      content: l.content,
+      order_index: l.order_index,
+      duration_minutes: l.duration_minutes,
+      isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
+    });
     lessonsBySubject.set(l.subject_id, list);
   });
 
-  return subjects.map((s) => ({
-    ...s,
-    lessons: lessonsBySubject.get(s.id) ?? [],
-  }));
+  return (subjects as any[]).map((s) => {
+    const subjectOverride = overrideMap.get(`subject:${s.id}`);
+    return {
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      order_index: s.order_index,
+      isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
+      lessons: lessonsBySubject.get(s.id) ?? [],
+    };
+  });
 }
 
-async function getDirectLessons(courseId: string): Promise<LessonRow[]> {
+async function getDirectLessons(courseId: string, userId: string): Promise<LessonRow[]> {
   const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Fetch per-student overrides
+  const { data: overrides } = await admin
+    .from("student_content_access")
+    .select("*")
+    .eq("user_id", userId);
+
+  const overrideMap = new Map<string, boolean>();
+  for (const o of (overrides as any[]) ?? []) {
+    overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
+  }
+
   const { data } = await supabase
     .from("lessons")
-    .select("id, title, description, video_url, content, order_index, duration_minutes")
+    .select("id, title, description, video_url, content, order_index, duration_minutes, is_paused")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
 
-  return (data ?? []) as LessonRow[];
+  return ((data as any[]) ?? []).map((l) => {
+    const lessonOverride = overrideMap.get(`lesson:${l.id}`);
+    return {
+      id: l.id,
+      title: l.title,
+      description: l.description,
+      video_url: l.video_url,
+      content: l.content,
+      order_index: l.order_index,
+      duration_minutes: l.duration_minutes,
+      isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
+    };
+  });
 }
 
 async function getCompletedLessonIds(
@@ -136,6 +198,24 @@ function LessonItem({
   courseId: string;
   isCompleted: boolean;
 }) {
+  if (lesson.isPaused) {
+    return (
+      <div className="border-border bg-muted/20 overflow-hidden rounded-xl border border-amber-500/30">
+        <div className="flex items-center gap-3 px-5 py-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Pause className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-muted-foreground font-semibold">{lesson.title}</h4>
+            <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
+              This lesson is currently paused
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border-border bg-background overflow-hidden rounded-xl border transition-colors hover:border-indigo-500/30">
       <div className="flex items-center gap-3 px-5 py-4">
@@ -189,6 +269,24 @@ function SubjectAccordion({
   courseId: string;
   completedIds: Set<string>;
 }) {
+  if (subject.isPaused) {
+    return (
+      <div className="border-border bg-muted/20 overflow-hidden rounded-xl border border-amber-500/30">
+        <div className="flex items-center gap-3 px-5 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Pause className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-muted-foreground font-semibold">{subject.title}</h3>
+            <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
+              This subject is currently paused
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <details className="group border-border overflow-hidden rounded-xl border" open={index === 0}>
       <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors [&::-webkit-details-marker]:hidden">
@@ -255,10 +353,10 @@ export default async function CourseDetailPage({
 
   if (course.hierarchy_type === 1) {
     // Course → Subject → Lesson
-    subjects = await getSubjectsWithLessons(course.id);
+    subjects = await getSubjectsWithLessons(course.id, user.id);
   } else {
     // Type 2 & 3: lessons directly under course
-    directLessons = await getDirectLessons(course.id);
+    directLessons = await getDirectLessons(course.id, user.id);
   }
 
   // Fetch completed lesson IDs

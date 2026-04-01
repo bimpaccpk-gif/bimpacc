@@ -10,7 +10,8 @@ import { ApprovalToggle } from "@/components/admin/approval-toggle";
 import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
 import { EnrollStudentDialog } from "@/components/admin/enroll-student-dialog";
 import { BypassOnboardingToggle } from "@/components/admin/bypass-onboarding-toggle";
-import { ShieldCheck, Clock, BookOpen } from "lucide-react";
+import { ShieldCheck, Clock } from "lucide-react";
+import { EnrollmentCounterBadge } from "@/components/admin/enrollment-counter-badge";
 import type { UserRole } from "@/types";
 
 interface UserRow {
@@ -199,38 +200,11 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             );
                           }
                           return (
-                            <div className="group relative inline-flex">
-                              <span className="inline-flex cursor-default items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                <BookOpen className="h-3 w-3" />
-                                {userEnrollments.length}{" "}
-                                {userEnrollments.length === 1 ? "course" : "courses"}
-                              </span>
-                              <div className="bg-popover pointer-events-none absolute top-full left-0 z-50 mt-1 hidden max-h-[300px] max-w-[350px] min-w-[200px] overflow-y-auto rounded-md border px-3 py-2 text-xs shadow-md group-hover:block">
-                                <p className="text-popover-foreground mb-1.5 font-semibold">
-                                  Enrolled Courses ({userEnrollments.length})
-                                </p>
-                                <div className="space-y-1">
-                                  {userEnrollments.map((enrollment, idx) => (
-                                    <div
-                                      key={enrollment.course_id}
-                                      className="text-popover-foreground flex items-start gap-2"
-                                    >
-                                      <span className="text-muted-foreground mt-0.5 w-3 shrink-0 text-right">
-                                        {idx + 1}.
-                                      </span>
-                                      <span className="flex-1">
-                                        {enrollment.title}
-                                        {enrollment.batch && (
-                                          <span className="text-muted-foreground ml-1">
-                                            (Batch {enrollment.batch})
-                                          </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
+                            <EnrollmentCounterBadge
+                              userId={user.id}
+                              userName={user.full_name}
+                              enrollments={userEnrollments}
+                            />
                           );
                         })()
                       ) : (

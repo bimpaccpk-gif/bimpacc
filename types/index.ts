@@ -125,6 +125,50 @@ export interface UserEnrollmentDetail {
   progress_percent: number;
 }
 
+export type ContentAccessType = "course" | "subject" | "lesson";
+
+export interface StudentContentAccess {
+  id: string;
+  user_id: string;
+  content_type: ContentAccessType;
+  content_id: string;
+  is_paused: boolean;
+  paused_by: string | null;
+  reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentAccessStatus {
+  isPaused: boolean;
+  source: "student_override" | "global" | "parent_override" | "parent_global";
+  overrideId: string | null;
+}
+
+export interface CourseAccessTree {
+  courseId: string;
+  courseTitle: string;
+  courseIsPaused: boolean;
+  studentOverride: StudentContentAccess | null;
+  subjects: SubjectAccessNode[];
+  directLessons: LessonAccessNode[];
+}
+
+export interface SubjectAccessNode {
+  id: string;
+  title: string;
+  isPaused: boolean;
+  studentOverride: StudentContentAccess | null;
+  lessons: LessonAccessNode[];
+}
+
+export interface LessonAccessNode {
+  id: string;
+  title: string;
+  isPaused: boolean;
+  studentOverride: StudentContentAccess | null;
+}
+
 export interface UserDetailData {
   user: {
     id: string;
