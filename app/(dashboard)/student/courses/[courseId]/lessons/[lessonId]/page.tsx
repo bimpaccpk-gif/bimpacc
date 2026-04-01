@@ -1,4 +1,4 @@
-import { getCurrentUser, verifyEnrollment } from "@/lib/dal";
+import { getCurrentUser, getFullUserProfile, verifyEnrollment, verifyNotPaused } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LessonPlayerClient } from "./lesson-player-client";
@@ -150,6 +150,7 @@ export default async function LessonPlayerPage({
 }) {
   const { courseId, lessonId } = await params;
   const user = await getCurrentUser();
+  const fullProfile = await getFullUserProfile();
   const course = await getCourseInfo(courseId);
 
   if (!course) {
@@ -157,6 +158,46 @@ export default async function LessonPlayerPage({
   }
 
   await verifyEnrollment(user.id, course.id);
+
+  // Check if user account is paused
+  await verifyNotPaused();
+
+  // Check if lesson content is paused
+  const supabase = await createClient();
+
+  const { data: lessonCheck } = await supabase
+    .from("lessons")
+    .select("is_paused, subject_id")
+    .eq("id", lessonId)
+    .single();
+
+  if (lessonCheck?.is_paused) {
+    redirect(`/student/courses/${courseId}`);
+  }
+
+  // Check if parent subject is paused
+  if (lessonCheck?.subject_id) {
+    const { data: subjectCheck } = await supabase
+      .from("subjects")
+      .select("is_paused")
+      .eq("id", lessonCheck.subject_id)
+      .single();
+
+    if (subjectCheck?.is_paused) {
+      redirect(`/student/courses/${courseId}`);
+    }
+  }
+
+  // Check if course is paused
+  const { data: courseCheck } = await supabase
+    .from("courses")
+    .select("is_paused")
+    .eq("id", courseId)
+    .single();
+
+  if (courseCheck?.is_paused) {
+    redirect("/student/courses");
+  }
 
   const { current, allLessons, completedIds } = await getLessonWithSiblings(
     courseId,
@@ -186,6 +227,11 @@ export default async function LessonPlayerPage({
       videoId={videoId}
       isCompleted={isCompleted}
       currentIndex={currentIndex}
+      watermark={{
+        fullName: fullProfile.full_name,
+        email: fullProfile.email,
+        cnicNumber: fullProfile.cnic_number,
+      }}
     />
   );
 }

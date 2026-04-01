@@ -17,6 +17,12 @@ export async function proxy(request: NextRequest) {
     },
   });
 
+  // Security headers
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -53,24 +59,33 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Only query DB when we actually need the role:
+  // Only query DB when we actually need the role or pause status:
   //   - auth routes with a logged-in user (to pick the right dashboard)
   //   - /admin or /instructor routes (to enforce role access)
+  //   - all protected routes (to check account pause)
   const needsRoleCheck =
     (isAuthRoute && !!user) ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/instructor");
+    pathname.startsWith("/instructor") ||
+    (isProtectedRoute && !!user);
 
   let role: string | null = null;
+  let isPaused = false;
 
   if (needsRoleCheck) {
     const { data: profile } = await supabase
       .from("users")
-      .select("role")
+      .select("role, is_paused")
       .eq("id", user!.id)
       .single();
 
     role = profile?.role ?? null;
+    isPaused = profile?.is_paused ?? false;
+
+    // Account pause/ban check — redirect paused users away from protected routes
+    if (isPaused && !isAuthRoute) {
+      return NextResponse.redirect(new URL("/login?error=account_paused", request.url));
+    }
   }
 
   // Authenticated users on auth routes → their role-specific dashboard

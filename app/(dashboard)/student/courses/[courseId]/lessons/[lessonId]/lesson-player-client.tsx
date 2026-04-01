@@ -44,6 +44,11 @@ interface LessonPlayerClientProps {
   videoId: string | null;
   isCompleted: boolean;
   currentIndex: number;
+  watermark: {
+    fullName: string;
+    email: string;
+    cnicNumber: string | null;
+  };
 }
 
 export function LessonPlayerClient({
@@ -56,6 +61,7 @@ export function LessonPlayerClient({
   videoId,
   isCompleted: initialCompleted,
   currentIndex,
+  watermark,
 }: LessonPlayerClientProps) {
   const [isCompleted, setIsCompleted] = useState(initialCompleted);
   const [isPending, startTransition] = useTransition();
@@ -123,6 +129,7 @@ export function LessonPlayerClient({
           title={current.title}
           description={current.description}
           durationMinutes={current.duration_minutes}
+          watermark={watermark}
         />
       ) : (
         <div className="bg-black">

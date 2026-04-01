@@ -14,6 +14,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VideoWatermark } from "@/components/ui/video-watermark";
 
 // ─── YouTube IFrame API types ─────────────────────────────
 
@@ -59,6 +60,11 @@ interface YouTubeVideoPlayerProps {
   durationMinutes: number | null;
   onReady?: () => void;
   onStateChange?: (state: number) => void;
+  watermark?: {
+    fullName: string;
+    email: string;
+    cnicNumber: string | null;
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -83,6 +89,7 @@ export function YouTubeVideoPlayer({
   durationMinutes,
   onReady,
   onStateChange,
+  watermark,
 }: YouTubeVideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -148,12 +155,15 @@ export function YouTubeVideoPlayer({
 
     playerRef.current = new window.YT.Player(playerDivRef.current, {
       videoId,
+      host: "https://www.youtube-nocookie.com",
       playerVars: {
         controls: 0,
         modestbranding: 1,
         rel: 0,
         iv_load_policy: 3,
         disablekb: 1,
+        fs: 0,
+        cc_load_policy: 0,
         playsinline: 1,
         origin: window.location.origin,
       },
@@ -367,11 +377,33 @@ export function YouTubeVideoPlayer({
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {/* 16:9 aspect-ratio wrapper */}
         <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
           {/* YouTube player mount point */}
           <div ref={playerDivRef} className="absolute inset-0 h-full w-full" />
+
+          {/* Transparent overlay to block direct iframe interaction */}
+          <div
+            className="absolute inset-0 z-10 cursor-pointer"
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={() => {
+              if (!showControls || !isPlaying) {
+                togglePlay();
+              }
+              handleMouseMove();
+            }}
+          />
+
+          {/* Moving watermark with user identity */}
+          {watermark && isPlayerReady && (
+            <VideoWatermark
+              fullName={watermark.fullName}
+              email={watermark.email}
+              cnicNumber={watermark.cnicNumber}
+            />
+          )}
 
           {/* Loading / Buffering overlay */}
           {buffering && (

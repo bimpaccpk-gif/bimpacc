@@ -14,6 +14,7 @@ export interface SessionUser {
   onboarding_completed: boolean;
   onboarding_bypassed: boolean;
   is_approved: boolean;
+  is_paused: boolean;
   selected_course_id: string | null;
   created_at: string;
   updated_at: string;
@@ -60,7 +61,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser> => {
 
   const { data: profile, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, selected_course_id, created_at, updated_at")
+    .select("id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, is_paused, selected_course_id, created_at, updated_at")
     .eq("id", session.userId)
     .single();
 
@@ -147,5 +148,62 @@ export const verifyAdmin = cache(async (): Promise<{ userId: string; role: UserR
   }
 
   return { userId: session.userId, role: profile.role as UserRole };
+});
+
+/**
+ * Verify that the current user's account is not paused/banned
+ * Redirects to login with error message if paused
+ */
+export const verifyNotPaused = cache(async (): Promise<void> => {
+  const user = await getCurrentUser();
+  if (user.is_paused) {
+    redirect("/login?error=account_paused");
+  }
+});
+
+/**
+ * Verify that course/subject/lesson content is not paused for the user
+ * Redirects to the course page or course list if any level is paused
+ */
+export const verifyContentNotPaused = cache(async (
+  courseId: string,
+  lessonId: string
+): Promise<void> => {
+  const supabase = await createClient();
+
+  // Check lesson-level pause
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("is_paused, subject_id")
+    .eq("id", lessonId)
+    .single();
+
+  if (lesson?.is_paused) {
+    redirect(`/student/courses/${courseId}`);
+  }
+
+  // Check subject-level pause
+  if (lesson?.subject_id) {
+    const { data: subject } = await supabase
+      .from("subjects")
+      .select("is_paused")
+      .eq("id", lesson.subject_id)
+      .single();
+
+    if (subject?.is_paused) {
+      redirect(`/student/courses/${courseId}`);
+    }
+  }
+
+  // Check course-level pause
+  const { data: course } = await supabase
+    .from("courses")
+    .select("is_paused")
+    .eq("id", courseId)
+    .single();
+
+  if (course?.is_paused) {
+    redirect("/student/courses");
+  }
 });
 
