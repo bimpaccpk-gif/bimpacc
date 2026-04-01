@@ -87,6 +87,7 @@ export async function adminCreateUser(
   const password = (formData.get("password") as string) ?? "";
   const role = (formData.get("role") as UserRole) ?? "student";
   const courseId = (formData.get("courseId") as string) || null;
+  const bypassOnboarding = formData.get("bypassOnboarding") === "true";
 
   if (!fullName || !email || !password) {
     return { error: "All fields are required.", success: "" };
@@ -125,16 +126,21 @@ export async function adminCreateUser(
   }
 
   if (data.user) {
-    await admin.from("users").upsert(
-      {
-        id: data.user.id,
-        email,
-        full_name: fullName,
-        role,
-        selected_course_id: courseId,
-      } as never,
-      { onConflict: "id" }
-    );
+    const userRecord: Record<string, any> = {
+      id: data.user.id,
+      email,
+      full_name: fullName,
+      role,
+      selected_course_id: courseId,
+    };
+
+    // If bypass onboarding is enabled for students, set both flags
+    if (bypassOnboarding && role === "student") {
+      userRecord.onboarding_bypassed = true;
+      userRecord.onboarding_completed = true;
+    }
+
+    await admin.from("users").upsert(userRecord as never, { onConflict: "id" });
 
     // If a course was selected and role is student, enroll the user
     if (courseId && role === "student") {
@@ -147,7 +153,7 @@ export async function adminCreateUser(
 
   return {
     error: "",
-    success: `Account created for ${fullName} (${role}).${courseId && role === "student" ? " Enrolled in selected course." : ""}`,
+    success: `Account created for ${fullName} (${role}).${courseId && role === "student" ? " Enrolled in selected course." : ""}${bypassOnboarding && role === "student" ? " Onboarding bypassed." : ""}`,
   };
 }
 
@@ -160,6 +166,7 @@ export async function adminBulkCreateUsers(
   const csvContent = (formData.get("csvContent") as string)?.trim();
   const role = (formData.get("role") as UserRole) ?? "student";
   const courseId = (formData.get("courseId") as string) || null;
+  const bypassOnboarding = formData.get("bypassOnboarding") === "true";
 
   if (!csvContent) {
     return { error: "CSV content is required.", success: "", results: [] };
@@ -255,16 +262,21 @@ export async function adminBulkCreateUsers(
       }
 
       if (data.user) {
-        await admin.from("users").upsert(
-          {
-            id: data.user.id,
-            email,
-            full_name: fullName,
-            role,
-            selected_course_id: courseId,
-          } as never,
-          { onConflict: "id" }
-        );
+        const userRecord: Record<string, any> = {
+          id: data.user.id,
+          email,
+          full_name: fullName,
+          role,
+          selected_course_id: courseId,
+        };
+
+        // If bypass onboarding is enabled for students, set both flags
+        if (bypassOnboarding && role === "student") {
+          userRecord.onboarding_bypassed = true;
+          userRecord.onboarding_completed = true;
+        }
+
+        await admin.from("users").upsert(userRecord as never, { onConflict: "id" });
 
         // If a course was selected and role is student, enroll the user
         if (courseId && role === "student") {
@@ -294,9 +306,10 @@ export async function adminBulkCreateUsers(
   }
 
   const courseMessage = courseId && role === "student" ? " and enrolled in selected course" : "";
+  const bypassMessage = bypassOnboarding && role === "student" ? " with onboarding bypassed" : "";
   return {
     error: "",
-    success: `Bulk creation complete: ${successCount} succeeded, ${failCount} failed${courseMessage}. Temporary password for all users: TempPass123!`,
+    success: `Bulk creation complete: ${successCount} succeeded, ${failCount} failed${courseMessage}${bypassMessage}. Temporary password for all users: TempPass123!`,
     results,
   };
 }

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Upload, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Upload, FileText, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import { adminBulkCreateUsers } from "@/lib/supabase/actions";
 
 interface BulkUserFormProps {
@@ -21,7 +21,11 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
   const [csvText, setCsvText] = useState("");
   const [defaultRole, setDefaultRole] = useState("student");
   const [defaultCourseId, setDefaultCourseId] = useState("");
-  const [results, setResults] = useState<{ success: string[]; failed: string[] }>({ success: [], failed: [] });
+  const [bypassOnboarding, setBypassOnboarding] = useState(false);
+  const [results, setResults] = useState<{ success: string[]; failed: string[] }>({
+    success: [],
+    failed: [],
+  });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,6 +57,10 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
       formData.append("csvContent", csvText);
       formData.append("role", defaultRole);
       formData.append("courseId", defaultCourseId);
+      formData.append(
+        "bypassOnboarding",
+        bypassOnboarding && defaultRole === "student" ? "true" : "false"
+      );
 
       const result = await adminBulkCreateUsers(undefined, formData);
 
@@ -75,12 +83,16 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
         setResults({ success: successList, failed: failedList });
 
         if (failedList.length === 0) {
-          setSuccess(`Successfully created ${successList.length} user(s). Temporary password for all users: TempPass123!`);
+          setSuccess(
+            `Successfully created ${successList.length} user(s). Temporary password for all users: TempPass123!`
+          );
           setTimeout(() => {
             onSuccess();
           }, 2000);
         } else if (successList.length > 0) {
-          setSuccess(`Created ${successList.length} user(s), ${failedList.length} failed. Temporary password for all users: TempPass123!`);
+          setSuccess(
+            `Created ${successList.length} user(s), ${failedList.length} failed. Temporary password for all users: TempPass123!`
+          );
         } else {
           setError(`Failed to create all ${failedList.length} user(s)`);
         }
@@ -118,15 +130,15 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
             onChange={handleFileUpload}
             className="flex-1"
           />
-          <Upload className="h-4 w-4 text-muted-foreground" />
+          <Upload className="text-muted-foreground h-4 w-4" />
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           CSV format: email, fullName, role (optional), courseId (optional)
         </p>
         <a
           href="/sample-bulk-users.csv"
           download
-          className="text-xs text-blue-600 hover:text-blue-800 underline"
+          className="text-xs text-blue-600 underline hover:text-blue-800"
         >
           Download sample CSV file
         </a>
@@ -142,7 +154,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
           rows={6}
           className="font-mono text-sm"
         />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           One user per line: email, fullName, role (optional), courseId (optional)
         </p>
       </div>
@@ -154,7 +166,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
             id="defaultRole"
             value={defaultRole}
             onChange={(e) => setDefaultRole(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="student">Student</option>
             <option value="instructor">Instructor</option>
@@ -168,7 +180,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
             id="defaultCourse"
             value={defaultCourseId}
             onChange={(e) => setDefaultCourseId(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">No course</option>
             {courses.map((course) => (
@@ -180,13 +192,39 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
         </div>
       </div>
 
+      {/* Bypass Onboarding (for students only) */}
+      {defaultRole === "student" && (
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-950/20">
+          <label className="group flex cursor-pointer items-start gap-3">
+            <div className="relative mt-0.5 flex items-center">
+              <input
+                type="checkbox"
+                checked={bypassOnboarding}
+                onChange={(e) => setBypassOnboarding(e.target.checked)}
+                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-blue-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-300">
+                <ShieldCheck className="h-4 w-4" />
+                Bypass Onboarding
+              </div>
+              <p className="text-xs leading-relaxed text-blue-700/70 dark:text-blue-400/70">
+                Skip the onboarding process for all created students. They will be able to access
+                the platform directly without completing onboarding forms.
+              </p>
+            </div>
+          </label>
+        </div>
+      )}
+
       {(results.success.length > 0 || results.failed.length > 0) && (
         <div className="space-y-2 rounded-lg border p-4">
           <h4 className="font-medium">Results:</h4>
           {results.success.length > 0 && (
             <div className="space-y-1">
-              <p className="text-sm text-green-600 font-medium">✓ Successfully created:</p>
-              <ul className="text-xs text-muted-foreground ml-4 list-disc">
+              <p className="text-sm font-medium text-green-600">✓ Successfully created:</p>
+              <ul className="text-muted-foreground ml-4 list-disc text-xs">
                 {results.success.map((email) => (
                   <li key={email}>{email}</li>
                 ))}
@@ -195,8 +233,8 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
           )}
           {results.failed.length > 0 && (
             <div className="space-y-1">
-              <p className="text-sm text-red-600 font-medium">✗ Failed:</p>
-              <ul className="text-xs text-muted-foreground ml-4 list-disc">
+              <p className="text-sm font-medium text-red-600">✗ Failed:</p>
+              <ul className="text-muted-foreground ml-4 list-disc text-xs">
                 {results.failed.map((item) => (
                   <li key={item}>{item}</li>
                 ))}

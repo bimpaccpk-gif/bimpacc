@@ -12,30 +12,32 @@ export const signInSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export const signUpSchema = z.object({
-  fullName: z
-    .string()
-    .min(2, "Full name must be at least 2 characters")
-    .max(100, "Full name must be at most 100 characters")
-    .trim(),
-  email: z
-    .string()
-    .email("Invalid email address")
-    .refine((email) => email.toLowerCase().endsWith("@gmail.com"), {
-      message: "Only Gmail emails are allowed",
-    }),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-  confirmPassword: z.string(),
-  courseId: z.string().uuid().optional().nullable(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+export const signUpSchema = z
+  .object({
+    fullName: z
+      .string()
+      .min(2, "Full name must be at least 2 characters")
+      .max(100, "Full name must be at most 100 characters")
+      .trim(),
+    email: z
+      .string()
+      .email("Invalid email address")
+      .refine((email) => email.toLowerCase().endsWith("@gmail.com"), {
+        message: "Only Gmail emails are allowed",
+      }),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+    confirmPassword: z.string(),
+    courseId: z.string().uuid().optional().nullable(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 // ─── Courses ───────────────────────────────────────────────
 
@@ -74,17 +76,19 @@ export const updateSubjectSchema = z.object({
 
 // ─── Lessons ───────────────────────────────────────────────
 
-export const createLessonSchema = z.object({
-  subjectId: z.string().uuid().optional().nullable(),
-  courseId: z.string().uuid().optional().nullable(),
-  title: z.string().min(1, "Lesson title is required").max(200).trim(),
-  description: z.string().max(5000).trim().optional().default(""),
-  content: z.string().max(50000).trim().optional().default(""),
-  videoUrl: z.string().url("Invalid URL").optional().nullable().or(z.literal("")),
-  durationMinutes: z.coerce.number().int().min(0).optional().nullable(),
-}).refine((data) => data.subjectId || data.courseId, {
-  message: "Either Subject ID or Course ID is required",
-});
+export const createLessonSchema = z
+  .object({
+    subjectId: z.string().uuid().optional().nullable(),
+    courseId: z.string().uuid().optional().nullable(),
+    title: z.string().min(1, "Lesson title is required").max(200).trim(),
+    description: z.string().max(5000).trim().optional().default(""),
+    content: z.string().max(50000).trim().optional().default(""),
+    videoUrl: z.string().url("Invalid URL").optional().nullable().or(z.literal("")),
+    durationMinutes: z.coerce.number().int().min(0).optional().nullable(),
+  })
+  .refine((data) => data.subjectId || data.courseId, {
+    message: "Either Subject ID or Course ID is required",
+  });
 
 export const updateLessonSchema = z.object({
   id: z.string().uuid("Invalid lesson ID"),
@@ -115,6 +119,7 @@ export const adminCreateUserSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   role: z.enum(["admin", "instructor", "student"]).default("student"),
   courseId: z.string().uuid().optional().nullable(),
+  bypassOnboarding: z.boolean().default(false),
 });
 
 export const changeRoleSchema = z.object({

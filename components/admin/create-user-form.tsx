@@ -13,7 +13,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AlertCircle, Check, Loader2, UserPlus, ChevronDown, Info, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  Loader2,
+  UserPlus,
+  ChevronDown,
+  Info,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  ShieldCheck,
+} from "lucide-react";
 import type { UserRole } from "@/types";
 import { usePasswordStrength } from "@/hooks/use-password-strength";
 
@@ -23,14 +34,24 @@ const roles: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Admin" },
 ];
 
-export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void; courses?: any[] } = {}) {
+export function CreateUserForm({
+  onSuccess,
+  courses,
+}: { onSuccess?: () => void; courses?: any[] } = {}) {
   const router = useRouter();
   const [state, action, pending] = useActionState(adminCreateUser, undefined);
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [bypassOnboarding, setBypassOnboarding] = useState(false);
 
-  const { score: passwordStrength, label: strengthLabel, colorClass: strengthColorVar, textClass: strengthTextColor, requirements: passwordRequirements } = usePasswordStrength(password);
+  const {
+    score: passwordStrength,
+    label: strengthLabel,
+    colorClass: strengthColorVar,
+    textClass: strengthTextColor,
+    requirements: passwordRequirements,
+  } = usePasswordStrength(password);
 
   useEffect(() => {
     if (state?.success && onSuccess) {
@@ -49,7 +70,7 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
           <Check className="h-4 w-4" />
           <AlertDescription>{state.success}</AlertDescription>
         </Alert>
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-center text-xs">
           Closing dialog and refreshing...
         </p>
       </div>
@@ -66,16 +87,21 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
       )}
 
       {/* CNIC Notice */}
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 dark:border-amber-500/20 dark:bg-amber-950/20 shadow-sm">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-950/20">
         <div className="flex gap-3">
           <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="space-y-1.5 text-sm">
             <p className="font-semibold text-amber-800 dark:text-amber-300">
               Important: Name Format
             </p>
-            <p className="text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
-              Enter name <span className="font-bold text-amber-900 dark:text-amber-200">exactly as on CNIC</span> in
-              <span className="font-bold text-amber-900 dark:text-amber-200"> CAPITAL LETTERS</span>. This will appear on certificates.
+            <p className="leading-relaxed text-amber-700/80 dark:text-amber-400/80">
+              Enter name{" "}
+              <span className="font-bold text-amber-900 dark:text-amber-200">
+                exactly as on CNIC
+              </span>{" "}
+              in
+              <span className="font-bold text-amber-900 dark:text-amber-200"> CAPITAL LETTERS</span>
+              . This will appear on certificates.
             </p>
           </div>
         </div>
@@ -90,22 +116,12 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
           style={{ textTransform: "uppercase" }}
           required
         />
-        <p className="text-xs text-muted-foreground">
-          Write in CAPITAL letters as per CNIC
-        </p>
+        <p className="text-muted-foreground text-xs">Write in CAPITAL letters as per CNIC</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="user@gmail.com"
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Only Gmail emails are allowed
-        </p>
+        <Input id="email" name="email" type="email" placeholder="user@gmail.com" required />
+        <p className="text-muted-foreground text-xs">Only Gmail emails are allowed</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
@@ -122,45 +138,35 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground"
+            className="text-muted-foreground/40 hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
           >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
-        
+
         {/* Password Strength */}
         {password && (
-          <div className="space-y-3 rounded-xl bg-background/50 border border-border/50 p-3.5 shadow-sm">
+          <div className="bg-background/50 border-border/50 space-y-3 rounded-xl border p-3.5 shadow-sm">
             {/* Strength Bar */}
             <div className="space-y-2">
-              <div className="flex gap-1.5 w-full">
+              <div className="flex w-full gap-1.5">
                 {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
                     className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                      i < passwordStrength
-                        ? strengthColorVar
-                        : "bg-muted dark:bg-zinc-800"
+                      i < passwordStrength ? strengthColorVar : "bg-muted dark:bg-zinc-800"
                     }`}
                   />
                 ))}
               </div>
-              <p className="text-xs font-medium text-muted-foreground">
+              <p className="text-muted-foreground text-xs font-medium">
                 Strength:{" "}
-                <span
-                  className={`font-semibold ${strengthTextColor}`}
-                >
-                  {strengthLabel}
-                </span>
+                <span className={`font-semibold ${strengthTextColor}`}>{strengthLabel}</span>
               </p>
             </div>
 
             {/* Requirements Checklist */}
-            <div className="grid grid-cols-2 gap-y-2 gap-x-1">
+            <div className="grid grid-cols-2 gap-x-1 gap-y-2">
               {passwordRequirements.map((req, i) => (
                 <div
                   key={i}
@@ -171,7 +177,7 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
                   <CheckCircle2
                     className={`h-3.5 w-3.5 shrink-0 transition-all duration-300 ${
                       req.met
-                        ? "fill-green-500/20 text-green-500 scale-110"
+                        ? "scale-110 fill-green-500/20 text-green-500"
                         : "text-muted-foreground/30 scale-100"
                     }`}
                   />
@@ -187,19 +193,14 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
         <input type="hidden" name="role" value={selectedRole} />
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <div className="flex w-full cursor-pointer items-center justify-between rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted">
-              <span>
-                {roles.find((r) => r.value === selectedRole)?.label}
-              </span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <div className="bg-background hover:bg-muted flex w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm">
+              <span>{roles.find((r) => r.value === selectedRole)?.label}</span>
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[var(--anchor-width)]">
             {roles.map((r) => (
-              <DropdownMenuItem
-                key={r.value}
-                onClick={() => setSelectedRole(r.value)}
-              >
+              <DropdownMenuItem key={r.value} onClick={() => setSelectedRole(r.value)}>
                 {r.label}
               </DropdownMenuItem>
             ))}
@@ -214,7 +215,7 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
           <select
             id="courseId"
             name="courseId"
-            className="w-full h-10 px-3 rounded-md border bg-background focus:ring-indigo-500 focus:border-indigo-500"
+            className="bg-background h-10 w-full rounded-md border px-3 focus:border-indigo-500 focus:ring-indigo-500"
             defaultValue=""
           >
             <option value="" disabled>
@@ -226,11 +227,42 @@ export function CreateUserForm({ onSuccess, courses }: { onSuccess?: () => void;
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Choose an open course to enroll the student
           </p>
         </div>
       )}
+
+      {/* Bypass Onboarding (for students only) */}
+      {selectedRole === "student" && (
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-950/20">
+          <label className="group flex cursor-pointer items-start gap-3">
+            <div className="relative mt-0.5 flex items-center">
+              <input
+                type="checkbox"
+                checked={bypassOnboarding}
+                onChange={(e) => setBypassOnboarding(e.target.checked)}
+                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-blue-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-300">
+                <ShieldCheck className="h-4 w-4" />
+                Bypass Onboarding
+              </div>
+              <p className="text-xs leading-relaxed text-blue-700/70 dark:text-blue-400/70">
+                Skip the onboarding process for this student. They will be able to access the
+                platform directly without completing onboarding forms.
+              </p>
+            </div>
+          </label>
+        </div>
+      )}
+      <input
+        type="hidden"
+        name="bypassOnboarding"
+        value={bypassOnboarding && selectedRole === "student" ? "true" : "false"}
+      />
 
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? (
