@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,46 +21,102 @@ interface CourseRow {
   status: string;
 }
 
+interface EnrollmentRow {
+  user_id: string;
+  course_id: string;
+  courses: {
+    id: string;
+    title: string;
+    batch: string | null;
+  } | null;
+}
+
 interface EnrollStudentDialogProps {
   studentId: string;
   studentName: string;
   courses: CourseRow[];
+  enrolledCourseIds: string[];
+  onEnroll: (enrollment: EnrollmentRow) => void;
 }
 
-export function EnrollStudentDialog({ studentId, studentName, courses }: EnrollStudentDialogProps) {
+export function EnrollStudentDialog({
+  studentId,
+  studentName,
+  courses,
+  enrolledCourseIds,
+  onEnroll,
+}: EnrollStudentDialogProps) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState(enrollStudentInCourse, undefined);
   const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Auto close dialog on success
-  useEffect(() => {
-    if (state?.success) {
-      const timer = setTimeout(() => {
-        setOpen(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [state?.success]);
-
-  // Reset state when dialg opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedCourseId("");
-      // Reset action state might be tricky without a wrapper, 
-      // but users will select a new course anyway
+      setError(null);
+      setSuccess(null);
     }
   }, [open]);
 
-  const publishedCourses = courses.filter((c) => c.status === "published");
+  // Auto close dialog on success
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setOpen(false);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  const availableCourses = courses.filter(
+    (c) => c.status === "published" && !enrolledCourseIds.includes(c.id)
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId) return;
+
+    setPending(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("studentId", studentId);
+      formData.append("courseId", selectedCourseId);
+
+      const result = await enrollStudentInCourse(undefined, formData);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccess(result.success);
+        // Find the course to build the enrollment object
+        const course = courses.find((c) => c.id === selectedCourseId);
+        if (course) {
+          onEnroll({
+            user_id: studentId,
+            course_id: selectedCourseId,
+            courses: {
+              id: course.id,
+              title: course.title,
+              batch: course.batch,
+            },
+          });
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="gap-2 h-8"
-      >
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="h-8 gap-2">
         <PlusCircle className="h-4 w-4" />
         Enroll
       </Button>
@@ -70,48 +126,51 @@ export function EnrollStudentDialog({ studentId, studentName, courses }: EnrollS
           <DialogHeader>
             <DialogTitle>Enroll Student in Course</DialogTitle>
             <DialogDescription>
-              Enroll <span className="font-semibold text-foreground">{studentName}</span> into a published course.
+              Enroll <span className="text-foreground font-semibold">{studentName}</span> into a
+              published course.
             </DialogDescription>
           </DialogHeader>
 
-          {state?.success ? (
-            <div className="py-6 flex flex-col items-center justify-center text-center space-y-3">
-              <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+          {success ? (
+            <div className="flex flex-col items-center justify-center space-y-3 py-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
                 <CheckCircle2 className="h-6 w-6 text-emerald-600" />
               </div>
-              <p className="text-sm font-medium text-emerald-600">
-                {state.success}
-              </p>
+              <p className="text-sm font-medium text-emerald-600">{success}</p>
             </div>
           ) : (
-            <form action={action} className="space-y-4 py-4">
-              <input type="hidden" name="studentId" value={studentId} />
-              
+            <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="courseId">Select Course</Label>
                 <select
                   id="courseId"
-                  name="courseId"
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                   value={selectedCourseId}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
                   required
                 >
-                  <option value="" disabled>Select a course...</option>
-                  {publishedCourses.map((course) => (
+                  <option value="" disabled>
+                    Select a course...
+                  </option>
+                  {availableCourses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title} {course.batch ? `(Batch ${course.batch})` : ""}
                     </option>
                   ))}
-                  {publishedCourses.length === 0 && (
-                    <option value="" disabled>No published courses available</option>
+                  {availableCourses.length === 0 && (
+                    <option value="" disabled>
+                      {enrolledCourseIds.length ===
+                      courses.filter((c) => c.status === "published").length
+                        ? "Student is enrolled in all published courses"
+                        : "No published courses available"}
+                    </option>
                   )}
                 </select>
               </div>
 
-              {state?.error && (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                  {state.error}
+              {error && (
+                <div className="bg-destructive/15 text-destructive rounded-md p-3 text-sm">
+                  {error}
                 </div>
               )}
 
@@ -126,7 +185,7 @@ export function EnrollStudentDialog({ studentId, studentName, courses }: EnrollS
                 </Button>
                 <Button
                   type="submit"
-                  disabled={pending || !selectedCourseId || publishedCourses.length === 0}
+                  disabled={pending || !selectedCourseId || availableCourses.length === 0}
                   className="gap-2"
                 >
                   {pending && <Loader2 className="h-4 w-4 animate-spin" />}

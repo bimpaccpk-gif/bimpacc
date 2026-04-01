@@ -67,10 +67,11 @@ function formatDate(date: string) {
 
 export function UsersTable({ initialUsers, courses, enrollments, currentUserId }: UsersTableProps) {
   const [users, setUsers] = useState(initialUsers);
+  const [allEnrollments, setAllEnrollments] = useState(enrollments);
 
   const enrollmentsByUser = useMemo(() => {
     const map: Record<string, { course_id: string; title: string; batch: string | null }[]> = {};
-    const list = Array.isArray(enrollments) ? enrollments : [];
+    const list = Array.isArray(allEnrollments) ? allEnrollments : [];
     for (const e of list) {
       if (!e.courses) continue;
       if (!map[e.user_id]) map[e.user_id] = [];
@@ -81,7 +82,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
       });
     }
     return map;
-  }, [enrollments]);
+  }, [allEnrollments]);
 
   const handleDeleteSuccess = useCallback((userId: string) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
@@ -247,6 +248,12 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             studentId={user.id}
                             studentName={user.full_name}
                             courses={courses}
+                            enrolledCourseIds={(enrollmentsByUser[user.id] ?? []).map(
+                              (e) => e.course_id
+                            )}
+                            onEnroll={(enrollment) => {
+                              setAllEnrollments((prev) => [...prev, enrollment]);
+                            }}
                           />
                         )}
                         <DeleteUserButton
