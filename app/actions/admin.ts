@@ -3,7 +3,12 @@
 import { verifySession } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { AuditLogEntry, UserEnrollmentDetail, UserDetailData } from "@/types";
+import type {
+  AuditLogEntry,
+  UserEnrollmentDetail,
+  UserDetailData,
+  LoginHistoryEntry,
+} from "@/types";
 
 export interface StudentApplication {
   // Identity
@@ -390,6 +395,23 @@ export async function getUserDetail(
   const accountAgeMs = Date.now() - new Date(u.created_at).getTime();
   const accountAgeDays = Math.floor(accountAgeMs / (1000 * 60 * 60 * 24));
 
+  // Fetch login history
+  const { data: loginHistoryData } = await admin
+    .from("login_history")
+    .select("id, email, status, device_fingerprint, user_agent, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const loginHistory: LoginHistoryEntry[] = ((loginHistoryData as any[]) ?? []).map((l: any) => ({
+    id: l.id,
+    email: l.email,
+    status: l.status,
+    device_fingerprint: l.device_fingerprint,
+    user_agent: l.user_agent,
+    created_at: l.created_at,
+  }));
+
   return {
     data: {
       user: {
@@ -424,6 +446,7 @@ export async function getUserDetail(
       },
       enrollments,
       auditLog,
+      loginHistory,
       stats: {
         totalEnrollments: enrollments.length,
         completedCourses,

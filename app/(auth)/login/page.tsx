@@ -53,6 +53,11 @@ export default function LoginPage() {
         className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-6 delay-150 duration-700"
       >
         <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
+        <input
+          type="hidden"
+          name="user_agent"
+          value={typeof navigator !== "undefined" ? navigator.userAgent : ""}
+        />
         {state?.error && (
           <Alert
             variant="destructive"

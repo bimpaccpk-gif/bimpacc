@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/types";
 
 export async function signIn(
@@ -23,6 +23,7 @@ export async function signIn(
   }
 
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -30,6 +31,14 @@ export async function signIn(
   });
 
   if (error) {
+    // Log failed login (credentials)
+    await (admin as any).from("login_history").insert({
+      user_id: null,
+      email,
+      status: "failed_credentials",
+      device_fingerprint: deviceFingerprint,
+      user_agent: formData.get("user_agent") as string | null,
+    });
     return { error: error.message };
   }
 
@@ -38,6 +47,13 @@ export async function signIn(
   } = await supabase.auth.getUser();
 
   if (!user) {
+    await (admin as any).from("login_history").insert({
+      user_id: null,
+      email,
+      status: "failed_credentials",
+      device_fingerprint: deviceFingerprint,
+      user_agent: formData.get("user_agent") as string | null,
+    });
     return { error: "Authentication failed." };
   }
 
@@ -65,12 +81,28 @@ export async function signIn(
     } else if (storedFingerprint !== deviceFingerprint) {
       // Device mismatch — sign out and reject
       await supabase.auth.signOut();
+      await (admin as any).from("login_history").insert({
+        user_id: user.id,
+        email,
+        status: "failed_device",
+        device_fingerprint: deviceFingerprint,
+        user_agent: formData.get("user_agent") as string | null,
+      });
       return {
         error:
           "This account is locked to a different device. Contact admin to reset your device lock.",
       };
     }
   }
+
+  // Log successful login
+  await (admin as any).from("login_history").insert({
+    user_id: user.id,
+    email,
+    status: "success",
+    device_fingerprint: deviceFingerprint,
+    user_agent: formData.get("user_agent") as string | null,
+  });
 
   redirect(`/${role}`);
 }

@@ -113,6 +113,15 @@ export interface AuditLogEntry {
   admin_name?: string;
 }
 
+export interface LoginHistoryEntry {
+  id: string;
+  email: string;
+  status: "success" | "failed_credentials" | "failed_device";
+  device_fingerprint: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
 export interface UserEnrollmentDetail {
   enrollment_id: string;
   course_id: string;
@@ -205,6 +214,7 @@ export interface UserDetailData {
   };
   enrollments: UserEnrollmentDetail[];
   auditLog: AuditLogEntry[];
+  loginHistory: LoginHistoryEntry[];
   stats: {
     totalEnrollments: number;
     completedCourses: number;

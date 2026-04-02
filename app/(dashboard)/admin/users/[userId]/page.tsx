@@ -21,6 +21,9 @@ import {
   XCircle,
   Activity,
   TrendingUp,
+  Smartphone,
+  LogIn,
+  AlertTriangle,
 } from "lucide-react";
 
 function getInitials(name: string) {
@@ -78,7 +81,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
     notFound();
   }
 
-  const { user, enrollments, auditLog, stats } = data;
+  const { user, enrollments, auditLog, loginHistory, stats } = data;
 
   return (
     <div className="space-y-6">
@@ -143,6 +146,12 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                   <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
                     <XCircle className="h-3 w-3" />
                     Paused
+                  </span>
+                )}
+                {user.role === "student" && user.device_fingerprint && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                    <Smartphone className="h-3 w-3" />
+                    Device Bound
                   </span>
                 )}
               </div>
@@ -225,6 +234,20 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
             />
             <InfoRow label="Approval" value={user.is_approved ? "Approved" : "Not approved"} />
             <InfoRow label="Account Status" value={user.is_paused ? "Paused" : "Active"} />
+            {user.role === "student" && (
+              <>
+                <Separator />
+                <InfoRow
+                  label="Device Lock"
+                  value={
+                    user.device_fingerprint
+                      ? `Bound on ${formatDateTime(user.device_locked_at!)}`
+                      : "Not locked"
+                  }
+                />
+                <InfoRow label="Device Fingerprint" value={user.device_fingerprint} mono />
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -467,6 +490,75 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Login History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogIn className="h-5 w-5" />
+            Login History ({loginHistory.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loginHistory.length === 0 ? (
+            <p className="text-muted-foreground py-4 text-center text-sm">
+              No login history recorded yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">Status</th>
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">Date & Time</th>
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">
+                      Device Fingerprint
+                    </th>
+                    <th className="text-muted-foreground pb-3 font-medium">User Agent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loginHistory.map((entry) => (
+                    <tr key={entry.id} className="border-b last:border-0">
+                      <td className="py-3 pr-4">
+                        {entry.status === "success" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Success
+                          </span>
+                        ) : entry.status === "failed_device" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                            <Smartphone className="h-3 w-3" />
+                            Device Blocked
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
+                            <AlertTriangle className="h-3 w-3" />
+                            Wrong Credentials
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-muted-foreground py-3 pr-4 whitespace-nowrap">
+                        {formatDateTime(entry.created_at)}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span className="text-muted-foreground font-mono text-xs">
+                          {entry.device_fingerprint
+                            ? entry.device_fingerprint.slice(0, 12) + "..."
+                            : "N/A"}
+                        </span>
+                      </td>
+                      <td className="text-muted-foreground max-w-[200px] truncate py-3 text-xs">
+                        {entry.user_agent || "N/A"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
