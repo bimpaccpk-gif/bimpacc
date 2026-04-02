@@ -102,14 +102,14 @@ export function UserDetailActions({
             variant="outline"
             size="sm"
             disabled={devicePending}
-            className="gap-1"
+            className="gap-1 border-amber-500/50 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 dark:hover:text-amber-300"
           >
             {devicePending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
                 <Smartphone className="h-4 w-4" />
-                Reset Device
+                Reset Device Binding
               </>
             )}
           </Button>
