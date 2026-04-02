@@ -199,6 +199,9 @@ export interface UserDetailData {
     degree_url: string | null;
     fee_receipt_url: string | null;
     avatar_file_url: string | null;
+    // Device lock
+    device_fingerprint: string | null;
+    device_locked_at: string | null;
   };
   enrollments: UserEnrollmentDetail[];
   auditLog: AuditLogEntry[];

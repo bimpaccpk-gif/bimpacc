@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { adminChangeUserRole } from "@/lib/supabase/actions";
-import { toggleUserPause } from "@/app/actions/admin";
-import { Loader2, Pause, Play, ChevronDown, Shield } from "lucide-react";
+import { toggleUserPause, resetDeviceFingerprint } from "@/app/actions/admin";
+import { Loader2, Pause, Play, ChevronDown, Shield, Smartphone } from "lucide-react";
 import type { UserRole } from "@/types";
 
 const roles: { value: UserRole; label: string }[] = [
@@ -30,6 +30,10 @@ export function UserDetailActions({
 }) {
   const [roleState, roleAction, rolePending] = useActionState(adminChangeUserRole, undefined);
   const [pauseState, pauseAction, pausePending] = useActionState(toggleUserPause, undefined);
+  const [deviceState, deviceAction, devicePending] = useActionState(
+    resetDeviceFingerprint,
+    undefined
+  );
 
   return (
     <div className="flex items-center gap-2">
@@ -89,12 +93,39 @@ export function UserDetailActions({
         </Button>
       </form>
 
-      {/* Status Messages */}
-      {(roleState?.error || pauseState?.error) && (
-        <p className="text-destructive text-xs">{roleState?.error || pauseState?.error}</p>
+      {/* Reset Device Lock */}
+      {currentRole === "student" && (
+        <form action={deviceAction}>
+          <input type="hidden" name="userId" value={userId} />
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            disabled={devicePending}
+            className="gap-1"
+          >
+            {devicePending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Smartphone className="h-4 w-4" />
+                Reset Device
+              </>
+            )}
+          </Button>
+        </form>
       )}
-      {(roleState?.success || pauseState?.success) && (
-        <p className="text-xs text-green-600">{roleState?.success || pauseState?.success}</p>
+
+      {/* Status Messages */}
+      {(roleState?.error || pauseState?.error || deviceState?.error) && (
+        <p className="text-destructive text-xs">
+          {roleState?.error || pauseState?.error || deviceState?.error}
+        </p>
+      )}
+      {(roleState?.success || pauseState?.success || deviceState?.success) && (
+        <p className="text-xs text-green-600">
+          {roleState?.success || pauseState?.success || deviceState?.success}
+        </p>
       )}
     </div>
   );

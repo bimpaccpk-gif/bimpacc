@@ -10,9 +10,16 @@ export async function signIn(
 ): Promise<{ error: string }> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const deviceFingerprint = formData.get("device_fingerprint") as string | null;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
+  }
+
+  if (!deviceFingerprint) {
+    return {
+      error: "Device verification failed. Please refresh the page and try again.",
+    };
   }
 
   const supabase = await createClient();
@@ -36,11 +43,35 @@ export async function signIn(
 
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, device_fingerprint")
     .eq("id", user.id)
     .single();
 
   const role = (profile?.role as UserRole) ?? "student";
+
+  // Device lock enforcement — students only
+  if (role === "student") {
+    const storedFingerprint = profile?.device_fingerprint as string | null;
+
+    if (!storedFingerprint) {
+      // First login — bind this device
+      await supabase
+        .from("users")
+        .update({
+          device_fingerprint: deviceFingerprint,
+          device_locked_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+    } else if (storedFingerprint !== deviceFingerprint) {
+      // Device mismatch — sign out and reject
+      await supabase.auth.signOut();
+      return {
+        error:
+          "This account is locked to a different device. Contact admin to reset your device lock.",
+      };
+    }
+  }
+
   redirect(`/${role}`);
 }
 
@@ -66,15 +97,12 @@ export async function signUp(
     return { error: "Password must be at least 8 characters." };
   }
 
-  const allowedDomains = [
-    "gmail.com",
-  ];
+  const allowedDomains = ["gmail.com"];
   const emailDomain = email.split("@")[1]?.toLowerCase();
 
   if (!emailDomain || !allowedDomains.includes(emailDomain)) {
     return {
-      error:
-        "Only Gmail emails are allowed for registration.",
+      error: "Only Gmail emails are allowed for registration.",
     };
   }
 

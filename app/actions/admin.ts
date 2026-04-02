@@ -419,6 +419,8 @@ export async function getUserDetail(
         degree_url,
         fee_receipt_url,
         avatar_file_url,
+        device_fingerprint: u.device_fingerprint,
+        device_locked_at: u.device_locked_at,
       },
       enrollments,
       auditLog,
@@ -474,5 +476,50 @@ export async function toggleUserPause(
   return {
     error: "",
     success: `User account has been ${isPaused ? "paused" : "unpaused"}.`,
+  };
+}
+
+export async function resetDeviceFingerprint(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const session = await verifySession();
+
+  const supabase = await createClient();
+
+  if (!(await verifyAdmin(supabase))) {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
+
+  const userId = formData.get("userId") as string;
+
+  if (!userId) {
+    return { error: "User ID is required.", success: "" };
+  }
+
+  // Verify target user is a student
+  const { data: target } = await supabase.from("users").select("role").eq("id", userId).single();
+
+  if (!target || target.role !== "student") {
+    return { error: "Device lock reset is only available for student accounts.", success: "" };
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ device_fingerprint: null, device_locked_at: null } as never)
+    .eq("id", userId);
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  await logAuditEvent(session.userId, userId, "user.device_reset", {
+    action: "device_lock_reset",
+  });
+
+  revalidatePath("/admin/users");
+  return {
+    error: "",
+    success: "Device lock has been reset. The student can now login from a new device.",
   };
 }
