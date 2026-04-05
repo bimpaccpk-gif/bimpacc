@@ -2,66 +2,69 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { 
-  ArrowRight, 
-  Sparkles, 
-  Play, 
-  BookOpen,
-  Award,
-  CheckCircle2,
-  Zap
-} from "lucide-react";
-
+import { ArrowRight, Sparkles, Play, BookOpen, Award, CheckCircle2, Zap } from "lucide-react";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden min-h-[90vh] flex items-center">
+    <section className="relative flex min-h-[90vh] items-center overflow-hidden">
       {/* Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
-      
+      <div className="from-primary/5 via-background to-primary/10 absolute inset-0 bg-gradient-to-br" />
+
       {/* Decorative Blobs */}
-      <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-primary/20 blur-3xl animate-pulse-subtle" />
-      <div className="absolute bottom-20 right-10 h-96 w-96 rounded-full bg-primary/10 blur-3xl animate-pulse-subtle" style={{ animationDelay: "1s" }} />
-      
+      <div className="bg-primary/20 animate-pulse-subtle absolute top-20 left-10 h-72 w-72 rounded-full blur-3xl" />
+      <div
+        className="bg-primary/10 animate-pulse-subtle absolute right-10 bottom-20 h-96 w-96 rounded-full blur-3xl"
+        style={{ animationDelay: "1s" }}
+      />
+
       {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-30" />
+      <div className="bg-grid-pattern absolute inset-0 opacity-30" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* Left Content */}
           <div className="space-y-8">
             {/* Badge */}
-            <div className="inline-flex animate-fadeInUp" style={{ animationDelay: "0ms" }}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+            <div className="animate-fadeInUp inline-flex" style={{ animationDelay: "0ms" }}>
+              <div className="border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium">
                 <Sparkles className="h-4 w-4" />
                 <span>Start learning today</span>
               </div>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl animate-fadeInUp" style={{ animationDelay: "100ms" }}>
+            <h1
+              className="text-foreground animate-fadeInUp text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
+              style={{ animationDelay: "100ms" }}
+            >
               Master BIM Skills &{" "}
-              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <span className="from-primary to-primary/60 bg-gradient-to-r bg-clip-text text-transparent">
                 Advance Your Career
               </span>
             </h1>
-            
+
             {/* Subheadline */}
-            <p className="max-w-xl text-lg text-muted-foreground animate-fadeInUp" style={{ animationDelay: "200ms" }}>
-              Build industry-recognized BIM skills with hands-on courses designed by experts. 
-              From BIM modeling to construction management, chart your path to success.
+            <p
+              className="text-muted-foreground animate-fadeInUp max-w-xl text-lg"
+              style={{ animationDelay: "200ms" }}
+            >
+              Build industry-recognized BIM skills with hands-on courses designed by experts. From
+              BIM modeling to construction management, chart your path to success.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col gap-4 sm:flex-row animate-fadeInUp" style={{ animationDelay: "300ms" }}>
+            <div
+              className="animate-fadeInUp flex flex-col gap-4 sm:flex-row"
+              style={{ animationDelay: "300ms" }}
+            >
               <Link href="/register">
-                <Button size="lg" className="w-full gap-2 sm:w-auto h-11 px-6">
+                <Button size="lg" className="h-11 w-full gap-2 px-6 sm:w-auto">
                   Get Started Free
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="lg" variant="outline" className="w-full gap-2 sm:w-auto h-11 px-6">
+                <Button size="lg" variant="outline" className="h-11 w-full gap-2 px-6 sm:w-auto">
                   <Play className="h-4 w-4" />
                   Browse Courses
                 </Button>
@@ -70,83 +73,95 @@ export function Hero() {
           </div>
 
           {/* Right Content - Hero Card */}
-          <div className="relative hidden lg:block animate-scaleIn" style={{ animationDelay: "300ms" }}>
+          <div
+            className="animate-scaleIn relative hidden lg:block"
+            style={{ animationDelay: "300ms" }}
+          >
             <div className="relative mx-auto max-w-md">
               {/* Main Card */}
-              <div className="rounded-2xl border bg-card p-6 shadow-2xl">
+              <div className="bg-card rounded-2xl border p-6 shadow-2xl">
                 {/* Course Progress Card */}
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                    <BookOpen className="h-6 w-6 text-primary" />
+                  <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl">
+                    <BookOpen className="text-primary h-6 w-6" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">BIM Modeling</p>
-                    <p className="text-sm text-muted-foreground">Advanced Certification</p>
+                    <p className="text-foreground font-semibold">BIM Modeling</p>
+                    <p className="text-muted-foreground text-sm">Advanced Certification</p>
                   </div>
                 </div>
-                
+
                 {/* Progress Visual */}
-                <div className="mb-4 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Course Progress</span>
-                    <span className="text-sm font-bold text-primary">75%</span>
+                <div className="from-primary/20 to-primary/5 mb-4 rounded-xl bg-gradient-to-br p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-foreground text-sm font-medium">Course Progress</span>
+                    <span className="text-primary text-sm font-bold">75%</span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-primary/20">
-                    <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-primary to-primary/60" />
+                  <div className="bg-primary/20 h-3 overflow-hidden rounded-full">
+                    <div className="from-primary to-primary/60 h-full w-3/4 rounded-full bg-gradient-to-r" />
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="text-muted-foreground mt-3 flex items-center justify-between text-xs">
                     <span>12 of 16 lessons completed</span>
                     <span>4 lessons remaining</span>
                   </div>
                 </div>
-                
+
                 {/* Recent Activity */}
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Recent Activity</p>
-                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-2">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    <span className="text-sm text-foreground">Completed: Revit Advanced</span>
+                  <p className="text-foreground text-sm font-medium">Recent Activity</p>
+                  <div className="bg-muted/50 flex items-center gap-3 rounded-lg p-2">
+                    <CheckCircle2 className="text-success h-5 w-5" />
+                    <span className="text-foreground text-sm">Completed: Revit Advanced</span>
                   </div>
-                  <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-2">
-                    <Zap className="h-5 w-5 text-amber-500" />
-                    <span className="text-sm text-foreground">Earned +150 XP</span>
+                  <div className="bg-muted/50 flex items-center gap-3 rounded-lg p-2">
+                    <Zap className="text-warning h-5 w-5" />
+                    <span className="text-foreground text-sm">Earned +150 XP</span>
                   </div>
                 </div>
               </div>
 
               {/* Floating Elements */}
-              <div className="absolute -left-8 top-20 animate-slideInLeft glass rounded-xl p-4 shadow-lg" style={{ animationDelay: "600ms" }}>
+              <div
+                className="animate-slideInLeft glass absolute top-20 -left-8 rounded-xl p-4 shadow-lg"
+                style={{ animationDelay: "600ms" }}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500">
-                    <CheckCircle2 className="h-5 w-5 text-white" />
+                  <div className="bg-success flex h-10 w-10 items-center justify-center rounded-full">
+                    <CheckCircle2 className="text-primary-foreground h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Course Completed!</p>
-                    <p className="text-xs text-muted-foreground">Revit Architecture</p>
+                    <p className="text-foreground text-sm font-semibold">Course Completed!</p>
+                    <p className="text-muted-foreground text-xs">Revit Architecture</p>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute -right-4 bottom-32 animate-slideInRight glass rounded-xl p-4 shadow-lg" style={{ animationDelay: "800ms" }}>
+              <div
+                className="animate-slideInRight glass absolute -right-4 bottom-32 rounded-xl p-4 shadow-lg"
+                style={{ animationDelay: "800ms" }}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500">
-                    <Zap className="h-5 w-5 text-white" />
+                  <div className="bg-warning flex h-10 w-10 items-center justify-center rounded-full">
+                    <Zap className="text-primary-foreground h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">+500 XP</p>
-                    <p className="text-xs text-muted-foreground">Level Up!</p>
+                    <p className="text-foreground text-sm font-semibold">+500 XP</p>
+                    <p className="text-muted-foreground text-xs">Level Up!</p>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute -left-4 bottom-8 animate-float glass rounded-xl p-4 shadow-lg" style={{ animationDelay: "1000ms" }}>
+              <div
+                className="animate-float glass absolute bottom-8 -left-4 rounded-xl p-4 shadow-lg"
+                style={{ animationDelay: "1000ms" }}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500">
-                    <Award className="h-5 w-5 text-white" />
+                  <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-full">
+                    <Award className="text-primary-foreground h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Certificate Earned!</p>
-                    <p className="text-xs text-muted-foreground">BIM Coordination</p>
+                    <p className="text-foreground text-sm font-semibold">Certificate Earned!</p>
+                    <p className="text-muted-foreground text-xs">BIM Coordination</p>
                   </div>
                 </div>
               </div>

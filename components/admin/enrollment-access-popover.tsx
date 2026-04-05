@@ -52,22 +52,22 @@ function getEffectiveStatus(
 function StatusBadge({ status }: { status: EffectiveStatus }) {
   if (status === "active") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold text-success">
+        <span className="h-1.5 w-1.5 rounded-full bg-success" />
         Active
       </span>
     );
   }
   if (status === "paused_override") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
         <Pause className="h-2.5 w-2.5" />
         Paused
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning">
       <Pause className="h-2.5 w-2.5" />
       Global
     </span>
@@ -130,7 +130,7 @@ function AccessToggle({
       <Button
         variant="ghost"
         size="icon"
-        className="h-5 w-5 rounded-full bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+        className="h-5 w-5 rounded-full bg-warning/10 text-warning hover:bg-warning/20"
         onClick={handleToggle}
         title="Pause for this student"
       >
@@ -143,7 +143,7 @@ function AccessToggle({
       <Button
         variant="ghost"
         size="icon"
-        className="h-5 w-5 rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20"
+        className="h-5 w-5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20"
         onClick={handleResumeGlobal}
         title="Resume (revert to global)"
       >
@@ -155,7 +155,7 @@ function AccessToggle({
     <Button
       variant="ghost"
       size="icon"
-      className="h-5 w-5 rounded-full bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+      className="h-5 w-5 rounded-full bg-success/10 text-success hover:bg-success/20"
       onClick={handleToggle}
       title="Pause for this student"
     >
@@ -238,7 +238,7 @@ function SubjectAccordion({
         ) : (
           <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0" />
         )}
-        <Layers className="h-3 w-3 shrink-0 text-indigo-500" />
+        <Layers className="h-3 w-3 shrink-0 text-primary" />
         <span className="flex-1 truncate text-xs font-medium">{subject.title}</span>
         <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <StatusBadge status={getEffectiveStatus(effectiveGlobal, subject.studentOverride)} />
@@ -313,14 +313,14 @@ export function EnrollmentAccessDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400">
+      <DialogTrigger className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-info/10 px-2 py-1 text-xs font-semibold text-info transition-colors hover:bg-info/20 dark:text-info">
         <Shield className="h-3 w-3" />
         Access ({enrolledCount})
       </DialogTrigger>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-lg">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-indigo-500" />
+            <Shield className="h-5 w-5 text-primary" />
             Content Access
           </DialogTitle>
           <DialogDescription>
@@ -334,7 +334,7 @@ export function EnrollmentAccessDialog({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 border-red-200 text-[10px] text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:border-red-900"
+              className="h-7 gap-1 border-destructive/30 text-[10px] text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/30"
               onClick={() => handleCascadePause(true)}
               disabled={cascadeLoading}
             >
@@ -348,7 +348,7 @@ export function EnrollmentAccessDialog({
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 border-emerald-200 text-[10px] text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:border-emerald-900"
+              className="h-7 gap-1 border-success/30 text-[10px] text-success hover:bg-success/10 hover:text-success dark:border-success/30"
               onClick={() => handleCascadePause(false)}
               disabled={cascadeLoading}
             >
@@ -374,7 +374,7 @@ export function EnrollmentAccessDialog({
               {/* Course level */}
               <div className="bg-muted/30 flex items-center justify-between gap-2 rounded-md px-3 py-2.5">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-indigo-500" />
+                  <BookOpen className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold">Course Level</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -433,9 +433,9 @@ export function EnrollmentAccessDialog({
               <div className="mt-2 border-t pt-2">
                 <p className="text-muted-foreground px-1 text-[10px]">
                   <span className="font-semibold">Status:</span>{" "}
-                  <span className="text-emerald-600">Active</span> = student can access.{" "}
-                  <span className="text-red-600">Paused</span> = paused by admin for this student.{" "}
-                  <span className="text-amber-600">Global</span> = paused for all students.
+                  <span className="text-success">Active</span> = student can access.{" "}
+                  <span className="text-destructive">Paused</span> = paused by admin for this student.{" "}
+                  <span className="text-warning">Global</span> = paused for all students.
                 </p>
               </div>
             </>

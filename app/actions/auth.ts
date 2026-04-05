@@ -32,7 +32,7 @@ export async function signIn(
 
   if (error) {
     // Log failed login (credentials)
-    await (admin as any).from("login_history").insert({
+    await admin.from("login_history").insert({
       user_id: null,
       email,
       status: "failed_credentials",
@@ -47,7 +47,7 @@ export async function signIn(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    await (admin as any).from("login_history").insert({
+    await admin.from("login_history").insert({
       user_id: null,
       email,
       status: "failed_credentials",
@@ -81,7 +81,7 @@ export async function signIn(
     } else if (storedFingerprint !== deviceFingerprint) {
       // Device mismatch — sign out and reject
       await supabase.auth.signOut();
-      await (admin as any).from("login_history").insert({
+      await admin.from("login_history").insert({
         user_id: user.id,
         email,
         status: "failed_device",
@@ -96,7 +96,7 @@ export async function signIn(
   }
 
   // Log successful login
-  await (admin as any).from("login_history").insert({
+  await admin.from("login_history").insert({
     user_id: user.id,
     email,
     status: "success",
@@ -136,6 +136,11 @@ export async function signUp(
     return {
       error: "Only Gmail emails are allowed for registration.",
     };
+  }
+
+  // Validate courseId format if provided (should be UUID)
+  if (courseId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+    return { error: "Invalid course selection." };
   }
 
   const supabase = await createClient();

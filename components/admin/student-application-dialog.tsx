@@ -96,13 +96,13 @@ function DocumentViewer({
           <img
             src={url}
             alt={label}
-            className="w-full max-h-64 object-contain bg-white dark:bg-zinc-900"
+            className="w-full max-h-64 object-contain bg-background dark:bg-background"
           />
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
+            className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-lg bg-background/80 px-3 py-1.5 text-xs font-medium text-primary-foreground opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
           >
             <Download className="h-3 w-3" />
             Open Full Size
@@ -124,7 +124,7 @@ function DocumentViewer({
         rel="noopener noreferrer"
         className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
       >
-        <FileText className="h-5 w-5 text-indigo-500" />
+        <FileText className="h-5 w-5 text-primary" />
         <span className="flex-1">View / Download {label}</span>
         <Download className="h-4 w-4 text-muted-foreground" />
       </a>
@@ -198,7 +198,7 @@ function Section({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 border-b border-border pb-2">
-        <Icon className="h-4 w-4 text-indigo-500" />
+        <Icon className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-bold uppercase tracking-wider text-foreground/80">
           {title}
         </h3>
@@ -294,7 +294,7 @@ export function StudentApplicationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 transition-colors hover:bg-indigo-500/20"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
       >
         <Eye className="h-3 w-3" />
         Review
@@ -312,7 +312,7 @@ export function StudentApplicationDialog({
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
               Loading application...
             </p>
@@ -321,9 +321,9 @@ export function StudentApplicationDialog({
 
         {/* Error State */}
         {fetchError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 p-6 text-center">
-            <XCircle className="mx-auto h-8 w-8 text-red-500 mb-2" />
-            <p className="text-sm text-red-700 dark:text-red-400">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 dark:border-destructive dark:bg-destructive/20 p-6 text-center">
+            <XCircle className="mx-auto h-8 w-8 text-destructive mb-2" />
+            <p className="text-sm text-destructive dark:text-destructive">
               {fetchError}
             </p>
           </div>
@@ -339,18 +339,18 @@ export function StudentApplicationDialog({
                   Status
                 </span>
                 {app.is_approved ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-bold text-success ring-1 ring-success/20">
                     <CheckCircle2 className="h-3 w-3" />
                     Approved
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-xs font-bold text-warning ring-1 ring-warning/20">
                     <Loader2 className="h-3 w-3" />
                     Under Review
                   </span>
                 )}
                 {app.onboarding_bypassed && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-info/10 px-3 py-1 text-xs font-bold text-info ring-1 ring-info/20">
                     <ShieldCheck className="h-3 w-3" />
                     Onboarding Bypassed
                   </span>
@@ -477,10 +477,10 @@ export function StudentApplicationDialog({
 
                 {/* Edit feedback */}
                 {editState?.error && (
-                  <p className="text-sm text-red-500 text-center">{editState.error}</p>
+                  <p className="text-sm text-destructive text-center">{editState.error}</p>
                 )}
                 {editState?.success && (
-                  <p className="text-sm text-emerald-500 text-center">{editState.success}</p>
+                  <p className="text-sm text-success text-center">{editState.success}</p>
                 )}
 
                 {/* Edit Actions */}
@@ -496,7 +496,7 @@ export function StudentApplicationDialog({
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700"
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={editPending}
                   >
                     {editPending ? (
@@ -566,10 +566,10 @@ export function StudentApplicationDialog({
                 {/* Section 5: Enrollment Request */}
                 {app.selected_course_id && (
                   <Section icon={BookOpen} title="Enrollment Request">
-                    <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900">
+                    <div className="p-4 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary/900">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10">
-                          <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                          <BookOpen className="h-5 w-5 text-primary dark:text-primary" />
                         </div>
                         <div>
                           <p className="font-semibold text-foreground">{app.selected_course_title || "Course"}</p>
@@ -596,12 +596,12 @@ export function StudentApplicationDialog({
                 {/* Approval Action */}
                 <div className="border-t border-border pt-6">
                   {approvalState?.error && (
-                    <p className="mb-3 text-sm text-red-500 text-center">
+                    <p className="mb-3 text-sm text-destructive text-center">
                       {approvalState.error}
                     </p>
                   )}
                   {approvalState?.success && (
-                    <p className="mb-3 text-sm text-emerald-500 text-center">
+                    <p className="mb-3 text-sm text-success text-center">
                       {approvalState.success}
                     </p>
                   )}
@@ -619,7 +619,7 @@ export function StudentApplicationDialog({
                         type="submit"
                         variant="outline"
                         disabled={approvalPending}
-                        className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive dark:text-destructive dark:hover:bg-destructive/20"
                       >
                         {approvalPending ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -632,7 +632,7 @@ export function StudentApplicationDialog({
                       <Button
                         type="submit"
                         disabled={approvalPending}
-                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg"
+                        className="w-full bg-success text-primary-foreground hover:bg-success/90 shadow-lg"
                       >
                         {approvalPending ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

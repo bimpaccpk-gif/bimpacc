@@ -36,8 +36,8 @@ export function ContentPausedBanner({ blockedAt, courseId }: ContentPausedBanner
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="mx-auto max-w-md space-y-6 px-4 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/10">
-          <PauseCircle className="h-10 w-10 text-amber-500" />
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-warning/10">
+          <PauseCircle className="h-10 w-10 text-warning" />
         </div>
         <div className="space-y-2">
           <h2 className="text-foreground text-2xl font-bold">{msg.title}</h2>

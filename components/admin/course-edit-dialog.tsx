@@ -48,13 +48,13 @@ export function CourseEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="flex items-center justify-center border border-input bg-background h-[44px] w-[44px] sm:h-11 sm:w-11 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 active:scale-[0.98] transition-all">
+      <DialogTrigger className="flex items-center justify-center border border-input bg-background h-[44px] w-[44px] sm:h-11 sm:w-11 rounded-xl border-primary/20 text-primary hover:bg-primary/5 hover:text-primary dark:border-primary/50 dark:text-primary dark:hover:bg-primary/10 active:scale-[0.98] transition-all">
         <Edit2 className="h-4 w-4" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-3">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-900/20">
-            <Edit2 className="h-5 w-5 text-indigo-500" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+            <Edit2 className="h-5 w-5 text-primary" />
           </div>
           <DialogTitle className="text-center text-xl">Edit Course</DialogTitle>
           <DialogDescription className="text-center">

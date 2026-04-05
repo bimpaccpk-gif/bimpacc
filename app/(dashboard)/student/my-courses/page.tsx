@@ -65,17 +65,15 @@ export default async function MyCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">My Courses</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Courses you are enrolled in
-        </p>
+        <h1 className="text-foreground text-2xl font-bold">My Courses</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Courses you are enrolled in</p>
       </div>
 
       {courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+          <BookOpen className="text-muted-foreground/50 h-12 w-12" />
           <h3 className="mt-4 text-lg font-semibold">No courses yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-sm">
             You haven&apos;t enrolled in any courses.
           </p>
           <Link href="/student/courses" className="mt-4">
@@ -92,7 +90,7 @@ export default async function MyCoursesPage() {
               className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
               {/* Thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+              <div className="from-primary via-brand-500 to-primary/80 relative aspect-video overflow-hidden bg-gradient-to-br">
                 {course.thumbnail_url ? (
                   <img
                     src={course.thumbnail_url}
@@ -101,12 +99,12 @@ export default async function MyCoursesPage() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <BookOpen className="h-12 w-12 text-white/60" />
+                    <BookOpen className="text-primary-foreground/60 h-12 w-12" />
                   </div>
                 )}
                 {course.course_batch && (
                   <div className="absolute bottom-3 left-3">
-                    <span className="rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                    <span className="bg-background/60 text-foreground rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                       Batch {course.course_batch}
                     </span>
                   </div>
@@ -114,7 +112,7 @@ export default async function MyCoursesPage() {
               </div>
 
               <CardHeader className="pb-2">
-                <CardTitle className="line-clamp-2 text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
                   {course.course_title}
                 </CardTitle>
               </CardHeader>
@@ -126,16 +124,16 @@ export default async function MyCoursesPage() {
                     <span className="text-muted-foreground">Progress</span>
                     <span className="font-semibold">{course.progress}%</span>
                   </div>
-                  <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                      className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r transition-all duration-500"
                       style={{ width: `${course.progress}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Enrolled date */}
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                   <Calendar className="h-3 w-3" />
                   Enrolled {formatDate(course.enrolled_at)}
                 </p>

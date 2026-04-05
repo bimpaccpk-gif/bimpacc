@@ -146,9 +146,9 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                               />
                               <span className="text-muted-foreground text-xs">
                                 {user.is_approved ? (
-                                  <span className="font-bold text-green-500">Approved</span>
+                                  <span className="font-bold text-success">Approved</span>
                                 ) : (
-                                  <span className="font-bold text-indigo-500">Under Review</span>
+                                  <span className="font-bold text-primary">Under Review</span>
                                 )}
                               </span>
                               <StudentApplicationDialog
@@ -159,7 +159,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             </div>
                           ) : user.onboarding_bypassed ? (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-500">
+                              <span className="flex items-center rounded-md bg-info/10 px-2 py-1 text-xs font-semibold text-info">
                                 <ShieldCheck className="mr-1 h-3 w-3" />
                                 Onboarding Bypassed
                               </span>
@@ -171,7 +171,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500">
+                              <span className="flex items-center rounded-md bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
                                 <Clock className="mr-1 h-3 w-3" />
                                 Pending Setup
                               </span>
@@ -184,7 +184,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                           )}
                         </div>
                       ) : (
-                        <span className="flex w-fit items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-500">
+                        <span className="flex w-fit items-center rounded-md bg-success/10 px-2 py-1 text-xs font-semibold text-success">
                           <ShieldCheck className="mr-1 h-3 w-3" />
                           Auto-Approved
                         </span>

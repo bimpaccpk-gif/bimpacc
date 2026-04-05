@@ -368,7 +368,7 @@ export function YouTubeVideoPlayer({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={cn("flex flex-col bg-black lg:flex-row", isFullscreen && "!flex-col")}>
+    <div className={cn("bg-background flex flex-col lg:flex-row", isFullscreen && "!flex-col")}>
       {/* ─── Video Container ─────────────────────────────── */}
       <div
         ref={containerRef}
@@ -407,8 +407,8 @@ export function YouTubeVideoPlayer({
 
           {/* Loading / Buffering overlay */}
           {buffering && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
-              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-white/30 border-t-white sm:h-12 sm:w-12 sm:border-4" />
+            <div className="bg-background/20 pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div className="border-primary/30 border-t-primary h-10 w-10 animate-spin rounded-full border-[3px] sm:h-12 sm:w-12 sm:border-4" />
             </div>
           )}
 
@@ -416,11 +416,11 @@ export function YouTubeVideoPlayer({
           {!isPlaying && !buffering && isPlayerReady && (
             <button
               onClick={togglePlay}
-              className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 transition-opacity"
+              className="bg-background/30 absolute inset-0 z-10 flex items-center justify-center transition-opacity"
               aria-label="Play video"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-2xl transition-transform hover:scale-110 sm:h-20 sm:w-20">
-                <Play className="ml-0.5 h-6 w-6 text-black sm:h-9 sm:w-9" />
+              <div className="bg-primary/90 flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition-transform hover:scale-110 sm:h-20 sm:w-20">
+                <Play className="text-primary-foreground ml-0.5 h-6 w-6 sm:h-9 sm:w-9" />
               </div>
             </button>
           )}
@@ -465,22 +465,22 @@ export function YouTubeVideoPlayer({
                   className="pointer-events-none absolute bottom-5 z-30 -translate-x-1/2 sm:bottom-6"
                   style={{ left: hoverPos }}
                 >
-                  <div className="rounded bg-black/90 px-1.5 py-0.5 text-[10px] whitespace-nowrap text-white shadow-lg sm:px-2 sm:py-1 sm:text-xs">
+                  <div className="bg-background/90 text-primary-foreground rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap shadow-lg sm:px-2 sm:py-1 sm:text-xs">
                     {formatTime(hoverTime)}
                   </div>
                 </div>
               )}
 
               {/* Track */}
-              <div className="relative h-1 overflow-hidden rounded-full bg-white/20 transition-all group-hover/timeline:h-1.5 sm:h-1.5 sm:group-hover/timeline:h-2.5">
+              <div className="bg-primary-foreground/20 relative h-1 overflow-hidden rounded-full transition-all group-hover/timeline:h-1.5 sm:h-1.5 sm:group-hover/timeline:h-2.5">
                 {/* Progress bar */}
                 <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-indigo-500 transition-none"
+                  className="bg-primary absolute inset-y-0 left-0 rounded-full transition-none"
                   style={{ width: `${progressPercent}%` }}
                 />
                 {/* Scrubber thumb */}
                 <div
-                  className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500 opacity-0 shadow-md transition-opacity group-hover/timeline:opacity-100 sm:h-4 sm:w-4"
+                  className="bg-primary absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 shadow-md transition-opacity group-hover/timeline:opacity-100 sm:h-4 sm:w-4"
                   style={{ left: `${progressPercent}%` }}
                 />
               </div>
@@ -491,7 +491,7 @@ export function YouTubeVideoPlayer({
               {/* Play / Pause */}
               <button
                 onClick={togglePlay}
-                className="rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2"
+                className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full p-1.5 transition-colors sm:p-2"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
@@ -504,14 +504,14 @@ export function YouTubeVideoPlayer({
               {/* Skip Back / Forward — hidden on very small screens */}
               <button
                 onClick={skipBackward}
-                className="hidden rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2 md:flex"
+                className="text-primary-foreground hover:bg-primary-foreground/10 hidden rounded-full p-1.5 transition-colors sm:p-2 md:flex"
                 aria-label="Skip back 10 seconds"
               >
                 <SkipBack className="h-4 w-4" />
               </button>
               <button
                 onClick={skipForward}
-                className="hidden rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2 md:flex"
+                className="text-primary-foreground hover:bg-primary-foreground/10 hidden rounded-full p-1.5 transition-colors sm:p-2 md:flex"
                 aria-label="Skip forward 10 seconds"
               >
                 <SkipForward className="h-4 w-4" />
@@ -521,7 +521,7 @@ export function YouTubeVideoPlayer({
               <div className="group/vol flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={toggleMute}
-                  className="rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2"
+                  className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full p-1.5 transition-colors sm:p-2"
                   aria-label={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted || volume === 0 ? (
@@ -537,14 +537,14 @@ export function YouTubeVideoPlayer({
                     max={100}
                     value={isMuted ? 0 : volume}
                     onChange={(e) => changeVolume(parseInt(e.target.value))}
-                    className="h-1 w-14 cursor-pointer accent-indigo-500 sm:h-1 sm:w-20"
+                    className="h-1 w-14 cursor-pointer accent-primary sm:h-1 sm:w-20"
                     aria-label="Volume"
                   />
                 </div>
               </div>
 
               {/* Time display */}
-              <span className="px-1 font-mono text-[10px] whitespace-nowrap text-white sm:px-2 sm:text-xs">
+              <span className="px-1 font-mono text-[10px] whitespace-nowrap text-foreground sm:px-2 sm:text-xs">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
 
@@ -554,12 +554,12 @@ export function YouTubeVideoPlayer({
               {/* Playback speed — hidden on small screens */}
               <div className="group/speed relative hidden md:block">
                 <button
-                  className="rounded px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-white/10"
+                  className="rounded px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-foreground/10"
                   aria-label="Playback speed"
                 >
                   {playbackRate}x
                 </button>
-                <div className="invisible absolute right-0 bottom-full z-30 mb-2 min-w-[80px] rounded-lg bg-black/95 p-1 opacity-0 shadow-xl transition-all group-hover/speed:visible group-hover/speed:opacity-100">
+                <div className="invisible absolute right-0 bottom-full z-30 mb-2 min-w-[80px] rounded-lg bg-background/95 p-1 opacity-0 shadow-xl transition-all group-hover/speed:visible group-hover/speed:opacity-100">
                   {availableRates.map((rate) => (
                     <button
                       key={rate}
@@ -567,8 +567,8 @@ export function YouTubeVideoPlayer({
                       className={cn(
                         "block w-full rounded px-3 py-1.5 text-left text-xs transition-colors",
                         rate === playbackRate
-                          ? "bg-indigo-500 text-white"
-                          : "text-white/80 hover:bg-white/10"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground/80 hover:bg-foreground/10"
                       )}
                     >
                       {rate}x
@@ -581,8 +581,8 @@ export function YouTubeVideoPlayer({
               <button
                 onClick={() => setShowInfoSidebar((v) => !v)}
                 className={cn(
-                  "rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2",
-                  showInfoSidebar && "bg-white/10"
+                  "rounded-full p-1.5 text-foreground transition-colors hover:bg-foreground/10 sm:p-2",
+                  showInfoSidebar && "bg-foreground/10"
                 )}
                 aria-label="Toggle video info"
               >
@@ -592,7 +592,7 @@ export function YouTubeVideoPlayer({
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="rounded-full p-1.5 text-white transition-colors hover:bg-white/10 sm:p-2"
+                className="rounded-full p-1.5 text-foreground transition-colors hover:bg-foreground/10 sm:p-2"
                 aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (
@@ -683,7 +683,7 @@ export function YouTubeVideoPlayer({
                     className={cn(
                       "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                       rate === playbackRate
-                        ? "bg-indigo-500 text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     )}
                   >
@@ -716,7 +716,7 @@ export function YouTubeVideoPlayer({
                   max={100}
                   value={isMuted ? 0 : volume}
                   onChange={(e) => changeVolume(parseInt(e.target.value))}
-                  className="h-1.5 flex-1 cursor-pointer accent-indigo-500"
+                  className="h-1.5 flex-1 cursor-pointer accent-primary"
                   aria-label="Volume slider"
                 />
                 <span className="text-muted-foreground w-8 text-right font-mono text-xs">

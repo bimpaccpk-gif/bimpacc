@@ -103,7 +103,7 @@ export function LessonPlayerClient({
           className={cn(
             "inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
             isCompleted
-              ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+              ? "bg-success/10 text-success hover:bg-success/20 dark:text-success/80"
               : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
             isPending && "cursor-not-allowed opacity-50"
           )}
@@ -132,7 +132,7 @@ export function LessonPlayerClient({
           watermark={watermark}
         />
       ) : (
-        <div className="bg-black">
+        <div className="bg-background">
           <div className="bg-muted/20 mx-auto flex aspect-video w-full max-w-5xl flex-col items-center justify-center">
             <PlayCircle className="text-muted-foreground/30 mb-4 h-16 w-16" />
             <p className="text-muted-foreground text-sm">No video available for this lesson</p>

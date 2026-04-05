@@ -67,15 +67,28 @@ export default function RootLayout({
                   kill(e);
                 }
 
+                function killMenu(e) {
+                  // Allow dropdown menus to work
+                  var target = e.target;
+                  if (target.closest && (
+                    target.closest('[data-slot="dropdown-menu-trigger"]') || 
+                    target.closest('[data-slot="dropdown-menu-content"]') ||
+                    target.closest('[data-slot="dropdown-menu"]')
+                  )) {
+                    return;
+                  }
+                  kill(e);
+                }
+
                 // Force attach using the pristine method so the extension's patched method is bypassed
-                pristineAddEventListener.call(window, "contextmenu", kill, { capture: true, passive: false });
-                pristineAddEventListener.call(document, "contextmenu", kill, { capture: true, passive: false });
+                pristineAddEventListener.call(window, "contextmenu", killMenu, { capture: true, passive: false });
+                pristineAddEventListener.call(document, "contextmenu", killMenu, { capture: true, passive: false });
                 pristineAddEventListener.call(window, "copy", killCopy, { capture: true, passive: false });
                 pristineAddEventListener.call(document, "copy", killCopy, { capture: true, passive: false });
                 
                 // Mousedown right-click prevention as another layer
                 pristineAddEventListener.call(window, "mousedown", function(e) {
-                  if (e.button === 2 || e.button === 3) kill(e);
+                  if (e.button === 2 || e.button === 3) killMenu(e);
                 }, { capture: true, passive: false });
                 
                 // Intercept properties

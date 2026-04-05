@@ -276,7 +276,7 @@ export function InlineSubjectManager({ courseId, initialSubjects }: InlineSubjec
       {showAddForm ? (
         <form onSubmit={handleAddSubject} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-5">
           {error && (
-            <div className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">
+            <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive dark:bg-destructive/20 dark:text-destructive">
               {error}
             </div>
           )}

@@ -90,26 +90,24 @@ export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
         {/* Right: Theme + Notifications + User */}
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Notifications">
             <Bell className="h-5 w-5 text-muted-foreground" />
           </Button>
 
           <DropdownMenu>
-            <DropdownMenuTrigger>
-              <div className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden flex-col items-start text-left sm:flex">
-                  <span className="text-sm font-medium">
-                    {user.full_name || "User"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{roleLabel}</span>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </div>
+            <DropdownMenuTrigger aria-label="User menu" className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted outline-none">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden flex-col items-start text-left sm:flex">
+                <span className="text-sm font-medium">
+                  {user.full_name || "User"}
+                </span>
+                <span className="text-xs text-muted-foreground">{roleLabel}</span>
+              </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuGroup>

@@ -31,14 +31,14 @@ export function ApprovalToggle({
       <button 
         type="submit" 
         disabled={disabled || pending}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${isApproved ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-zinc-700'}`}
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${isApproved ? 'bg-primary' : 'bg-muted'}`}
       >
         <span className="sr-only">Toggle approval</span>
         {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin text-white" />
+          <Loader2 className="h-4 w-4 animate-spin text-primary-foreground" />
         ) : (
           <span 
-            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isApproved ? 'translate-x-4' : 'translate-x-0'}`} 
+            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-primary-foreground shadow ring-0 transition duration-200 ease-in-out ${isApproved ? 'translate-x-4' : 'translate-x-0'}`} 
           />
         )}
       </button>

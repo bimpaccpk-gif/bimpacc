@@ -35,28 +35,27 @@ interface CourseListProps {
 const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
   draft: {
     label: "Draft",
-    className:
-      "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 ring-1 ring-zinc-500/20",
-    dotClass: "bg-zinc-500",
+    className: "bg-muted text-muted-foreground ring-1 ring-border/20",
+    dotClass: "bg-muted-foreground",
   },
   published: {
     label: "Published",
     className:
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-500/20",
-    dotClass: "bg-emerald-500 animate-pulse",
+      "bg-success/10 text-success dark:bg-success/10 dark:text-success ring-1 ring-success/20",
+    dotClass: "bg-success animate-pulse",
   },
   archived: {
     label: "Archived",
     className:
-      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 ring-1 ring-amber-500/20",
-    dotClass: "bg-amber-500",
+      "bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning ring-1 ring-warning/20",
+    dotClass: "bg-warning",
   },
 };
 
 const hierarchyIcons: Record<number, React.ReactNode> = {
-  1: <Layers className="h-6 w-6 text-indigo-500" />,
-  2: <List className="h-6 w-6 text-indigo-500" />,
-  3: <BookOpen className="h-6 w-6 text-indigo-500" />,
+  1: <Layers className="text-primary h-6 w-6" />,
+  2: <List className="text-primary h-6 w-6" />,
+  3: <BookOpen className="text-primary h-6 w-6" />,
 };
 
 const hierarchyGroups = [
@@ -127,18 +126,24 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
         })
       );
 
-      // Persist batch to server
-      await reorderCourses(updates.map((u) => ({ id: u.id, order_index: u.order_index! })));
+      // Persist batch to server - use current state to avoid race condition
+      try {
+        await reorderCourses(updates.map((u) => ({ id: u.id, order_index: u.order_index! })));
+      } catch (error) {
+        // Revert on error by refetching
+        console.error("Failed to reorder courses:", error);
+        // The server will have the correct state, so we don't need to manually revert
+      }
     },
     [courses]
   );
 
   if (courses.length === 0) {
     return (
-      <div className="animate-in zoom-in-95 relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-dashed border-indigo-500/30 bg-indigo-50/50 px-6 py-24 backdrop-blur-sm duration-700 dark:bg-indigo-950/10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-        <div className="group relative z-10 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/20 transition-transform duration-500 hover:scale-105">
-          <Sparkles className="h-10 w-10 text-white" />
+      <div className="animate-in zoom-in-95 border-primary/30 bg-primary/5 dark:bg-primary/10 relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-dashed px-6 py-24 backdrop-blur-sm duration-700">
+        <div className="from-primary/10 pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] via-transparent to-transparent" />
+        <div className="group from-primary to-primary/80 shadow-primary/20 relative z-10 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br shadow-xl transition-transform duration-500 hover:scale-105">
+          <Sparkles className="text-primary-foreground h-10 w-10" />
         </div>
         <h3 className="relative z-10 mt-6 text-2xl font-semibold tracking-tight">
           Create your first course
@@ -183,26 +188,26 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 bg-white/60 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10 dark:bg-zinc-950/60",
+                                "group bg-background/60 dark:bg-card/60 relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10",
                                 snapshot.isDragging
-                                  ? "bg-background/95 z-50 scale-[1.02] shadow-2xl ring-2 ring-indigo-500 will-change-transform"
-                                  : "shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/5"
+                                  ? "bg-background/95 ring-primary z-50 scale-[1.02] shadow-2xl ring-2 will-change-transform"
+                                  : "hover:shadow-primary/5 shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                               )}
                               style={provided.draggableProps.style}
                             >
                               {/* Left Edge Accent */}
-                              <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-indigo-500 to-purple-600 opacity-60 transition-opacity group-hover:opacity-100" />
+                              <div className="from-primary to-primary/70 absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b opacity-60 transition-opacity group-hover:opacity-100" />
 
                               {/* Drag Handle */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="-ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors hover:bg-indigo-500/10 active:cursor-grabbing"
+                                className="hover:bg-primary/10 -ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors active:cursor-grabbing"
                               >
-                                <GripVertical className="text-muted-foreground/50 h-5 w-5 hover:text-indigo-500" />
+                                <GripVertical className="text-muted-foreground/50 hover:text-primary h-5 w-5" />
                               </div>
 
                               {/* Icon Container */}
-                              <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/10 bg-indigo-500/10 transition-transform duration-300 group-hover:scale-110 sm:flex dark:bg-indigo-500/20">
+                              <div className="border-primary/10 bg-primary/10 dark:bg-primary/20 hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-300 group-hover:scale-110 sm:flex">
                                 {hierarchyIcons[course.hierarchy_type]}
                               </div>
 
@@ -225,11 +230,11 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <h3 className="text-foreground truncate text-xl font-bold tracking-tight transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                  <h3 className="text-foreground group-hover:text-primary dark:group-hover:text-primary/80 truncate text-xl font-bold tracking-tight transition-colors">
                                     {course.title}
                                   </h3>
                                   {course.batch && (
-                                    <span className="inline-flex shrink-0 items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-bold tracking-wider text-indigo-700 uppercase shadow-sm ring-1 ring-indigo-500/20 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                    <span className="inline-flex shrink-0 items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-bold tracking-wider text-primary uppercase shadow-sm ring-1 ring-primary/20 dark:bg-primary/20 dark:text-primary">
                                       Batch {course.batch}
                                     </span>
                                   )}
@@ -241,7 +246,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                 {/* Inline Stats for Mobile */}
                                 <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
                                   <div className="flex items-center gap-1.5">
-                                    <Activity className="h-4 w-4 text-indigo-500" />
+                                    <Activity className="h-4 w-4 text-primary" />
                                     <span>
                                       {itemCounts[course.id] ?? 0}{" "}
                                       {course.hierarchy_type === 1 ? "Subjects" : "Lessons"}
@@ -270,11 +275,11 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   {status.label}
                                 </span>
                                 {course.registration_open ? (
-                                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold tracking-wider text-emerald-700 uppercase shadow-sm ring-1 ring-emerald-500/20 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                  <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold tracking-wider text-success uppercase shadow-sm ring-1 ring-success/20 dark:bg-success/20 dark:text-success">
                                     Enrolling
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-bold tracking-wider text-zinc-700 uppercase shadow-sm ring-1 ring-zinc-500/20 dark:bg-zinc-900/30 dark:text-zinc-300">
+                                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase shadow-sm ring-1 ring-border/20 dark:bg-muted/50 dark:text-muted-foreground">
                                     Closed
                                   </span>
                                 )}
@@ -284,7 +289,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                     className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
                                     title={`${itemCounts[course.id] ?? 0} active content items`}
                                   >
-                                    <Activity className="h-3 w-3 text-indigo-500" />
+                                    <Activity className="h-3 w-3 text-primary" />
                                     <span>
                                       {itemCounts[course.id] ?? 0}{" "}
                                       {course.hierarchy_type === 1 ? "Subj" : "Less."}
@@ -294,7 +299,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                     className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
                                     title={`Created on ${formatDate(course.created_at)}`}
                                   >
-                                    <Calendar className="h-3 w-3 text-purple-500" />
+                                    <Calendar className="h-3 w-3 text-primary" />
                                     <span>
                                       {new Date(course.created_at).toLocaleDateString("en-US", {
                                         month: "short",

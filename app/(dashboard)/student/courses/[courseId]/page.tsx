@@ -200,14 +200,14 @@ function LessonItem({
 }) {
   if (lesson.isPaused) {
     return (
-      <div className="border-border bg-muted/20 overflow-hidden rounded-xl border border-amber-500/30">
+      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
         <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
             <Pause className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="text-muted-foreground font-semibold">{lesson.title}</h4>
-            <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
+            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
               This lesson is currently paused
             </p>
           </div>
@@ -217,13 +217,13 @@ function LessonItem({
   }
 
   return (
-    <div className="border-border bg-background overflow-hidden rounded-xl border transition-colors hover:border-indigo-500/30">
+    <div className="border-border bg-background hover:border-primary/30 overflow-hidden rounded-xl border transition-colors">
       <div className="flex items-center gap-3 px-5 py-4">
         <div
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
             isCompleted
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+              ? "bg-success/10 text-success dark:text-success/80"
+              : "bg-primary/10 text-primary dark:text-primary/80"
           }`}
         >
           {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
@@ -243,7 +243,7 @@ function LessonItem({
               {lesson.duration_minutes} min
             </span>
           )}
-          {lesson.video_url && <PlayCircle className="h-5 w-5 text-indigo-500" />}
+          {lesson.video_url && <PlayCircle className="text-primary h-5 w-5" />}
         </div>
         <Link href={`/student/courses/${courseId}/lessons/${lesson.id}`}>
           <Button size="sm" variant="secondary" className="gap-1.5">
@@ -271,14 +271,14 @@ function SubjectAccordion({
 }) {
   if (subject.isPaused) {
     return (
-      <div className="border-border bg-muted/20 overflow-hidden rounded-xl border border-amber-500/30">
+      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
         <div className="flex items-center gap-3 px-5 py-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Pause className="h-5 w-5" />
+          <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+            <Pause className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-muted-foreground font-semibold">{subject.title}</h3>
-            <p className="mt-0.5 text-xs text-amber-600/80 dark:text-amber-400/80">
+            <h4 className="text-muted-foreground font-semibold">{subject.title}</h4>
+            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
               This subject is currently paused
             </p>
           </div>
@@ -290,7 +290,7 @@ function SubjectAccordion({
   return (
     <details className="group border-border overflow-hidden rounded-xl border" open={index === 0}>
       <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors [&::-webkit-details-marker]:hidden">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-sm font-bold text-indigo-600 dark:text-indigo-400">
+        <div className="bg-primary/10 text-primary dark:text-primary/80 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
           {index + 1}
         </div>
         <div className="min-w-0 flex-1">
@@ -388,7 +388,7 @@ export default async function CourseDetailPage({
       {/* Course Header */}
       <div className="border-border overflow-hidden rounded-2xl border">
         {/* Hero */}
-        <div className="relative aspect-[3/1] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+        <div className="from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br">
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -397,16 +397,16 @@ export default async function CourseDetailPage({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <BookOpen className="h-16 w-16 text-white/40" />
+              <BookOpen className="text-primary-foreground/40 h-16 w-16" />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute right-0 bottom-0 left-0 p-6 text-white">
+          <div className="from-background/60 absolute inset-0 bg-gradient-to-t to-transparent" />
+          <div className="text-primary-foreground absolute right-0 bottom-0 left-0 p-6">
             <div className="mb-2 flex items-center gap-2">
-              <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
+              <span className="bg-primary-foreground/20 rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                 Batch {course.batch}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold shadow-lg">
+              <span className="bg-success text-primary-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-lg">
                 <CheckCircle2 className="h-3 w-3" />
                 Enrolled
               </span>
@@ -429,7 +429,7 @@ export default async function CourseDetailPage({
               {totalLessons} Lesson{totalLessons !== 1 ? "s" : ""}
             </span>
             {completedIds.size > 0 && (
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <span className="text-success flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4" />
                 {completedIds.size}/{totalLessons} completed
               </span>

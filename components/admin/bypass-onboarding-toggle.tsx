@@ -56,10 +56,10 @@ export function BypassOnboardingToggle({
         </Button>
       </form>
       {state?.error && (
-        <p className="text-xs text-red-500">{state.error}</p>
+        <p className="text-xs text-destructive">{state.error}</p>
       )}
       {state?.success && (
-        <p className="text-xs text-green-500">{state.success}</p>
+        <p className="text-xs text-success">{state.success}</p>
       )}
     </div>
   );

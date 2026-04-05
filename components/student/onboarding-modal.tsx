@@ -26,7 +26,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xl">
         <div className="text-center space-y-4">
-          <CheckCircle2 className="mx-auto h-16 w-16 text-green-500 animate-bounce" />
+          <CheckCircle2 className="mx-auto h-16 w-16 text-success animate-bounce" />
           <h2 className="text-2xl font-bold">Profile Setup Complete!</h2>
           <p className="text-muted-foreground">Redirecting to Dashboard...</p>
         </div>
@@ -35,11 +35,11 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-6 lg:p-8">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-4 sm:p-6 lg:p-8">
       <div className="flex w-full max-w-6xl h-full max-h-[900px] flex-col lg:flex-row bg-background rounded-3xl overflow-hidden shadow-2xl ring-1 ring-border">
         
         {/* Left Panel - Static Info */}
-        <div className="lg:w-2/5 p-8 lg:p-12 bg-indigo-50/50 dark:bg-indigo-950/20 border-r border-border/50 overflow-y-auto hidden lg:block">
+        <div className="lg:w-2/5 p-8 lg:p-12 bg-primary/5 dark:bg-primary/10 border-r border-border/50 overflow-y-auto hidden lg:block">
           <div className="space-y-8">
             <div className="flex items-start justify-between">
               <div>
@@ -54,8 +54,8 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
               </form>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-border shadow-sm space-y-4">
-              <h3 className="font-bold text-lg text-indigo-600 dark:text-indigo-400">Payment Details</h3>
+            <div className="p-6 rounded-2xl bg-card dark:bg-card border border-border shadow-sm space-y-4">
+              <h3 className="font-bold text-lg text-primary dark:text-primary">Payment Details</h3>
               <div className="space-y-2 text-sm">
                 <p><span className="font-semibold text-foreground/80">Bank Name:</span> United Bank Limited (UBL)</p>
                 <p><span className="font-semibold text-foreground/80">Account Title:</span> BIMPACC</p>
@@ -71,7 +71,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
                 <span className="font-bold">Certificate:</span> Assessment based<br/>
                 <span className="font-bold">Authorities:</span> BIMPACC 🇵🇰, Skill Development Council Canada 🇨🇦 & CPD UK 🇬🇧
               </p>
-              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+              <div className="p-4 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30 dark:border-warning text-sm text-warning dark:text-warning leading-relaxed">
                 <span className="font-bold block mb-2">Note:</span>
                 After Qualifying and receiving a Certificate from us (BIMPACC), you will be able to receive additional certificates (optional):<br/>
                 • Skill Development Council Canada (3,500 PKR)<br/>
@@ -81,7 +81,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
 
             <div className="space-y-3 pt-4 border-t border-border">
                <h3 className="font-bold">Let's Connect</h3>
-               <ul className="text-sm space-y-2 text-indigo-600 dark:text-indigo-400">
+               <ul className="text-sm space-y-2 text-primary dark:text-primary">
                   <li><a href="https://whatsapp.com/channel/0029Vb3iNAvCcW4rqotpiw01" target="_blank" className="hover:underline">WhatsApp Channel</a></li>
                   <li><a href="https://www.youtube.com/BIMPakPK" target="_blank" className="hover:underline">YouTube (BIMPakPK)</a></li>
                   <li><a href="https://www.linkedin.com/company/bimpak/" target="_blank" className="hover:underline">LinkedIn</a></li>
@@ -95,14 +95,52 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
         {/* Right Panel - Form */}
         <div className="flex-1 p-6 lg:p-12 overflow-y-auto bg-background">
           <form action={formActionWrapper} className="w-full max-w-2xl mx-auto space-y-8">
-            <div className="lg:hidden flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 mb-6 text-sm">
+            <div className="lg:hidden flex items-center justify-between p-4 rounded-xl bg-warning/10 border border-warning/30 text-warning mb-6 text-sm">
               <span>Please scroll and complete all mandatory fields to unlock your account.</span>
               <form action={signOut}>
-                <Button type="submit" variant="ghost" size="sm" className="text-amber-800 hover:text-amber-900 hover:bg-amber-100">
+                <Button type="submit" variant="ghost" size="sm" className="text-warning hover:text-warning hover:bg-warning/10">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </Button>
               </form>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  1
+                </div>
+                <span className="text-sm font-medium text-foreground">Personal Info</span>
+              </div>
+              <div className="h-px w-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  2
+                </div>
+                <span className="text-sm font-medium text-foreground">Academic</span>
+              </div>
+              <div className="h-px w-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  3
+                </div>
+                <span className="text-sm font-medium text-foreground">Contact</span>
+              </div>
+              <div className="h-px w-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  4
+                </div>
+                <span className="text-sm font-medium text-foreground">Payment</span>
+              </div>
+              <div className="h-px w-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                  5
+                </div>
+                <span className="text-sm font-medium text-foreground">Declaration</span>
+              </div>
             </div>
 
             {state?.error && (
@@ -151,10 +189,10 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
                     Not changeable
                   </span>
                 </div>
-                <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900">
+                <div className="p-4 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10">
-                      <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <BookOpen className="h-5 w-5 text-primary dark:text-primary" />
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{selectedCourse.title}</p>
@@ -254,7 +292,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
             <div className="space-y-6">
               <h3 className="text-xl font-bold border-b pb-2 pt-4">5. Declaration</h3>
               <div className="flex items-start space-x-3 p-4 bg-muted/30 rounded-xl border border-border">
-                <input type="checkbox" id="declare" name="declaration_accepted" required className="mt-1 h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" />
+                  <input type="checkbox" id="declare" name="declaration_accepted" required aria-label="Accept declaration" className="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary" />
                 <Label htmlFor="declare" className="text-sm font-medium leading-relaxed">
                   I understand that information provided in this form is correct and accurate to the best of my knowledge. I further understand that the name I provided will be printed on the certificate.
                 </Label>

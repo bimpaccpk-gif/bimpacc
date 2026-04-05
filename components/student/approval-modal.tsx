@@ -17,10 +17,10 @@ export function ApprovalPendingModal({ user }: ApprovalModalProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
       <div className="w-full max-w-lg bg-background rounded-3xl overflow-hidden shadow-2xl ring-1 ring-border p-8 text-center space-y-6">
         
-        <div className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 shadow-inner ring-1 ring-amber-500/20">
+        <div className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-warning/10 text-warning shadow-inner ring-1 ring-warning/20">
           <Clock className="h-10 w-10 animate-pulse" />
         </div>
 
@@ -31,7 +31,7 @@ export function ApprovalPendingModal({ user }: ApprovalModalProps) {
           </p>
         </div>
 
-        <div className="pt-4 border-t border-border mt-6 text-xs text-amber-600/80 dark:text-amber-500/80 flex items-center justify-center gap-2">
+        <div className="pt-4 border-t border-border mt-6 text-xs text-warning/80 dark:text-warning/80 flex items-center justify-center gap-2">
            <ShieldAlert className="h-4 w-4" />
            Your submitted information is locked for your security.
         </div>

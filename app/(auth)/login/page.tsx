@@ -34,13 +34,13 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="flex flex-col space-y-8">
+    <div className="flex w-full flex-col space-y-8">
       {/* Header */}
       <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both flex flex-col space-y-3 text-center duration-700">
-        <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400">
-          <LogIn className="h-6 w-6" />
+        <div className="bg-primary/10 text-primary ring-primary/20 mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl ring-1 sm:h-14 sm:w-14">
+          <LogIn className="h-5 w-5 sm:h-6 sm:w-6" />
         </div>
-        <h1 className="from-foreground to-foreground/80 bg-gradient-to-br bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+        <h1 className="from-foreground to-foreground/80 bg-gradient-to-br bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
           Welcome back
         </h1>
         <p className="text-muted-foreground/80 text-sm">
@@ -50,7 +50,7 @@ export default function LoginPage() {
 
       <form
         action={action}
-        className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-6 delay-150 duration-700"
+        className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-150 duration-700 sm:space-y-6"
       >
         <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
         <input
@@ -61,7 +61,7 @@ export default function LoginPage() {
         {state?.error && (
           <Alert
             variant="destructive"
-            className="animate-in fade-in slide-in-from-top-2 border-red-500/20 bg-red-500/10 text-red-600 duration-300 dark:border-red-500/20 dark:bg-red-950/20 dark:text-red-400"
+            className="animate-in fade-in slide-in-from-top-2 border-destructive/20 bg-destructive/10 duration-300"
           >
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-sm font-medium">{state.error}</AlertDescription>
@@ -69,50 +69,50 @@ export default function LoginPage() {
         )}
 
         {/* Form Fields */}
-        <div className="flex flex-col space-y-5">
+        <div className="flex flex-col space-y-4 sm:space-y-5">
           {/* Email */}
-          <div className="space-y-2.5">
+          <div className="space-y-2 sm:space-y-2.5">
             <Label htmlFor="email" className="text-foreground/80 text-sm font-medium">
               Email Address
             </Label>
             <div className="group relative">
-              <div className="text-muted-foreground/50 pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors group-focus-within:text-indigo-500">
-                <Mail className="h-5 w-5" />
+              <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 placeholder="Ex: you@gmail.com"
-                className="bg-background/50 h-12 rounded-xl border-white/10 pl-11 transition-all focus-visible:border-indigo-500 focus-visible:ring-indigo-500/50 dark:border-white/5"
+                className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pl-10 transition-all sm:h-12 sm:pl-11 dark:border-white/5"
                 required
               />
             </div>
           </div>
 
           {/* Password */}
-          <div className="space-y-2.5">
+          <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-foreground/80 text-sm font-medium">
                 Password
               </Label>
               <Link
                 href="/forgot-password"
-                className="text-muted-foreground/80 text-xs font-medium transition-colors hover:text-indigo-500"
+                className="text-muted-foreground/80 hover:text-primary text-xs font-medium transition-colors"
               >
                 Forgot password?
               </Link>
             </div>
             <div className="group relative">
-              <div className="text-muted-foreground/50 pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors group-focus-within:text-indigo-500">
-                <Lock className="h-5 w-5" />
+              <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
+                <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <Input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                className="bg-background/50 h-12 rounded-xl border-white/10 pr-11 pl-11 transition-all focus-visible:border-indigo-500 focus-visible:ring-indigo-500/50 dark:border-white/5"
+                className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pr-10 pl-10 transition-all sm:h-12 sm:pr-11 sm:pl-11 dark:border-white/5"
                 required
               />
               <button
@@ -120,7 +120,11 @@ export default function LoginPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="text-muted-foreground/50 hover:text-foreground absolute top-1/2 right-3.5 -translate-y-1/2 transition-colors focus:outline-none"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                ) : (
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                )}
               </button>
             </div>
           </div>
@@ -129,23 +133,23 @@ export default function LoginPage() {
         {/* Submit Button */}
         <Button
           type="submit"
-          className="h-12 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-indigo-600 hover:to-purple-700 active:scale-[0.98] disabled:opacity-70"
+          className="from-primary to-primary/80 text-primary-foreground shadow-primary/25 hover:from-primary/90 hover:to-primary/70 h-11 w-full rounded-xl bg-gradient-to-r text-base font-semibold shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 sm:h-12"
           disabled={pending || !fingerprint}
         >
           {pending ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
               Signing in...
             </>
           ) : !fingerprint ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
               Verifying device...
             </>
           ) : (
             <>
               Sign In
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
             </>
           )}
         </Button>
@@ -157,7 +161,7 @@ export default function LoginPage() {
           <div className="border-border/50 w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="text-muted-foreground/60 rounded-full bg-white/60 px-3 font-medium backdrop-blur-md dark:bg-zinc-950/60">
+          <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
             New here?
           </span>
         </div>
@@ -169,7 +173,7 @@ export default function LoginPage() {
           Don't have an account?{" "}
           <Link
             href="/register"
-            className="group inline-flex items-center font-semibold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="group text-primary hover:text-primary/80 inline-flex items-center font-semibold transition-colors"
           >
             Create an account
             <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />

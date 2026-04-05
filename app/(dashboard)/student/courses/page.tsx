@@ -90,19 +90,17 @@ export default async function StudentCoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Available Courses</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-foreground text-2xl font-bold">Available Courses</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Browse published courses. Enrollment is managed by the administrator.
         </p>
       </div>
 
       {courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <BookOpen className="h-12 w-12 text-muted-foreground/50" />
+          <BookOpen className="text-muted-foreground/50 h-12 w-12" />
           <h3 className="mt-4 text-lg font-semibold">No courses available</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Check back soon for new courses.
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">Check back soon for new courses.</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -112,7 +110,7 @@ export default async function StudentCoursesPage() {
               className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
               {/* Thumbnail */}
-              <div className="aspect-video bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+              <div className="from-primary via-brand-500 to-primary/80 relative aspect-video overflow-hidden bg-gradient-to-br">
                 {course.thumbnail_url ? (
                   <img
                     src={course.thumbnail_url}
@@ -121,13 +119,13 @@ export default async function StudentCoursesPage() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <BookOpen className="h-12 w-12 text-white/60" />
+                    <BookOpen className="text-primary-foreground/60 h-12 w-12" />
                   </div>
                 )}
                 {/* Enrolled badge */}
                 {course.is_enrolled && (
                   <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-lg">
+                    <span className="bg-success text-success-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-lg">
                       <CheckCircle2 className="h-3 w-3" />
                       Enrolled
                     </span>
@@ -135,27 +133,25 @@ export default async function StudentCoursesPage() {
                 )}
                 {/* Batch badge */}
                 <div className="absolute bottom-3 left-3">
-                  <span className="rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                  <span className="bg-background/60 text-foreground rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                     Batch {course.batch}
                   </span>
                 </div>
               </div>
 
               <CardHeader className="pb-2">
-                <CardTitle className="line-clamp-2 text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
                   {course.title}
                 </CardTitle>
               </CardHeader>
 
               <CardContent className="space-y-4">
                 {course.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {course.description}
-                  </p>
+                  <p className="text-muted-foreground line-clamp-2 text-sm">{course.description}</p>
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-4 text-xs">
                   {course.subject_count > 0 && (
                     <span className="flex items-center gap-1">
                       <Layers className="h-3.5 w-3.5" />
@@ -179,14 +175,14 @@ export default async function StudentCoursesPage() {
                 ) : (
                   <div className="space-y-2">
                     <Button size="sm" variant="secondary" className="w-full gap-2" disabled>
-                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <Lock className="text-muted-foreground h-4 w-4" />
                       Locked (Not Enrolled)
                     </Button>
                     <a
                       href="https://wa.me/923230191737"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full rounded-md bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+                      className="flex w-full items-center justify-center gap-2 rounded-md bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
                     >
                       <WhatsAppIcon className="h-4 w-4" />
                       Contact for Enrollment

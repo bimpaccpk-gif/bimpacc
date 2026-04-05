@@ -14,6 +14,13 @@ export function DisableContextMenu() {
     };
 
     const killMenu = (e: MouseEvent) => {
+      // Allow dropdown menus to work
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-slot="dropdown-menu-trigger"]') || 
+          target.closest('[data-slot="dropdown-menu-content"]') ||
+          target.closest('[data-slot="dropdown-menu"]')) {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       _stopImmediate.call(e);

@@ -39,12 +39,13 @@ export function UserDetailActions({
     <div className="flex items-center gap-2">
       {/* Role Selector */}
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button variant="outline" size="sm" disabled={rolePending} className="gap-1">
+        <DropdownMenuTrigger
+          disabled={rolePending}
+          className="inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md border border-input bg-background px-3 text-sm font-medium shadow-xs transition-all outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 h-8 cursor-pointer"
+        >
             <Shield className="h-4 w-4" />
             Change Role
             <ChevronDown className="h-3 w-3" />
-          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {roles.map((r) => (
@@ -102,7 +103,7 @@ export function UserDetailActions({
             variant="outline"
             size="sm"
             disabled={devicePending}
-            className="gap-1 border-amber-500/50 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 dark:hover:text-amber-300"
+            className="border-warning/50 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning/80 dark:border-warning/30 dark:bg-warning/10 dark:text-warning dark:hover:bg-warning/20 dark:hover:text-warning/80 gap-1"
           >
             {devicePending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -123,7 +124,7 @@ export function UserDetailActions({
         </p>
       )}
       {(roleState?.success || pauseState?.success || deviceState?.success) && (
-        <p className="text-xs text-green-600">
+        <p className="text-xs text-success">
           {roleState?.success || pauseState?.success || deviceState?.success}
         </p>
       )}

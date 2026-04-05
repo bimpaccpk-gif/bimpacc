@@ -133,10 +133,10 @@ export function EnrollStudentDialog({
 
           {success ? (
             <div className="flex flex-col items-center justify-center space-y-3 py-6 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
+                <CheckCircle2 className="h-6 w-6 text-success" />
               </div>
-              <p className="text-sm font-medium text-emerald-600">{success}</p>
+              <p className="text-sm font-medium text-success">{success}</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 py-4">

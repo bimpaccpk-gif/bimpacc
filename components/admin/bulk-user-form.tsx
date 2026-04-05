@@ -114,7 +114,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
       )}
 
       {success && (
-        <Alert className="border-green-200 bg-green-50 text-green-800">
+        <Alert className="border-success/30 bg-success/10 text-success">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>{success}</AlertDescription>
         </Alert>
@@ -138,7 +138,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
         <a
           href="/sample-bulk-users.csv"
           download
-          className="text-xs text-blue-600 underline hover:text-blue-800"
+          className="text-xs text-primary underline hover:text-primary/80"
         >
           Download sample CSV file
         </a>
@@ -194,22 +194,22 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
 
       {/* Bypass Onboarding (for students only) */}
       {defaultRole === "student" && (
-        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-950/20">
+        <div className="rounded-xl border border-info/30 bg-info/5 p-4 shadow-sm dark:border-info/20 dark:bg-info/10">
           <label className="group flex cursor-pointer items-start gap-3">
             <div className="relative mt-0.5 flex items-center">
               <input
                 type="checkbox"
                 checked={bypassOnboarding}
                 onChange={(e) => setBypassOnboarding(e.target.checked)}
-                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-blue-600"
+                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-primary"
               />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-300">
+              <div className="flex items-center gap-2 text-sm font-medium text-info dark:text-info">
                 <ShieldCheck className="h-4 w-4" />
                 Bypass Onboarding
               </div>
-              <p className="text-xs leading-relaxed text-blue-700/70 dark:text-blue-400/70">
+              <p className="text-xs leading-relaxed text-info/70 dark:text-info/70">
                 Skip the onboarding process for all created students. They will be able to access
                 the platform directly without completing onboarding forms.
               </p>
@@ -223,7 +223,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
           <h4 className="font-medium">Results:</h4>
           {results.success.length > 0 && (
             <div className="space-y-1">
-              <p className="text-sm font-medium text-green-600">✓ Successfully created:</p>
+              <p className="text-sm font-medium text-success">✓ Successfully created:</p>
               <ul className="text-muted-foreground ml-4 list-disc text-xs">
                 {results.success.map((email) => (
                   <li key={email}>{email}</li>
@@ -233,7 +233,7 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
           )}
           {results.failed.length > 0 && (
             <div className="space-y-1">
-              <p className="text-sm font-medium text-red-600">✗ Failed:</p>
+              <p className="text-sm font-medium text-destructive">✗ Failed:</p>
               <ul className="text-muted-foreground ml-4 list-disc text-xs">
                 {results.failed.map((item) => (
                   <li key={item}>{item}</li>

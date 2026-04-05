@@ -13,9 +13,9 @@ export function ProfileCompletionForm({ user }: { user: any }) {
 
   if (state?.success) {
     return (
-      <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl">
-        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+      <div className="flex items-center gap-3 p-4 bg-success/10 dark:bg-success/20 border border-success/30 dark:border-success rounded-xl">
+        <CheckCircle2 className="h-5 w-5 text-success dark:text-success" />
+        <p className="text-sm font-medium text-success dark:text-success">
           {state.success}
         </p>
       </div>

@@ -66,7 +66,7 @@ export function CreateUserForm({
   if (state?.success) {
     return (
       <div className="space-y-4">
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert className="border-success/30 bg-success/10 text-success dark:border-success/80 dark:bg-success/950 dark:text-success">
           <Check className="h-4 w-4" />
           <AlertDescription>{state.success}</AlertDescription>
         </Alert>
@@ -87,20 +87,20 @@ export function CreateUserForm({
       )}
 
       {/* CNIC Notice */}
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-sm dark:border-amber-500/20 dark:bg-amber-950/20">
+      <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 shadow-sm dark:border-warning/20 dark:bg-warning/10">
         <div className="flex gap-3">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-warning dark:text-warning" />
           <div className="space-y-1.5 text-sm">
-            <p className="font-semibold text-amber-800 dark:text-amber-300">
+            <p className="font-semibold text-warning dark:text-warning">
               Important: Name Format
             </p>
-            <p className="leading-relaxed text-amber-700/80 dark:text-amber-400/80">
+            <p className="leading-relaxed text-warning/80 dark:text-warning/80">
               Enter name{" "}
-              <span className="font-bold text-amber-900 dark:text-amber-200">
+              <span className="font-bold text-warning dark:text-warning">
                 exactly as on CNIC
               </span>{" "}
               in
-              <span className="font-bold text-amber-900 dark:text-amber-200"> CAPITAL LETTERS</span>
+              <span className="font-bold text-warning dark:text-warning"> CAPITAL LETTERS</span>
               . This will appear on certificates.
             </p>
           </div>
@@ -154,7 +154,7 @@ export function CreateUserForm({
                   <div
                     key={i}
                     className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                      i < passwordStrength ? strengthColorVar : "bg-muted dark:bg-zinc-800"
+                      i < passwordStrength ? strengthColorVar : "bg-muted dark:bg-muted"
                     }`}
                   />
                 ))}
@@ -171,13 +171,13 @@ export function CreateUserForm({
                 <div
                   key={i}
                   className={`flex items-center gap-2 text-xs font-medium transition-colors duration-300 ${
-                    req.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground/60"
+                    req.met ? "text-success dark:text-success" : "text-muted-foreground/60"
                   }`}
                 >
                   <CheckCircle2
                     className={`h-3.5 w-3.5 shrink-0 transition-all duration-300 ${
                       req.met
-                        ? "scale-110 fill-green-500/20 text-green-500"
+                        ? "scale-110 fill-success/20 text-success"
                         : "text-muted-foreground/30 scale-100"
                     }`}
                   />
@@ -192,11 +192,9 @@ export function CreateUserForm({
         <Label>Role</Label>
         <input type="hidden" name="role" value={selectedRole} />
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <div className="bg-background hover:bg-muted flex w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm">
+          <DropdownMenuTrigger className="bg-background hover:bg-muted flex w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm outline-none">
               <span>{roles.find((r) => r.value === selectedRole)?.label}</span>
               <ChevronDown className="text-muted-foreground h-4 w-4" />
-            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[var(--anchor-width)]">
             {roles.map((r) => (
@@ -215,7 +213,7 @@ export function CreateUserForm({
           <select
             id="courseId"
             name="courseId"
-            className="bg-background h-10 w-full rounded-md border px-3 focus:border-indigo-500 focus:ring-indigo-500"
+            className="bg-background h-10 w-full rounded-md border px-3 focus:border-primary focus:ring-primary"
             defaultValue=""
           >
             <option value="" disabled>
@@ -235,22 +233,22 @@ export function CreateUserForm({
 
       {/* Bypass Onboarding (for students only) */}
       {selectedRole === "student" && (
-        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-sm dark:border-blue-500/20 dark:bg-blue-950/20">
+        <div className="rounded-xl border border-info/30 bg-info/5 p-4 shadow-sm dark:border-info/20 dark:bg-info/10">
           <label className="group flex cursor-pointer items-start gap-3">
             <div className="relative mt-0.5 flex items-center">
               <input
                 type="checkbox"
                 checked={bypassOnboarding}
                 onChange={(e) => setBypassOnboarding(e.target.checked)}
-                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-blue-600"
+                className="peer border-input bg-background h-4 w-4 shrink-0 cursor-pointer rounded border accent-primary"
               />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-300">
+              <div className="flex items-center gap-2 text-sm font-medium text-info dark:text-info">
                 <ShieldCheck className="h-4 w-4" />
                 Bypass Onboarding
               </div>
-              <p className="text-xs leading-relaxed text-blue-700/70 dark:text-blue-400/70">
+              <p className="text-xs leading-relaxed text-info/70 dark:text-info/70">
                 Skip the onboarding process for this student. They will be able to access the
                 platform directly without completing onboarding forms.
               </p>

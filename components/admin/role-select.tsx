@@ -25,9 +25,9 @@ const roles: { value: UserRole; label: string }[] = [
 ];
 
 const roleBadge: Record<string, string> = {
-  admin: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  instructor: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  student: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  admin: "bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive",
+  instructor: "bg-info/10 text-info dark:bg-info/20 dark:text-info",
+  student: "bg-success/10 text-success dark:bg-success/20 dark:text-success",
 };
 
 export function RoleSelect({
@@ -64,12 +64,10 @@ export function RoleSelect({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <div className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors hover:opacity-80 ${roleBadge[role] ?? roleBadge.student}`}>
+      <DropdownMenuTrigger className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors hover:opacity-80 outline-none ${roleBadge[role] ?? roleBadge.student}`}>
           {pending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
           {role.charAt(0).toUpperCase() + role.slice(1)}
           <ChevronDown className="h-3 w-3" />
-        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-36">
         {roles.map((r) => (
@@ -77,10 +75,10 @@ export function RoleSelect({
             key={r.value}
             onClick={() => handleRoleChange(r.value)}
           >
-            <div className="flex w-full items-center justify-between">
+            <span className="flex w-full items-center justify-between">
               <span>{r.label}</span>
               {role === r.value && <Check className="h-3.5 w-3.5" />}
-            </div>
+            </span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

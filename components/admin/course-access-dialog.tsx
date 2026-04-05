@@ -106,14 +106,14 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20 dark:text-indigo-400">
+      <DialogTrigger className="bg-primary/10 text-primary hover:bg-primary/20 dark:text-primary inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors">
         <Shield className="h-3 w-3" />
         Student Access
       </DialogTrigger>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-indigo-500" />
+            <Shield className="text-primary h-5 w-5" />
             Student Access
           </DialogTitle>
           <DialogDescription>Manage student access for {courseTitle}</DialogDescription>
@@ -126,11 +126,11 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
               <Users className="h-3 w-3" />
               {students.length} enrolled
             </span>
-            <span className="flex items-center gap-1 text-emerald-600">
+            <span className="text-success flex items-center gap-1">
               <Check className="h-3 w-3" />
               {activeCount} active
             </span>
-            <span className="flex items-center gap-1 text-red-600">
+            <span className="text-destructive flex items-center gap-1">
               <Pause className="h-3 w-3" />
               {pausedCount} paused
             </span>
@@ -139,7 +139,7 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 border-red-200 text-[10px] text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:border-red-900"
+              className="border-destructive/20 text-destructive hover:bg-destructive/10 dark:border-destructive/30 h-7 gap-1 text-[10px]"
               onClick={() => handleBulkPause(true)}
               disabled={bulkLoading || students.length === 0}
             >
@@ -153,7 +153,7 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1 border-emerald-200 text-[10px] text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:border-emerald-900"
+              className="border-success/30 text-success hover:bg-success/10 hover:text-success dark:border-success/20 h-7 gap-1 text-[10px]"
               onClick={() => handleBulkPause(false)}
               disabled={bulkLoading || students.length === 0}
             >
@@ -180,7 +180,7 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
 
         {/* Message */}
         {message && (
-          <div className="shrink-0 rounded-md bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <div className="bg-success/10 text-success shrink-0 rounded-md px-3 py-1.5 text-xs font-medium">
             {message}
           </div>
         )}
@@ -216,8 +216,8 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                         student.isPaused
-                          ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          ? "text-destructive bg-destructive/10"
+                          : "bg-success/10 text-success"
                       }`}
                     >
                       {student.isPaused ? (
@@ -237,8 +237,8 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
                       size="icon"
                       className={`h-7 w-7 rounded-full ${
                         student.isPaused
-                          ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                          : "bg-red-500/10 text-red-600 hover:bg-red-500/20"
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-destructive/10 text-destructive hover:bg-destructive/20"
                       }`}
                       onClick={() => handleToggle(student.userId, student.isPaused)}
                       disabled={pendingIds.has(student.userId)}

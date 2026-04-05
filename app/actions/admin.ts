@@ -116,56 +116,54 @@ export async function getStudentApplication(
     };
   }
 
-  const s = student as any;
-
   // Generate signed URLs for all uploaded documents
   const [cnic_url, degree_url, fee_receipt_url, avatar_file_url] = await Promise.all([
-    getSignedUrl(supabase, s.cnic_file_path),
-    getSignedUrl(supabase, s.degree_file_path),
-    getSignedUrl(supabase, s.fee_receipt_file_path),
-    getSignedUrl(supabase, s.avatar_file_path),
+    getSignedUrl(supabase, student.cnic_file_path),
+    getSignedUrl(supabase, student.degree_file_path),
+    getSignedUrl(supabase, student.fee_receipt_file_path),
+    getSignedUrl(supabase, student.avatar_file_path),
   ]);
 
   // Fetch course information if selected
   let selected_course_title = null;
   let selected_course_batch = null;
-  if (s.selected_course_id) {
+  if (student.selected_course_id) {
     const { data: course } = await supabase
       .from("courses")
       .select("title, batch")
-      .eq("id", s.selected_course_id)
+      .eq("id", student.selected_course_id)
       .single();
     if (course) {
-      selected_course_title = (course as any).title;
-      selected_course_batch = (course as any).batch;
+      selected_course_title = course.title;
+      selected_course_batch = course.batch;
     }
   }
 
   return {
     data: {
-      id: s.id,
-      email: s.email,
-      full_name: s.full_name,
-      role: s.role,
-      avatar_url: s.avatar_url,
-      onboarding_completed: s.onboarding_completed,
-      onboarding_bypassed: s.onboarding_bypassed,
-      is_approved: s.is_approved,
-      created_at: s.created_at,
-      updated_at: s.updated_at,
-      father_name: s.father_name,
-      cnic_number: s.cnic_number,
-      dob: s.dob,
-      bank_name: s.bank_name,
-      education_level: s.education_level,
-      degree_title: s.degree_title,
-      profession: s.profession,
-      whatsapp_number: s.whatsapp_number,
-      postal_address: s.postal_address,
-      fee_transaction_id: s.fee_transaction_id,
-      fee_submission_date: s.fee_submission_date,
-      declaration_accepted: s.declaration_accepted,
-      selected_course_id: s.selected_course_id,
+      id: student.id,
+      email: student.email,
+      full_name: student.full_name,
+      role: student.role,
+      avatar_url: student.avatar_url,
+      onboarding_completed: student.onboarding_completed,
+      onboarding_bypassed: student.onboarding_bypassed,
+      is_approved: student.is_approved,
+      created_at: student.created_at,
+      updated_at: student.updated_at,
+      father_name: student.father_name,
+      cnic_number: student.cnic_number,
+      dob: student.dob,
+      bank_name: student.bank_name,
+      education_level: student.education_level,
+      degree_title: student.degree_title,
+      profession: student.profession,
+      whatsapp_number: student.whatsapp_number,
+      postal_address: student.postal_address,
+      fee_transaction_id: student.fee_transaction_id,
+      fee_submission_date: student.fee_submission_date,
+      declaration_accepted: student.declaration_accepted,
+      selected_course_id: student.selected_course_id,
       selected_course_title,
       selected_course_batch,
       cnic_url,
@@ -279,14 +277,12 @@ export async function getUserDetail(
     return { data: null, error: userError?.message ?? "User not found." };
   }
 
-  const u = user as any;
-
   // Generate signed URLs for documents
   const [cnic_url, degree_url, fee_receipt_url, avatar_file_url] = await Promise.all([
-    getSignedUrl(supabase, u.cnic_file_path),
-    getSignedUrl(supabase, u.degree_file_path),
-    getSignedUrl(supabase, u.fee_receipt_file_path),
-    getSignedUrl(supabase, u.avatar_file_path),
+    getSignedUrl(supabase, user.cnic_file_path),
+    getSignedUrl(supabase, user.degree_file_path),
+    getSignedUrl(supabase, user.fee_receipt_file_path),
+    getSignedUrl(supabase, user.avatar_file_path),
   ]);
 
   // Fetch enrollments with course info and enrolled_by admin name
@@ -308,7 +304,7 @@ export async function getUserDetail(
 
   const enrollments: UserEnrollmentDetail[] = [];
 
-  for (const row of (enrollmentsData as any[]) ?? []) {
+  for (const row of enrollmentsData ?? []) {
     const course = Array.isArray(row.courses) ? row.courses[0] : row.courses;
 
     // Get enrolled_by admin name
@@ -328,8 +324,8 @@ export async function getUserDetail(
       .select("id, completed")
       .eq("enrollment_id", row.id);
 
-    const totalLessons = (progressData as any[])?.length ?? 0;
-    const completedLessons = (progressData as any[])?.filter((p: any) => p.completed).length ?? 0;
+    const totalLessons = progressData?.length ?? 0;
+    const completedLessons = progressData?.filter((p: { completed: boolean }) => p.completed).length ?? 0;
     const progressPercent =
       totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
@@ -371,17 +367,17 @@ export async function getUserDetail(
       .from("users")
       .select("id, full_name")
       .in("id", adminIds);
-    for (const au of (adminUsers as any[]) ?? []) {
+    for (const au of adminUsers ?? []) {
       adminNameMap[au.id] = au.full_name;
     }
   }
 
-  const auditLog: AuditLogEntry[] = ((auditData as any[]) ?? []).map((a: any) => ({
+  const auditLog: AuditLogEntry[] = (auditData ?? []).map((a) => ({
     id: a.id,
     admin_id: a.admin_id,
     target_user_id: a.target_user_id,
     action: a.action,
-    details: a.details ?? {},
+    details: (a.details as Record<string, unknown>) ?? {},
     created_at: a.created_at,
     admin_name: adminNameMap[a.admin_id] ?? "Unknown Admin",
   }));
@@ -392,7 +388,7 @@ export async function getUserDetail(
     enrollments.length > 0
       ? Math.round(enrollments.reduce((sum, e) => sum + e.progress_percent, 0) / enrollments.length)
       : 0;
-  const accountAgeMs = Date.now() - new Date(u.created_at).getTime();
+  const accountAgeMs = Date.now() - new Date(user.created_at).getTime();
   const accountAgeDays = Math.floor(accountAgeMs / (1000 * 60 * 60 * 24));
 
   // Fetch login history
@@ -403,7 +399,7 @@ export async function getUserDetail(
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const loginHistory: LoginHistoryEntry[] = ((loginHistoryData as any[]) ?? []).map((l: any) => ({
+  const loginHistory: LoginHistoryEntry[] = (loginHistoryData ?? []).map((l) => ({
     id: l.id,
     email: l.email,
     status: l.status,
@@ -415,34 +411,34 @@ export async function getUserDetail(
   return {
     data: {
       user: {
-        id: u.id,
-        email: u.email,
-        full_name: u.full_name,
-        role: u.role,
-        avatar_url: u.avatar_url,
-        is_paused: u.is_paused ?? false,
-        is_approved: u.is_approved,
-        onboarding_completed: u.onboarding_completed,
-        onboarding_bypassed: u.onboarding_bypassed,
-        created_at: u.created_at,
-        updated_at: u.updated_at,
-        father_name: u.father_name,
-        cnic_number: u.cnic_number,
-        dob: u.dob,
-        bank_name: u.bank_name,
-        education_level: u.education_level,
-        degree_title: u.degree_title,
-        profession: u.profession,
-        whatsapp_number: u.whatsapp_number,
-        postal_address: u.postal_address,
-        fee_transaction_id: u.fee_transaction_id,
-        fee_submission_date: u.fee_submission_date,
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        avatar_url: user.avatar_url,
+        is_paused: user.is_paused ?? false,
+        is_approved: user.is_approved,
+        onboarding_completed: user.onboarding_completed,
+        onboarding_bypassed: user.onboarding_bypassed,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        father_name: user.father_name,
+        cnic_number: user.cnic_number,
+        dob: user.dob,
+        bank_name: user.bank_name,
+        education_level: user.education_level,
+        degree_title: user.degree_title,
+        profession: user.profession,
+        whatsapp_number: user.whatsapp_number,
+        postal_address: user.postal_address,
+        fee_transaction_id: user.fee_transaction_id,
+        fee_submission_date: user.fee_submission_date,
         cnic_url,
         degree_url,
         fee_receipt_url,
         avatar_file_url,
-        device_fingerprint: u.device_fingerprint,
-        device_locked_at: u.device_locked_at,
+        device_fingerprint: user.device_fingerprint,
+        device_locked_at: user.device_locked_at,
       },
       enrollments,
       auditLog,

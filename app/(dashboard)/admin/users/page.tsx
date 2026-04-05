@@ -150,9 +150,7 @@ export default async function AdminUsersPage() {
         </Card>
         <Card
           className={
-            pendingReviewCount > 0
-              ? "bg-amber-50/30 ring-2 ring-amber-500/30 dark:bg-amber-950/10"
-              : ""
+            pendingReviewCount > 0 ? "bg-warning/10 ring-warning/50 dark:bg-warning/20 ring-2" : ""
           }
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -160,13 +158,11 @@ export default async function AdminUsersPage() {
               Pending Review
             </CardTitle>
             <ClipboardList
-              className={`h-5 w-5 ${pendingReviewCount > 0 ? "text-amber-500" : "text-muted-foreground"}`}
+              className={`h-5 w-5 ${pendingReviewCount > 0 ? "text-warning" : "text-muted-foreground"}`}
             />
           </CardHeader>
           <CardContent>
-            <div
-              className={`text-2xl font-bold ${pendingReviewCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}
-            >
+            <div className={`text-2xl font-bold ${pendingReviewCount > 0 ? "text-warning" : ""}`}>
               {pendingReviewCount}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">

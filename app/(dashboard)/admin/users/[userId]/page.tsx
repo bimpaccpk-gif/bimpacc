@@ -116,40 +116,40 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                 <span
                   className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${
                     user.role === "admin"
-                      ? "bg-purple-500/10 text-purple-600"
+                      ? "bg-primary/10 text-primary"
                       : user.role === "instructor"
-                        ? "bg-orange-500/10 text-orange-600"
-                        : "bg-blue-500/10 text-blue-600"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-info/10 text-info"
                   }`}
                 >
                   {user.role}
                 </span>
                 {user.is_approved && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-green-500/10 px-2 py-0.5 text-xs font-semibold text-green-600">
+                  <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                     <CheckCircle2 className="h-3 w-3" />
                     Approved
                   </span>
                 )}
                 {!user.is_approved && user.onboarding_completed && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                  <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                     <Clock className="h-3 w-3" />
                     Pending Review
                   </span>
                 )}
                 {user.onboarding_bypassed && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600">
+                  <span className="bg-info/10 text-info inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                     <Shield className="h-3 w-3" />
                     Onboarding Bypassed
                   </span>
                 )}
                 {user.is_paused && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
+                  <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                     <XCircle className="h-3 w-3" />
                     Paused
                   </span>
                 )}
                 {user.role === "student" && user.device_fingerprint && (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                  <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                     <Smartphone className="h-3 w-3" />
                     Device Bound
                   </span>
@@ -396,7 +396,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                         <div className="flex items-center gap-3">
                           <div className="bg-muted h-2 w-24 overflow-hidden rounded-full">
                             <div
-                              className="h-full rounded-full bg-blue-500 transition-all"
+                              className="bg-primary h-full rounded-full transition-all"
                               style={{
                                 width: `${enrollment.progress_percent}%`,
                               }}
@@ -526,17 +526,17 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                     <tr key={entry.id} className="border-b last:border-0">
                       <td className="py-3 pr-4">
                         {entry.status === "success" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600">
+                          <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <CheckCircle2 className="h-3 w-3" />
                             Success
                           </span>
                         ) : entry.status === "failed_device" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                          <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <Smartphone className="h-3 w-3" />
                             Device Blocked
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
+                          <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <AlertTriangle className="h-3 w-3" />
                             Wrong Credentials
                           </span>

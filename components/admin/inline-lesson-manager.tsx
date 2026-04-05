@@ -198,7 +198,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                               <p className="font-medium text-sm truncate">{lesson.title}</p>
                               <div className="mt-1 flex items-center gap-3">
                                 {lesson.video_url && (
-                                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                  <span className="flex items-center gap-1 text-xs text-success dark:text-success">
                                     <Video className="h-3 w-3" />
                                     Video
                                   </span>

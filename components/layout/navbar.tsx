@@ -92,15 +92,13 @@ export function Navbar({ showLinks = true }: NavbarProps) {
             <div className="h-9 w-24 animate-pulse rounded-lg bg-muted" />
           ) : user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <div className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted">
+              <DropdownMenuTrigger aria-label="User menu" className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted outline-none">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuGroup>

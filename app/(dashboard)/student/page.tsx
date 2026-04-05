@@ -126,10 +126,10 @@ export default async function StudentDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          Welcome back, {user.full_name.split(" ")[0]}!
+        <h1 className="text-foreground text-2xl font-bold">
+          Welcome back, {user.full_name?.split(" ")[0] || "Student"}!
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Track your learning progress and continue your courses
         </p>
       </div>
@@ -141,7 +141,7 @@ export default async function StudentDashboardPage() {
             className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-medium">
                 {stat.title}
               </CardTitle>
               <div className={`rounded-lg p-2 ${stat.bgColor}`}>
@@ -162,7 +162,7 @@ export default async function StudentDashboardPage() {
             <CardTitle className="text-lg">Continue Learning</CardTitle>
             {enrolledCourses.length > 0 && (
               <Link href="/student/my-courses">
-                <Button variant="ghost" size="sm" className="text-xs gap-1">
+                <Button variant="ghost" size="sm" className="gap-1 text-xs">
                   View All <ArrowRight className="h-3 w-3" />
                 </Button>
               </Link>
@@ -170,14 +170,18 @@ export default async function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             {enrolledCourses.length === 0 ? (
-              <div className="text-center py-8">
-                <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  You haven&apos;t enrolled in any courses yet.
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                  <BookOpen className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-foreground mb-2 text-lg font-semibold">Start Your Learning Journey</h3>
+                <p className="text-muted-foreground mb-4 text-sm">
+                  Explore our BIM courses and start building industry-relevant skills today.
                 </p>
-                <Link href="/student/courses" className="mt-3 inline-block">
-                  <Button variant="outline" size="sm">
+                <Link href="/student/courses">
+                  <Button className="gap-2">
                     Browse Courses
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
@@ -189,25 +193,21 @@ export default async function StudentDashboardPage() {
                     href={`/student/courses/${course.course_id}`}
                     className="block"
                   >
-                    <div className="space-y-2 rounded-lg border p-3 transition-colors hover:bg-muted/50">
+                    <div className="hover:bg-muted/50 space-y-2 rounded-lg border p-3 transition-colors">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-foreground">
-                            {course.title}
-                          </p>
+                          <p className="text-foreground font-medium">{course.title}</p>
                           {course.batch && (
-                            <p className="text-xs text-muted-foreground">
-                              Batch {course.batch}
-                            </p>
+                            <p className="text-muted-foreground text-xs">Batch {course.batch}</p>
                           )}
                         </div>
-                        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                        <span className="text-primary text-sm font-semibold">
                           {course.progress}%
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
+                          className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r transition-all"
                           style={{ width: `${course.progress}%` }}
                         />
                       </div>
@@ -224,17 +224,20 @@ export default async function StudentDashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg">Available Courses</CardTitle>
             <Link href="/student/courses">
-              <Button variant="ghost" size="sm" className="text-xs gap-1">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs">
                 Browse All <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </CardHeader>
           <CardContent>
             {availableCourses.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="mx-auto h-10 w-10 text-emerald-500/40" />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  You&apos;re enrolled in all available courses!
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                  <CheckCircle className="h-8 w-8 text-success" />
+                </div>
+                <h3 className="text-foreground mb-2 text-lg font-semibold">All Caught Up!</h3>
+                <p className="text-muted-foreground text-sm">
+                  You're enrolled in all available courses. Check back later for new offerings.
                 </p>
               </div>
             ) : (
@@ -242,17 +245,13 @@ export default async function StudentDashboardPage() {
                 {availableCourses.map((course) => (
                   <div
                     key={course.id}
-                    className="flex items-center justify-between rounded-lg border p-3 bg-muted/30"
+                    className="bg-muted/30 flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate">
-                        {course.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Batch {course.batch}
-                      </p>
+                      <p className="text-foreground truncate font-medium">{course.title}</p>
+                      <p className="text-muted-foreground text-xs">Batch {course.batch}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                    <span className="text-muted-foreground ml-2 shrink-0 text-xs">
                       Not Enrolled
                     </span>
                   </div>

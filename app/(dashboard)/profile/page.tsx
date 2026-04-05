@@ -1,13 +1,7 @@
 import { getFullUserProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import {
   Mail,
   User as UserIcon,
@@ -89,10 +83,10 @@ function InfoField({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border p-4">
-      <Icon className="mt-0.5 h-5 w-5 text-muted-foreground shrink-0" />
+      <Icon className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
       <div className="min-w-0">
-        <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-        <dd className="text-sm font-semibold truncate">{value || "—"}</dd>
+        <dt className="text-muted-foreground text-sm font-medium">{label}</dt>
+        <dd className="truncate text-sm font-semibold">{value || "—"}</dd>
       </div>
     </div>
   );
@@ -104,14 +98,15 @@ export default async function ProfilePage() {
 
   const isStudent = user.role === "student";
   const hasOnboarded = user.onboarding_completed;
-  const showProfileData = isStudent && (hasOnboarded || (user.onboarding_bypassed && hasProfileData(user)));
+  const showProfileData =
+    isStudent && (hasOnboarded || (user.onboarding_bypassed && hasProfileData(user)));
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
   const roleBadgeColor: Record<string, string> = {
-    admin: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-    instructor: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    student: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+    admin: "bg-destructive/10 text-destructive",
+    instructor: "bg-info/10 text-info",
+    student: "bg-success/10 text-success",
   };
 
   return (
@@ -119,9 +114,7 @@ export default async function ProfilePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-          <p className="text-muted-foreground">
-            View your account information
-          </p>
+          <p className="text-muted-foreground">View your account information</p>
         </div>
       </div>
 
@@ -130,15 +123,13 @@ export default async function ProfilePage() {
         <Card className="md:col-span-1">
           <CardContent className="flex flex-col items-center pt-6">
             <Avatar className="h-24 w-24">
-              {user.avatar_url && (
-                <AvatarImage src={user.avatar_url} alt={user.full_name} />
-              )}
-              <AvatarFallback className="bg-brand-100 text-2xl font-semibold text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+              {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.full_name} />}
+              <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-2xl font-semibold">
                 {getInitials(user.full_name)}
               </AvatarFallback>
             </Avatar>
             <h2 className="mt-4 text-xl font-semibold">{user.full_name}</h2>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
+            <p className="text-muted-foreground text-sm">{user.email}</p>
             <span
               className={`mt-2 rounded-full px-3 py-1 text-xs font-medium ${
                 roleBadgeColor[user.role] ?? roleBadgeColor.student
@@ -152,18 +143,18 @@ export default async function ProfilePage() {
               <div className="mt-3">
                 {hasOnboarded ? (
                   user.is_approved ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20">
+                    <span className="bg-success/10 text-success ring-success/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
                       <CheckCircle2 className="h-3 w-3" />
                       Approved
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
+                    <span className="bg-warning/10 text-warning ring-warning/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
                       <Clock className="h-3 w-3" />
                       Under Review
                     </span>
                   )
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20">
+                  <span className="bg-warning/10 text-warning ring-warning/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
                     <Clock className="h-3 w-3" />
                     Onboarding Pending
                   </span>
@@ -177,9 +168,7 @@ export default async function ProfilePage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Account Details</CardTitle>
-            <CardDescription>
-              Your personal information and account status
-            </CardDescription>
+            <CardDescription>Your personal information and account status</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-2">
@@ -202,12 +191,12 @@ export default async function ProfilePage() {
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5 text-indigo-500" />
+                <UserIcon className="text-primary h-5 w-5" />
                 Complete Your Profile
               </CardTitle>
               <CardDescription>
-                Your onboarding was bypassed by an admin. You can complete your profile
-                at any time to provide additional information. All fields are optional.
+                Your onboarding was bypassed by an admin. You can complete your profile at any time
+                to provide additional information. All fields are optional.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -223,7 +212,7 @@ export default async function ProfilePage() {
             <Card className="md:col-span-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <UserIcon className="h-5 w-5 text-indigo-500" />
+                  <UserIcon className="text-primary h-5 w-5" />
                   Personal Information
                 </CardTitle>
               </CardHeader>
@@ -231,7 +220,11 @@ export default async function ProfilePage() {
                 <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <InfoField icon={UserIcon} label="Full Name" value={user.full_name} />
                   <InfoField icon={UserIcon} label="Father's Name" value={user.father_name} />
-                  <InfoField icon={CreditCard} label="CNIC / Passport Number" value={user.cnic_number} />
+                  <InfoField
+                    icon={CreditCard}
+                    label="CNIC / Passport Number"
+                    value={user.cnic_number}
+                  />
                   <InfoField icon={Calendar} label="Date of Birth" value={formatDate(user.dob)} />
                 </dl>
                 {/* NO DocumentField for CNIC or avatar - students cannot see documents */}
@@ -242,13 +235,17 @@ export default async function ProfilePage() {
             <Card className="md:col-span-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-indigo-500" />
+                  <GraduationCap className="text-primary h-5 w-5" />
                   Academic Background
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoField icon={GraduationCap} label="Education Level" value={user.education_level} />
+                  <InfoField
+                    icon={GraduationCap}
+                    label="Education Level"
+                    value={user.education_level}
+                  />
                   <InfoField icon={GraduationCap} label="Degree Title" value={user.degree_title} />
                   <InfoField icon={Briefcase} label="Profession" value={user.profession} />
                 </dl>
@@ -260,7 +257,7 @@ export default async function ProfilePage() {
             <Card className="md:col-span-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Phone className="h-5 w-5 text-indigo-500" />
+                  <Phone className="text-primary h-5 w-5" />
                   Contact Details
                 </CardTitle>
               </CardHeader>
@@ -276,14 +273,22 @@ export default async function ProfilePage() {
             <Card className="md:col-span-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-indigo-500" />
+                  <CreditCard className="text-primary h-5 w-5" />
                   Fee Verification
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid gap-4 sm:grid-cols-2">
-                  <InfoField icon={CreditCard} label="Transaction ID" value={user.fee_transaction_id} />
-                  <InfoField icon={Calendar} label="Payment Date" value={formatDate(user.fee_submission_date)} />
+                  <InfoField
+                    icon={CreditCard}
+                    label="Transaction ID"
+                    value={user.fee_transaction_id}
+                  />
+                  <InfoField
+                    icon={Calendar}
+                    label="Payment Date"
+                    value={formatDate(user.fee_submission_date)}
+                  />
                   <InfoField icon={CreditCard} label="Bank Name" value={user.bank_name} />
                 </dl>
                 {/* NO DocumentField for receipt - students cannot see documents */}
@@ -297,29 +302,21 @@ export default async function ProfilePage() {
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Learning Stats</CardTitle>
-              <CardDescription>
-                Your course progress at a glance
-              </CardDescription>
+              <CardDescription>Your course progress at a glance</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">{stats.enrollments}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Enrolled Courses
-                  </p>
+                  <p className="text-muted-foreground text-sm">Enrolled Courses</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Completed Courses
-                  </p>
+                  <p className="text-muted-foreground text-sm">Completed Courses</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0h</p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Learning Time
-                  </p>
+                  <p className="text-muted-foreground text-sm">Total Learning Time</p>
                 </div>
               </div>
             </CardContent>
@@ -330,29 +327,21 @@ export default async function ProfilePage() {
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Teaching Stats</CardTitle>
-              <CardDescription>
-                Your teaching activity overview
-              </CardDescription>
+              <CardDescription>Your teaching activity overview</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Courses Created
-                  </p>
+                  <p className="text-muted-foreground text-sm">Courses Created</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Students
-                  </p>
+                  <p className="text-muted-foreground text-sm">Total Students</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Published Courses
-                  </p>
+                  <p className="text-muted-foreground text-sm">Published Courses</p>
                 </div>
               </div>
             </CardContent>
@@ -363,29 +352,21 @@ export default async function ProfilePage() {
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Platform Stats</CardTitle>
-              <CardDescription>
-                Overview of the platform
-              </CardDescription>
+              <CardDescription>Overview of the platform</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">{stats.enrollments}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Enrollments
-                  </p>
+                  <p className="text-muted-foreground text-sm">Total Enrollments</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Users
-                  </p>
+                  <p className="text-muted-foreground text-sm">Total Users</p>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <p className="text-3xl font-bold">0</p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Courses
-                  </p>
+                  <p className="text-muted-foreground text-sm">Total Courses</p>
                 </div>
               </div>
             </CardContent>
