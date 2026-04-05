@@ -1,8 +1,13 @@
 "use server";
 
-import { verifySession } from "@/lib/dal";
+import { verifyAdmin } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import {
+  updateStudentProfileSchema,
+  toggleUserPauseSchema,
+  resetDeviceFingerprintSchema,
+} from "@/lib/validations";
 import type {
   AuditLogEntry,
   UserEnrollmentDetail,
@@ -75,30 +80,14 @@ async function getSignedUrl(
   return data.signedUrl;
 }
 
-async function verifyAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) return false;
-
-  const { data: callerProfile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", authUser.id)
-    .single();
-
-  return (callerProfile as any)?.role === "admin";
-}
-
 export async function getStudentApplication(
   userId: string
 ): Promise<{ data: StudentApplication | null; error: string }> {
-  await verifySession();
-
   const supabase = await createClient();
 
-  if (!(await verifyAdmin(supabase))) {
+  try {
+    await verifyAdmin();
+  } catch {
     return { data: null, error: "Unauthorized. Admin access required." };
   }
 
@@ -179,49 +168,45 @@ export async function updateStudentProfile(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  await verifySession();
-
-  const supabase = await createClient();
-
-  if (!(await verifyAdmin(supabase))) {
+  try {
+    await verifyAdmin();
+  } catch {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
 
-  const userId = formData.get("userId") as string;
-  if (!userId) {
-    return { error: "User ID is required.", success: "" };
+  const supabase = await createClient();
+
+  const validation = updateStudentProfileSchema.safeParse({
+    userId: formData.get("userId"),
+    full_name: formData.get("full_name"),
+    email: formData.get("email"),
+    father_name: formData.get("father_name"),
+    cnic_number: formData.get("cnic_number"),
+    dob: formData.get("dob"),
+    bank_name: formData.get("bank_name"),
+    education_level: formData.get("education_level"),
+    degree_title: formData.get("degree_title"),
+    profession: formData.get("profession"),
+    whatsapp_number: formData.get("whatsapp_number"),
+    postal_address: formData.get("postal_address"),
+    fee_transaction_id: formData.get("fee_transaction_id"),
+    fee_submission_date: formData.get("fee_submission_date"),
+  });
+
+  if (!validation.success) {
+    return { error: validation.error.errors[0].message, success: "" };
   }
 
-  // Build the updates object from all editable fields
-  const updates: Record<string, any> = {};
+  const { userId, ...rest } = validation.data;
 
-  const textFields = [
-    "full_name",
-    "email",
-    "father_name",
-    "cnic_number",
-    "education_level",
-    "degree_title",
-    "profession",
-    "whatsapp_number",
-    "postal_address",
-    "fee_transaction_id",
-    "bank_name",
-  ];
+  // Build updates from validated data, removing empty/undefined values
+  const updates: Record<string, string | null> = {};
 
-  for (const field of textFields) {
-    const value = formData.get(field);
-    if (value !== null) {
-      updates[field] = (value as string).trim();
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined && value !== null && value !== "") {
+      updates[key] = value as string;
     }
   }
-
-  // Date fields
-  const dob = formData.get("dob") as string;
-  if (dob) updates.dob = dob;
-
-  const fee_submission_date = formData.get("fee_submission_date") as string;
-  if (fee_submission_date) updates.fee_submission_date = fee_submission_date;
 
   if (Object.keys(updates).length === 0) {
     return { error: "No changes to save.", success: "" };
@@ -246,6 +231,12 @@ export async function logAuditEvent(
   action: string,
   details: Record<string, any> = {}
 ) {
+  try {
+    await verifyAdmin();
+  } catch {
+    return; // Silently fail — audit log should not break calling code
+  }
+
   const admin = createAdminClient();
   await admin.from("audit_log").insert({
     admin_id: adminId,
@@ -258,11 +249,11 @@ export async function logAuditEvent(
 export async function getUserDetail(
   userId: string
 ): Promise<{ data: UserDetailData | null; error: string }> {
-  const session = await verifySession();
-
   const supabase = await createClient();
 
-  if (!(await verifyAdmin(supabase))) {
+  try {
+    await verifyAdmin();
+  } catch {
     return { data: null, error: "Unauthorized. Admin access required." };
   }
 
@@ -395,7 +386,7 @@ export async function getUserDetail(
   // Fetch login history
   const { data: loginHistoryData } = await admin
     .from("login_history")
-    .select("id, email, status, device_fingerprint, user_agent, created_at")
+    .select("id, email, status, device_fingerprint, hardware_fingerprint, device_components, user_agent, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -405,6 +396,9 @@ export async function getUserDetail(
     email: l.email,
     status: l.status,
     device_fingerprint: l.device_fingerprint,
+    hardware_fingerprint: l.hardware_fingerprint,
+    device_components: l.device_components,
+    similarity_score: null,
     user_agent: l.user_agent,
     created_at: l.created_at,
   }));
@@ -441,6 +435,7 @@ export async function getUserDetail(
         device_fingerprint: user.device_fingerprint,
         hardware_fingerprint: user.hardware_fingerprint,
         device_locked_at: user.device_locked_at,
+        device_components: user.device_components,
       },
       enrollments,
       auditLog,
@@ -460,20 +455,19 @@ export async function toggleUserPause(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  const session = await verifySession();
-
+  const session = await verifyAdmin();
   const supabase = await createClient();
 
-  if (!(await verifyAdmin(supabase))) {
-    return { error: "Unauthorized. Admin access required.", success: "" };
+  const validation = toggleUserPauseSchema.safeParse({
+    userId: formData.get("userId"),
+    isPaused: formData.get("isPaused") === "true",
+  });
+
+  if (!validation.success) {
+    return { error: validation.error.errors[0].message, success: "" };
   }
 
-  const userId = formData.get("userId") as string;
-  const isPaused = formData.get("isPaused") === "true";
-
-  if (!userId) {
-    return { error: "User ID is required.", success: "" };
-  }
+  const { userId, isPaused } = validation.data;
 
   if (session.userId === userId) {
     return { error: "You cannot pause your own account.", success: "" };
@@ -504,19 +498,18 @@ export async function resetDeviceFingerprint(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  const session = await verifySession();
-
+  const session = await verifyAdmin();
   const supabase = await createClient();
 
-  if (!(await verifyAdmin(supabase))) {
-    return { error: "Unauthorized. Admin access required.", success: "" };
+  const validation = resetDeviceFingerprintSchema.safeParse({
+    userId: formData.get("userId"),
+  });
+
+  if (!validation.success) {
+    return { error: validation.error.errors[0].message, success: "" };
   }
 
-  const userId = formData.get("userId") as string;
-
-  if (!userId) {
-    return { error: "User ID is required.", success: "" };
-  }
+  const { userId } = validation.data;
 
   // Verify target user is a student
   const { data: target } = await supabase.from("users").select("role").eq("id", userId).single();
@@ -530,6 +523,7 @@ export async function resetDeviceFingerprint(
     .update({
       device_fingerprint: null,
       hardware_fingerprint: null,
+      device_components: null,
       device_locked_at: null,
     } as never)
     .eq("id", userId);

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/lib/dal";
+import { verifySession, verifyAdmin } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/app/actions/admin";
@@ -500,6 +500,12 @@ export async function resolveEffectiveAccess(
   contentType: ContentAccessType,
   contentId: string
 ): Promise<{ isPaused: boolean; source: string }> {
+  try {
+    await verifyAdmin();
+  } catch {
+    return { isPaused: false, source: "unauthorized" };
+  }
+
   const admin = createAdminClient();
 
   // Check per-student override

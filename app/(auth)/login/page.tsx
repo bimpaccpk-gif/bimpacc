@@ -15,6 +15,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [hardwareFingerprint, setHardwareFingerprint] = useState<string | null>(null);
+  const [deviceComponents, setDeviceComponents] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,6 +25,8 @@ export default function LoginPage() {
       if (!cancelled && fingerprints) {
         setFingerprint(fingerprints.visitorId);
         setHardwareFingerprint(fingerprints.hardwareFingerprint);
+        setDeviceComponents(JSON.stringify(fingerprints.components));
+        setGeneratedAt(fingerprints.generatedAt.toString());
       }
     })();
     return () => {
@@ -53,6 +57,8 @@ export default function LoginPage() {
       >
         <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
         <input type="hidden" name="hardware_fingerprint" value={hardwareFingerprint ?? ""} />
+        <input type="hidden" name="device_components" value={deviceComponents ?? ""} />
+        <input type="hidden" name="generated_at" value={generatedAt ?? ""} />
         <input
           type="hidden"
           name="user_agent"

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession, verifyAdmin } from "@/lib/dal";
+import { verifyAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { HierarchyType } from "@/types";
@@ -245,7 +245,12 @@ export async function reorderSubjects(
   courseId: string,
   updates: { id: string; order_index: number }[]
 ): Promise<{ error: string; success: boolean }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: false };
+  }
+
   const supabase = await createClient();
 
   const promises = updates.map((u) =>
@@ -262,7 +267,12 @@ export async function reorderSubjects(
 export async function reorderCourses(
   updates: { id: string; order_index: number }[]
 ): Promise<{ error: string; success: boolean }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: false };
+  }
+
   const supabase = await createClient();
 
   const promises = updates.map((u) =>
@@ -468,7 +478,12 @@ export async function reorderLessons(
   revalidateUrl: string,
   updates: { id: string; order_index: number }[]
 ): Promise<{ error: string; success: boolean }> {
-  await verifySession();
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: false };
+  }
+
   const supabase = await createClient();
 
   const promises = updates.map((u) =>

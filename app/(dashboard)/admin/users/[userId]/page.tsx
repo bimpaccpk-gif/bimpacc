@@ -259,6 +259,61 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                   }
                   mono
                 />
+                {user.device_components && (
+                  <>
+                    <Separator />
+                    <p className="text-sm font-medium">Device Hardware Profile</p>
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                      <InfoRow
+                        label="Platform"
+                        value={user.device_components.platform}
+                      />
+                      <InfoRow
+                        label="GPU (normalized)"
+                        value={user.device_components.webglRenderer}
+                      />
+                      <InfoRow
+                        label="GPU (raw)"
+                        value={user.device_components.webglRendererRaw}
+                        mono
+                      />
+                      <InfoRow
+                        label="GPU Vendor"
+                        value={user.device_components.webglVendor}
+                      />
+                      <InfoRow
+                        label="Screen"
+                        value={`${user.device_components.screenResolution} @ ${user.device_components.devicePixelRatio}x, ${user.device_components.colorDepth}-bit`}
+                      />
+                      <InfoRow
+                        label="Available Screen"
+                        value={user.device_components.availableScreenSize}
+                      />
+                      <InfoRow
+                        label="CPU Cores"
+                        value={user.device_components.hardwareConcurrency?.toString()}
+                      />
+                      <InfoRow
+                        label="Device Memory"
+                        value={user.device_components.deviceMemory ? `${user.device_components.deviceMemory} GB` : "N/A (unsupported)"}
+                      />
+                      <InfoRow
+                        label="Touch Points"
+                        value={user.device_components.maxTouchPoints?.toString()}
+                      />
+                      <InfoRow
+                        label="Canvas Hash"
+                        value={user.device_components.canvasFingerprint}
+                        mono
+                      />
+                      <InfoRow
+                        label="Audio Hash"
+                        value={user.device_components.audioFingerprint}
+                        mono
+                      />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </CardContent>
@@ -529,7 +584,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                     <th className="text-muted-foreground pr-4 pb-3 font-medium">Status</th>
                     <th className="text-muted-foreground pr-4 pb-3 font-medium">Date & Time</th>
                     <th className="text-muted-foreground pr-4 pb-3 font-medium">
-                      Device Fingerprint
+                      Hardware FP
+                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">
+                      Device Info
                     </th>
                     <th className="text-muted-foreground pb-3 font-medium">User Agent</th>
                   </tr>
@@ -560,10 +618,26 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                       </td>
                       <td className="py-3 pr-4">
                         <span className="text-muted-foreground font-mono text-xs">
-                          {entry.device_fingerprint
-                            ? entry.device_fingerprint.slice(0, 12) + "..."
-                            : "N/A"}
+                          {entry.hardware_fingerprint
+                            ? entry.hardware_fingerprint.slice(0, 20) + "..."
+                            : entry.device_fingerprint
+                              ? entry.device_fingerprint.slice(0, 12) + "..."
+                              : "N/A"}
                         </span>
+                      </td>
+                      <td className="py-3 pr-4">
+                        {entry.device_components ? (
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-medium truncate max-w-[180px]">
+                              {entry.device_components.webglRenderer ?? entry.device_components.platform}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {entry.device_components.screenResolution} · {entry.device_components.hardwareConcurrency ?? "?"}c · {entry.device_components.deviceMemory ? `${entry.device_components.deviceMemory}GB` : "?"}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">N/A</span>
+                        )}
                       </td>
                       <td className="text-muted-foreground max-w-[200px] truncate py-3 text-xs">
                         {entry.user_agent || "N/A"}

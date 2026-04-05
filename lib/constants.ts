@@ -12,14 +12,14 @@ export const DASHBOARD_SIDEBAR_LINKS = {
   ],
   instructor: [
     { href: "/instructor", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/courses", label: "My Courses", icon: "BookOpen" },
-    { href: "/instructor/students", label: "Students", icon: "Users" },
-    { href: "/instructor/analytics", label: "Analytics", icon: "BarChart" },
+    { href: "/admin/courses", label: "Courses", icon: "BookOpen" },
+    { href: "/admin/users", label: "Students", icon: "Users" },
   ],
   student: [
     { href: "/student", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/student/courses", label: "Available Courses", icon: "BookOpen" },
     { href: "/student/my-courses", label: "My Courses", icon: "GraduationCap" },
+    { href: "/student/certificates", label: "Certificates", icon: "Award" },
   ],
 } as const;
 
@@ -54,27 +54,4 @@ export const TESTIMONIALS = [
   },
 ] as const;
 
-export const FOOTER_LINKS = [
-  {
-    title: "Platform",
-    links: [
-      { label: "For Business", href: "/business" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About Us", href: "/about" },
-      { label: "Careers", href: "/careers" },
-      { label: "Blog", href: "/blog" },
-    ],
-  },
-  {
-    title: "Support",
-    links: [
-      { label: "Help Center", href: "/help" },
-      { label: "Contact Us", href: "/contact" },
-      { label: "Privacy Policy", href: "/privacy" },
-    ],
-  },
-] as const;
+export const FOOTER_LINKS: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [];

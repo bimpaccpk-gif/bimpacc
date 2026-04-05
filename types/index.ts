@@ -113,11 +113,32 @@ export interface AuditLogEntry {
   admin_name?: string;
 }
 
+export interface DeviceComponents {
+  platform: string;
+  platformVersion: string | null;
+  screenResolution: string;
+  availableScreenSize: string;
+  colorDepth: number;
+  devicePixelRatio: number;
+  deviceMemory: number | null;
+  hardwareConcurrency: number | null;
+  maxTouchPoints: number;
+  webglRenderer: string | null;
+  webglVendor: string | null;
+  webglRendererRaw: string | null;
+  webglVendorRaw: string | null;
+  canvasFingerprint: string;
+  audioFingerprint: string;
+}
+
 export interface LoginHistoryEntry {
   id: string;
   email: string;
   status: "success" | "failed_credentials" | "failed_device";
   device_fingerprint: string | null;
+  hardware_fingerprint: string | null;
+  device_components: DeviceComponents | null;
+  similarity_score: number | null;
   user_agent: string | null;
   created_at: string;
 }
@@ -178,6 +199,86 @@ export interface LessonAccessNode {
   studentOverride: StudentContentAccess | null;
 }
 
+// ──────────────────────────────────────────────────────────
+// Lesson Resources
+// ──────────────────────────────────────────────────────────
+
+export interface LessonResource {
+  id: string;
+  lesson_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number | null;
+  file_type: string | null;
+  created_at: string;
+}
+
+// ──────────────────────────────────────────────────────────
+// Notifications
+// ──────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string | null;
+  type: "info" | "success" | "warning" | "error";
+  read: boolean;
+  created_at: string;
+}
+
+// ──────────────────────────────────────────────────────────
+// Lesson Comments
+// ──────────────────────────────────────────────────────────
+
+export interface LessonComment {
+  id: string;
+  lesson_id: string;
+  user_id: string | null;
+  parent_id: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LessonCommentWithUser extends LessonComment {
+  user_name: string | null;
+  user_role: UserRole | null;
+}
+
+// ──────────────────────────────────────────────────────────
+// Quizzes
+// ──────────────────────────────────────────────────────────
+
+export interface Quiz {
+  id: string;
+  lesson_id: string;
+  title: string;
+  passing_score: number;
+  created_at: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  quiz_id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: string;
+  points: number;
+}
+
+export interface QuizAttempt {
+  id: string;
+  user_id: string;
+  quiz_id: string;
+  score: number;
+  passed: boolean;
+  created_at: string;
+}
+
 export interface UserDetailData {
   user: {
     id: string;
@@ -212,6 +313,7 @@ export interface UserDetailData {
     device_fingerprint: string | null;
     hardware_fingerprint: string | null;
     device_locked_at: string | null;
+    device_components: DeviceComponents | null;
   };
   enrollments: UserEnrollmentDetail[];
   auditLog: AuditLogEntry[];

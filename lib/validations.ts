@@ -146,6 +146,58 @@ export const onboardingSchema = z.object({
   }),
 });
 
+// ─── Admin User Actions ───────────────────────────────────
+
+export const updateStudentProfileSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+  full_name: z.string().min(2, "Full name must be at least 2 characters").max(100).trim().optional(),
+  email: z.string().email("Invalid email address").optional(),
+  father_name: z.string().max(100).trim().optional().or(z.literal("")),
+  cnic_number: z.string().max(20).trim().optional().or(z.literal("")),
+  dob: z.string().optional().or(z.literal("")),
+  bank_name: z.string().max(100).trim().optional().or(z.literal("")),
+  education_level: z.string().max(50).trim().optional().or(z.literal("")),
+  degree_title: z.string().max(200).trim().optional().or(z.literal("")),
+  profession: z.string().max(200).trim().optional().or(z.literal("")),
+  whatsapp_number: z.string().max(20).trim().optional().or(z.literal("")),
+  postal_address: z.string().max(500).trim().optional().or(z.literal("")),
+  fee_transaction_id: z.string().max(100).trim().optional().or(z.literal("")),
+  fee_submission_date: z.string().optional().or(z.literal("")),
+});
+
+export const toggleUserPauseSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+  isPaused: z.coerce.boolean(),
+});
+
+export const resetDeviceFingerprintSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+});
+
+// ─── Enrollment ─────────────────────────────────────────────
+
+export const enrollStudentSchema = z.object({
+  studentId: z.string().uuid("Invalid student ID"),
+  courseId: z.string().uuid("Invalid course ID"),
+});
+
+// ─── Content Access ───────────────────────────────────────
+
+export const setStudentContentAccessSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+  contentType: z.enum(["course", "subject", "lesson"]),
+  contentId: z.string().uuid("Invalid content ID"),
+  isPaused: z.coerce.boolean(),
+  reason: z.string().max(500).optional().default(""),
+});
+
+export const bulkPauseForStudentsSchema = z.object({
+  contentType: z.enum(["course", "subject", "lesson"]),
+  contentId: z.string().uuid("Invalid content ID"),
+  isPaused: z.coerce.boolean(),
+  studentIds: z.array(z.string().uuid()).min(1, "At least one student is required"),
+});
+
 // ─── Helper ────────────────────────────────────────────────
 
 /**

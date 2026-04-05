@@ -14,6 +14,32 @@ export async function toggleLessonCompletion(
   // Verify enrollment
   await verifyEnrollment(session.userId, courseId);
 
+  // Verify lesson belongs to this course (prevent cross-course manipulation)
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("id, course_id, subject_id")
+    .eq("id", lessonId)
+    .single();
+
+  if (!lesson) {
+    return { error: "Lesson not found.", completed: false };
+  }
+
+  const lessonBelongsToCourse =
+    (lesson.course_id === courseId) ||
+    (lesson.subject_id && await (async () => {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("course_id")
+        .eq("id", lesson.subject_id!)
+        .single();
+      return subject?.course_id === courseId;
+    })());
+
+  if (!lessonBelongsToCourse) {
+    return { error: "This lesson does not belong to the specified course.", completed: false };
+  }
+
   // Get enrollment record
   const { data: enrollment, error: enrollError } = await supabase
     .from("enrollments")

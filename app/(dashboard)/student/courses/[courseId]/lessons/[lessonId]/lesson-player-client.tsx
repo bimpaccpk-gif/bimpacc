@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleLessonCompletion } from "@/app/actions/lesson-progress";
-import { YouTubeVideoPlayer } from "./youtube-player";
+import { YouTubeVideoPlayer as SecureYouTubePlayer } from "./youtube-player";
+import { LessonQuiz, type LessonQuizProps } from "@/components/student/lesson-quiz";
+import { LessonResources, type LessonResourceItem } from "@/components/student/lesson-resources";
+import { LessonComments, type LessonCommentsProps } from "@/components/student/lesson-comments";
 
 interface CourseInfo {
   id: string;
@@ -34,7 +37,7 @@ interface LessonRow {
   subject_title?: string | null;
 }
 
-interface LessonPlayerClientProps {
+interface LessonPlayerProps {
   course: CourseInfo;
   current: LessonRow;
   allLessons: LessonRow[];
@@ -49,6 +52,12 @@ interface LessonPlayerClientProps {
     email: string;
     cnicNumber: string | null;
   };
+  quiz: LessonQuizProps["quiz"] | null;
+  previousAttempt: LessonQuizProps["previousAttempt"] | null;
+  resources: LessonResourceItem[];
+  comments: LessonCommentsProps["comments"];
+  userId: string;
+  isCourseComplete: boolean;
 }
 
 export function LessonPlayerClient({
@@ -62,20 +71,45 @@ export function LessonPlayerClient({
   isCompleted: initialCompleted,
   currentIndex,
   watermark,
-}: LessonPlayerClientProps) {
+  quiz,
+  previousAttempt,
+  resources,
+  comments,
+  userId,
+  isCourseComplete,
+}: LessonPlayerProps) {
   const [isCompleted, setIsCompleted] = useState(initialCompleted);
-  const [isPending, startTransition] = useTransition();
 
-  const handleToggleComplete = () => {
-    startTransition(async () => {
+  const handleToggleComplete = async () => {
+    try {
       const result = await toggleLessonCompletion(course.id, current.id);
       if (!result.error) {
         setIsCompleted(result.completed);
       }
-    });
+    } catch {
+      // Silently fail
+    }
   };
 
   const completedCount = allLessons.filter((l) => completedIds.has(l.id)).length;
+
+  async function handleQuizSubmit(
+    answers: Record<string, string>,
+    _score: number,
+    _passed: boolean
+  ) {
+    if (!quiz?.id) return;
+    const answerArray = Object.entries(answers).map(([questionId, selectedOption]) => ({
+      question_id: questionId,
+      selected_option: selectedOption,
+    }));
+    await submitQuiz(quiz.id, answerArray);
+  }
+
+  const hasResources = resources.length > 0;
+  const hasComments = comments.length > 0;
+  const hasQuiz = !!quiz && quiz.questions.length > 0;
+  const hasNew = hasResources || hasComments || hasQuiz;
 
   return (
     <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8">
@@ -99,13 +133,11 @@ export function LessonPlayerClient({
         </div>
         <button
           onClick={handleToggleComplete}
-          disabled={isPending}
           className={cn(
             "inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
             isCompleted
               ? "bg-success/10 text-success hover:bg-success/20 dark:text-success/80"
-              : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-            isPending && "cursor-not-allowed opacity-50"
+              : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
           )}
         >
           {isCompleted ? (
@@ -124,7 +156,7 @@ export function LessonPlayerClient({
 
       {/* ─── Video Player ────────────────────────────────── */}
       {videoId ? (
-        <YouTubeVideoPlayer
+        <SecureYouTubePlayer
           videoId={videoId}
           title={current.title}
           description={current.description}
@@ -176,6 +208,52 @@ export function LessonPlayerClient({
           </div>
         )}
 
+        {/* ─── Resources, Quiz, Comments ─────────────────── */}
+        {hasNew && (
+          <div className="flex flex-col gap-8 border-t border-border pt-8">
+            {/* Resources */}
+            {hasResources && <LessonResources resources={resources} />}
+
+            {/* Quiz */}
+            {hasQuiz && (
+              <LessonQuiz
+                quiz={quiz}
+                previousAttempt={previousAttempt}
+                onSubmit={handleQuizSubmit}
+              />
+            )}
+
+            {/* Comments */}
+            {hasComments && (
+              <LessonComments
+                lessonId={current.id}
+                userId={userId}
+                comments={comments}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Course complete notice */}
+        {isCourseComplete && (
+          <div className="mb-8 border-t border-border pt-8">
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-6 py-8 text-center dark:border-amber-800/50 dark:bg-amber-900/10">
+              <Award className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+              <p className="text-lg font-semibold">Course Complete!</p>
+              <p className="text-sm text-muted-foreground">
+                You have completed all lessons in {course}. All your certificates can be viewed on the{" "}
+                <Link
+                  href="/student/certificates"
+                  className="font-medium text-amber-600 hover:underline dark:text-amber-400"
+                >
+                  Certificates
+                </Link>{" "}
+                page.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="border-border flex items-center justify-between gap-4 border-t pt-4">
           {prevLesson ? (
@@ -212,3 +290,6 @@ export function LessonPlayerClient({
     </div>
   );
 }
+
+import { Award } from "lucide-react";
+import { submitQuiz } from "@/app/actions/quiz";

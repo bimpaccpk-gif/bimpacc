@@ -5,32 +5,26 @@ import {
   verifyNotPaused,
   resolveContentAccess,
 } from "@/lib/dal";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LessonPlayerClient } from "./lesson-player-client";
 import { ContentPausedBanner } from "@/components/student/content-paused-banner";
+import { getQuizForLesson, getBestQuizAttempt } from "@/app/actions/quiz";
+import { getLessonComments } from "@/app/actions/lesson-comments";
+import { createClient as createStorageClient } from "@/lib/supabase/server";
 
 // ─── YouTube video ID extractor ───────────────────────────
 
 function getYouTubeVideoId(url: string): string | null {
   if (!url) return null;
-
-  // youtube.com/watch?v=VIDEO_ID
   const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.+&v=)([^&\s]+)/);
   if (watchMatch) return watchMatch[1];
-
-  // youtu.be/VIDEO_ID
   const shortMatch = url.match(/youtu\.be\/([^?\s]+)/);
   if (shortMatch) return shortMatch[1];
-
-  // youtube.com/embed/VIDEO_ID
   const embedMatch = url.match(/youtube\.com\/embed\/([^?\s]+)/);
   if (embedMatch) return embedMatch[1];
-
-  // youtube-nocookie.com/embed/VIDEO_ID
   const nocookieMatch = url.match(/youtube-nocookie\.com\/embed\/([^?\s]+)/);
   if (nocookieMatch) return nocookieMatch[1];
-
   return null;
 }
 
@@ -82,7 +76,6 @@ async function getLessonWithSiblings(
   let lessons: LessonRow[] = [];
 
   if (hierarchyType === 1) {
-    // Course → Subject → Lesson
     const { data: subjects } = await supabase
       .from("subjects")
       .select("id, title, order_index")
@@ -115,7 +108,6 @@ async function getLessonWithSiblings(
       }));
     }
   } else {
-    // Direct lessons under course
     const { data: rawLessons } = await supabase
       .from("lessons")
       .select("id, title, description, video_url, content, order_index, duration_minutes")
@@ -127,7 +119,6 @@ async function getLessonWithSiblings(
 
   const current = lessons.find((l) => l.id === lessonId) ?? null;
 
-  // Fetch completed lesson IDs
   const { data: enrollment } = await supabase
     .from("enrollments")
     .select("id")
@@ -148,6 +139,39 @@ async function getLessonWithSiblings(
   return { current, allLessons: lessons, completedIds };
 }
 
+async function getResourcesWithUrls(lessonId: string) {
+  const supabase = await createClient();
+
+  const { data: resources } = await supabase
+    .from("lesson_resources")
+    .select("*")
+    .eq("lesson_id", lessonId)
+    .order("created_at", { ascending: true });
+
+  if (!resources || resources.length === 0) return [];
+
+  const signedUrls: { path: string; signedUrl: string }[] = [];
+  for (const r of resources) {
+    const { data: urlData } = await supabase.storage
+      .from("lesson_resources")
+      .createSignedUrl(r.file_path, 3600);
+    if (urlData) {
+      signedUrls.push({ path: r.file_path, signedUrl: urlData.signedUrl });
+    }
+  }
+
+  return resources.map((r) => {
+    const signed = signedUrls.find((s) => s.path === r.file_path);
+    return {
+      id: r.id,
+      file_name: r.file_name,
+      file_size: r.file_size,
+      file_type: r.file_type,
+      signed_url: signed?.signedUrl ?? "",
+    };
+  });
+}
+
 // ─── Page Component ───────────────────────────────────────
 
 export default async function LessonPlayerPage({
@@ -165,11 +189,8 @@ export default async function LessonPlayerPage({
   }
 
   await verifyEnrollment(user.id, course.id);
-
-  // Check if user account is paused
   await verifyNotPaused();
 
-  // Check content access (per-student overrides + global pause)
   const accessResult = await resolveContentAccess(user.id, courseId, lessonId);
 
   if (accessResult.isPaused) {
@@ -198,6 +219,71 @@ export default async function LessonPlayerPage({
   const videoId = current.video_url ? getYouTubeVideoId(current.video_url) : null;
   const isCompleted = completedIds.has(current.id);
 
+  // Fetch quiz
+  const { data: quizData } = await getQuizForLesson(lessonId);
+  const { data: bestAttempt } = await getBestQuizAttempt(quizData?.id ?? "");
+  const previousAttempt = bestAttempt
+    ? { score: bestAttempt.score, passed: bestAttempt.passed }
+    : null;
+
+  // Fetch resources with signed URLs
+  const resources = await getResourcesWithUrls(lessonId);
+
+  // Fetch comments
+  const { data: commentsData } = await getLessonComments(lessonId);
+
+  const allLessonCount = allLessons.length;
+  const completedCount = allLessons.filter((l) => completedIds.has(l.id)).length;
+
+  // Auto-generate a certificate if all lessons are complete (and pass 70% on quizzes)
+  if (allLessonCount > 0 && completedCount === allLessonCount) {
+    const admin = createAdminClient();
+
+    // Check all quiz passing scores
+    const { data: quizzes } = await admin
+      .from("quizzes")
+      .select("id, passing_score, lesson_id")
+      .in("lesson_id", allLessons.map((l) => l.id));
+
+    let allQuizzesPassed = true;
+    for (const quiz of (quizzes as any[]) ?? []) {
+      const { data: bestAttempt } = await admin
+        .from("quiz_attempts")
+        .select("score, passed")
+        .eq("quiz_id", quiz.id)
+        .eq("user_id", user.id)
+        .eq("passed", true)
+        .order("score", { ascending: false })
+        .limit(1);
+
+      if (!bestAttempt || bestAttempt.length === 0) {
+        allQuizzesPassed = false;
+        break;
+      }
+    }
+
+    if (allQuizzesPassed) {
+      const existingCert = await admin
+        .from("certificates")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("course_id", courseId)
+        .maybeSingle();
+
+      if (!existingCert.data) {
+        const certNumber = `BIMPACC-${courseId.slice(0, 8).toUpperCase()}-${user.id.slice(0, 8).toUpperCase()}`;
+        await admin
+          .from("certificates")
+          .insert({
+            user_id: user.id,
+            course_id: courseId,
+            certificate_number: certNumber,
+            issued_at: new Date().toISOString(),
+          } as never);
+      }
+    }
+  }
+
   return (
     <LessonPlayerClient
       course={course}
@@ -214,6 +300,12 @@ export default async function LessonPlayerPage({
         email: fullProfile.email,
         cnicNumber: fullProfile.cnic_number,
       }}
+      quiz={quizData}
+      previousAttempt={previousAttempt}
+      resources={resources}
+      comments={commentsData ?? []}
+      userId={user.id}
+      isCourseComplete={allLessonCount > 0 && completedCount === allLessonCount}
     />
   );
 }

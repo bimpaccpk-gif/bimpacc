@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { verifyAdmin } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
 import { logAuditEvent } from "@/app/actions/admin";
 

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { OnboardingModal } from "@/components/student/onboarding-modal";
 import { ApprovalPendingModal } from "@/components/student/approval-modal";
+import { FingerprintHeartbeat } from "@/components/fingerprint-heartbeat";
+import { getUserNotifications } from "@/app/actions/notifications";
 
 export default async function DashboardLayout({
   children,
@@ -27,13 +29,17 @@ export default async function DashboardLayout({
     selectedCourse = course;
   }
 
+  // Fetch notifications for the bell
+  const { data: notifData } = await getUserNotifications();
+
   return (
     <>
-      <DashboardShell role={user.role} user={user}>
+      <DashboardShell role={user.role} user={user} notifications={notifData?.notifications ?? []}>
         {children}
       </DashboardShell>
       {needsOnboarding && <OnboardingModal user={user} selectedCourse={selectedCourse} />}
       {needsApproval && <ApprovalPendingModal user={user} />}
+      <FingerprintHeartbeat role={user.role} />
     </>
   );
 }

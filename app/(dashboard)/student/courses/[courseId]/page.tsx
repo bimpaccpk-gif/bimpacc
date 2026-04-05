@@ -15,7 +15,9 @@ import {
   ChevronDown,
   ArrowRight,
   Pause,
+  Search,
 } from "lucide-react";
+import { CourseContent } from "@/components/student/course-content";
 
 // ─── Data fetchers ────────────────────────────────────────
 
@@ -460,45 +462,14 @@ export default async function CourseDetailPage({
         </Card>
       )}
 
-      {/* Course Content */}
-      <div className="space-y-4">
-        <h2 className="text-foreground text-xl font-bold">Course Content</h2>
-
-        {totalLessons === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-            <FileText className="text-muted-foreground/50 h-10 w-10" />
-            <p className="text-muted-foreground mt-3 text-sm">
-              No content has been added to this course yet.
-            </p>
-          </div>
-        ) : course.hierarchy_type === 1 ? (
-          /* Type 1: Subject accordion with nested lessons */
-          <div className="space-y-3">
-            {subjects.map((subject, i) => (
-              <SubjectAccordion
-                key={subject.id}
-                subject={subject}
-                index={i}
-                courseId={course.id}
-                completedIds={completedIds}
-              />
-            ))}
-          </div>
-        ) : (
-          /* Type 2 & 3: Direct lesson list */
-          <div className="space-y-3">
-            {directLessons.map((lesson, i) => (
-              <LessonItem
-                key={lesson.id}
-                lesson={lesson}
-                index={i}
-                courseId={course.id}
-                isCompleted={completedIds.has(lesson.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Course Content (with search) */}
+      <CourseContent
+        courseId={course.id}
+        hierarchyType={course.hierarchy_type}
+        subjects={subjects}
+        directLessons={directLessons}
+        completedIds={completedIds}
+      />
     </div>
   );
 }

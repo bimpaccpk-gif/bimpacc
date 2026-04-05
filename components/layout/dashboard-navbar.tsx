@@ -19,7 +19,9 @@ import {
 import type { UserRole } from "@/types";
 import { signOut } from "@/app/actions/auth";
 import { useMemo, useState } from "react";
-import { Menu, X, Bell, LogOut, User, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, User, ChevronDown } from "lucide-react";
+import { NotificationBell } from "./notification-bell";
+import type { Notification } from "@/app/actions/notifications";
 
 interface NavbarUser {
   full_name: string;
@@ -30,9 +32,10 @@ interface NavbarUser {
 interface DashboardNavbarProps {
   role: UserRole;
   user: NavbarUser;
+  notifications: Notification[];
 }
 
-export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
+export function DashboardNavbar({ role, user, notifications }: DashboardNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -50,6 +53,8 @@ export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
         .toUpperCase()
         .slice(0, 2)
     : user.email[0]?.toUpperCase() ?? "U";
+
+  const normalizedNotifications = notifications;
 
   return (
     <nav className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -90,9 +95,7 @@ export function DashboardNavbar({ role, user }: DashboardNavbarProps) {
         {/* Right: Theme + Notifications + User */}
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Notifications">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-          </Button>
+          <NotificationBell notifications={notifications} />
 
           <DropdownMenu>
             <DropdownMenuTrigger aria-label="User menu" className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted outline-none">
