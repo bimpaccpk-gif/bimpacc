@@ -210,6 +210,7 @@ export interface UserDetailData {
     avatar_file_url: string | null;
     // Device lock
     device_fingerprint: string | null;
+    hardware_fingerprint: string | null;
     device_locked_at: string | null;
   };
   enrollments: UserEnrollmentDetail[];

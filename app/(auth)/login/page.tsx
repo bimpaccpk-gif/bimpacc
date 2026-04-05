@@ -8,30 +8,29 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn } from "@/app/actions/auth";
 import { AlertCircle, LogIn, Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
+import { generateDeviceFingerprints } from "@/lib/device-fingerprint";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(signIn, undefined);
   const [showPassword, setShowPassword] = useState(false);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [hardwareFingerprint, setHardwareFingerprint] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const FingerprintJS = (await import("@fingerprintjs/fingerprintjs")).default;
-        const fp = await FingerprintJS.load();
-        const result = await fp.get();
-        if (!cancelled) {
-          setFingerprint(result.visitorId);
-        }
-      } catch {
-        // Fingerprint generation failed — server will reject with a clear error
+      const fingerprints = await generateDeviceFingerprints();
+      if (!cancelled && fingerprints) {
+        setFingerprint(fingerprints.visitorId);
+        setHardwareFingerprint(fingerprints.hardwareFingerprint);
       }
     })();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const isVerifying = !fingerprint || !hardwareFingerprint;
 
   return (
     <div className="flex w-full flex-col space-y-8">
@@ -53,6 +52,7 @@ export default function LoginPage() {
         className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-150 duration-700 sm:space-y-6"
       >
         <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
+        <input type="hidden" name="hardware_fingerprint" value={hardwareFingerprint ?? ""} />
         <input
           type="hidden"
           name="user_agent"
@@ -134,14 +134,14 @@ export default function LoginPage() {
         <Button
           type="submit"
           className="from-primary to-primary/80 text-primary-foreground shadow-primary/25 hover:from-primary/90 hover:to-primary/70 h-11 w-full rounded-xl bg-gradient-to-r text-base font-semibold shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 sm:h-12"
-          disabled={pending || !fingerprint}
+          disabled={pending || isVerifying}
         >
           {pending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
               Signing in...
             </>
-          ) : !fingerprint ? (
+          ) : isVerifying ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
               Verifying device...

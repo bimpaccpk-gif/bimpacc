@@ -240,12 +240,25 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                 <InfoRow
                   label="Device Lock"
                   value={
-                    user.device_fingerprint
+                    user.hardware_fingerprint
                       ? `Bound on ${formatDateTime(user.device_locked_at!)}`
                       : "Not locked"
                   }
                 />
-                <InfoRow label="Device Fingerprint" value={user.device_fingerprint} mono />
+                <InfoRow
+                  label="Hardware Fingerprint"
+                  value={user.hardware_fingerprint ?? undefined}
+                  mono
+                />
+                <InfoRow
+                  label="Browser Fingerprint"
+                  value={
+                    user.device_fingerprint
+                      ? `${user.device_fingerprint.slice(0, 16)}...`
+                      : undefined
+                  }
+                  mono
+                />
               </>
             )}
           </CardContent>

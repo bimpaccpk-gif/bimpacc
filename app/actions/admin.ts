@@ -325,7 +325,8 @@ export async function getUserDetail(
       .eq("enrollment_id", row.id);
 
     const totalLessons = progressData?.length ?? 0;
-    const completedLessons = progressData?.filter((p: { completed: boolean }) => p.completed).length ?? 0;
+    const completedLessons =
+      progressData?.filter((p: { completed: boolean }) => p.completed).length ?? 0;
     const progressPercent =
       totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
@@ -438,6 +439,7 @@ export async function getUserDetail(
         fee_receipt_url,
         avatar_file_url,
         device_fingerprint: user.device_fingerprint,
+        hardware_fingerprint: user.hardware_fingerprint,
         device_locked_at: user.device_locked_at,
       },
       enrollments,
@@ -525,7 +527,11 @@ export async function resetDeviceFingerprint(
 
   const { error } = await supabase
     .from("users")
-    .update({ device_fingerprint: null, device_locked_at: null } as never)
+    .update({
+      device_fingerprint: null,
+      hardware_fingerprint: null,
+      device_locked_at: null,
+    } as never)
     .eq("id", userId);
 
   if (error) {

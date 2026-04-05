@@ -11,12 +11,13 @@ export async function signIn(
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const deviceFingerprint = formData.get("device_fingerprint") as string | null;
+  const hardwareFingerprint = formData.get("hardware_fingerprint") as string | null;
 
   if (!email || !password) {
     return { error: "Email and password are required." };
   }
 
-  if (!deviceFingerprint) {
+  if (!deviceFingerprint || !hardwareFingerprint) {
     return {
       error: "Device verification failed. Please refresh the page and try again.",
     };
@@ -59,7 +60,7 @@ export async function signIn(
 
   const { data: profile } = await supabase
     .from("users")
-    .select("role, device_fingerprint")
+    .select("role, device_fingerprint, hardware_fingerprint")
     .eq("id", user.id)
     .single();
 
@@ -67,19 +68,21 @@ export async function signIn(
 
   // Device lock enforcement — students only
   if (role === "student") {
-    const storedFingerprint = profile?.device_fingerprint as string | null;
+    const storedHardwareFingerprint = profile?.hardware_fingerprint as string | null;
+    const storedDeviceFingerprint = profile?.device_fingerprint as string | null;
 
-    if (!storedFingerprint) {
-      // First login — bind this device
+    if (!storedHardwareFingerprint) {
+      // First login — bind this device (store both fingerprints)
       await supabase
         .from("users")
         .update({
           device_fingerprint: deviceFingerprint,
+          hardware_fingerprint: hardwareFingerprint,
           device_locked_at: new Date().toISOString(),
         })
         .eq("id", user.id);
-    } else if (storedFingerprint !== deviceFingerprint) {
-      // Device mismatch — sign out and reject
+    } else if (storedHardwareFingerprint !== hardwareFingerprint) {
+      // Hardware mismatch — different device detected
       await supabase.auth.signOut();
       await admin.from("login_history").insert({
         user_id: user.id,
@@ -90,8 +93,18 @@ export async function signIn(
       });
       return {
         error:
-          "This account is locked to a different device. Contact admin to reset your device lock.",
+          "This account is locked to a different device. Please use your registered device or contact admin.",
       };
+    }
+    // If hardware matches but device fingerprint differs, it's the same device with different browser - ALLOW
+    // Update the device_fingerprint to the new browser (for logging/audit purposes)
+    else if (storedDeviceFingerprint !== deviceFingerprint) {
+      await supabase
+        .from("users")
+        .update({
+          device_fingerprint: deviceFingerprint,
+        })
+        .eq("id", user.id);
     }
   }
 
@@ -139,7 +152,10 @@ export async function signUp(
   }
 
   // Validate courseId format if provided (should be UUID)
-  if (courseId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+  if (
+    courseId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)
+  ) {
     return { error: "Invalid course selection." };
   }
 
