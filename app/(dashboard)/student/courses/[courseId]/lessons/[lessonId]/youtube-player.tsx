@@ -270,12 +270,40 @@ export function YouTubeVideoPlayer({
 
   const toggleFullscreen = useCallback(async () => {
     if (!containerRef.current) return;
+    const el = containerRef.current as HTMLElement & {
+      mozRequestFullScreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => Promise<void>;
+      msRequestFullscreen?: () => Promise<void>;
+    };
+    const doc = document as Document & {
+      mozFullscreenElement?: Element;
+      webkitFullscreenElement?: Element;
+      msFullscreenElement?: Element;
+      mozExitFullscreen?: () => Promise<void>;
+      webkitExitFullscreen?: () => Promise<void>;
+      msExitFullscreen?: () => Promise<void>;
+    };
     try {
-      if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
+      const currentFullscreen =
+        doc.fullscreenElement ??
+        doc.mozFullscreenElement ??
+        doc.webkitFullscreenElement ??
+        doc.msFullscreenElement;
+      if (!currentFullscreen) {
+        const requestFS =
+          el.requestFullscreen ??
+          el.mozRequestFullScreen ??
+          el.webkitRequestFullscreen ??
+          el.msRequestFullscreen;
+        if (requestFS) await requestFS.call(el);
         setIsFullscreen(true);
       } else {
-        await document.exitFullscreen();
+        const exitFS =
+          doc.exitFullscreen ??
+          doc.mozExitFullscreen ??
+          doc.webkitExitFullscreen ??
+          doc.msExitFullscreen;
+        if (exitFS) await exitFS.call(document);
         setIsFullscreen(false);
       }
     } catch {
@@ -284,9 +312,30 @@ export function YouTubeVideoPlayer({
   }, []);
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
+    const handler = () => {
+      const doc = document as Document & {
+        mozFullscreenElement?: Element;
+        webkitFullscreenElement?: Element;
+        msFullscreenElement?: Element;
+      };
+      const isFS = !!(
+        doc.fullscreenElement ??
+        doc.mozFullscreenElement ??
+        doc.webkitFullscreenElement ??
+        doc.msFullscreenElement
+      );
+      setIsFullscreen(isFS);
+    };
+    const events = [
+      "fullscreenchange",
+      "mozfullscreenchange",
+      "webkitfullscreenchange",
+      "MSFullscreenChange",
+    ];
+    events.forEach((ev) => document.addEventListener(ev, handler));
+    return () => {
+      events.forEach((ev) => document.removeEventListener(ev, handler));
+    };
   }, []);
 
   // ── Auto-hide controls ─────────────────────────────
@@ -394,6 +443,13 @@ export function YouTubeVideoPlayer({
               }
               handleMouseMove();
             }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              if (!showControls || !isPlaying) {
+                togglePlay();
+              }
+              handleMouseMove();
+            }}
           />
 
           {/* Moving watermark with user identity */}
@@ -416,6 +472,10 @@ export function YouTubeVideoPlayer({
           {!isPlaying && !buffering && isPlayerReady && (
             <button
               onClick={togglePlay}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                togglePlay();
+              }}
               className="bg-background/30 absolute inset-0 z-10 flex items-center justify-center transition-opacity"
               aria-label="Play video"
             >
