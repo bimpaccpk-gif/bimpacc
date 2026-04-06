@@ -477,15 +477,32 @@ export async function getStudentAttendance(
 
   if (error || !data) return [];
 
-  const rows = data as AttendanceRow[];
-  return rows.map((r) => ({
-    course_id: r.enrollments.course_id,
-    course_title: r.enrollments.courses.title,
-    session_date: r.session_date,
-    status: r.status,
-    watch_time_minutes: r.watch_time_minutes,
-    session_duration_minutes: r.session_duration_minutes,
-  }));
+  return data
+    .map((r: unknown) => {
+      const row = r as {
+        session_date: string;
+        status: string;
+        watch_time_minutes: number | null;
+        session_duration_minutes: number | null;
+        enrollments: {
+          course_id: string;
+          courses: { id: string; title: string }[];
+        }[];
+      };
+      const enrollment = row.enrollments[0];
+      if (!enrollment) return null;
+      return {
+        course_id: enrollment.course_id,
+        course_title: enrollment.courses[0]?.title ?? "",
+        session_date: row.session_date,
+        status: row.status,
+        watch_time_minutes: row.watch_time_minutes,
+        session_duration_minutes: row.session_duration_minutes,
+      };
+    })
+    .filter(
+      (x): x is NonNullable<typeof x> => x !== null
+    );
 }
 
 /**
