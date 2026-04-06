@@ -182,7 +182,7 @@ export default function LoginPage() {
       {/* Sign Up Link */}
       <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both text-center delay-500 duration-700">
         <p className="text-muted-foreground/80 text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/register"
             className="group text-primary hover:text-primary/80 inline-flex items-center font-semibold transition-colors"
