@@ -86,12 +86,6 @@ export function DisableContextMenu() {
       return false;
     };
 
-    const killTouch = (e: TouchEvent) => {
-      e.preventDefault();
-      _stopImmediate.call(e);
-      return false;
-    };
-
     // Attach at document level with capture + non-passive
     document.addEventListener("contextmenu", killMenu, { capture: true, passive: false });
     document.addEventListener("copy", killCopy, { capture: true, passive: false });
@@ -100,8 +94,6 @@ export function DisableContextMenu() {
     document.addEventListener("selectstart", killSelect, { capture: true, passive: false });
     document.addEventListener("keydown", killKey, { capture: true });
     document.addEventListener("mousedown", killMiddle, { capture: true });
-    document.addEventListener("touchstart", killTouch, { capture: true, passive: false });
-
     // Re-attach every 300ms to counter extension removal
     const interval = setInterval(() => {
       document.removeEventListener("contextmenu", killMenu, true);
@@ -120,7 +112,6 @@ export function DisableContextMenu() {
       document.removeEventListener("selectstart", killSelect, true);
       document.removeEventListener("keydown", killKey, true);
       document.removeEventListener("mousedown", killMiddle, true);
-      document.removeEventListener("touchstart", killTouch, true);
       clearInterval(interval);
     };
   }, []);
