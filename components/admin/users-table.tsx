@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useActionState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RoleSelect } from "@/components/admin/role-select";
@@ -10,8 +11,10 @@ import { ApprovalToggle } from "@/components/admin/approval-toggle";
 import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
 import { EnrollStudentDialog } from "@/components/admin/enroll-student-dialog";
 import { BypassOnboardingToggle } from "@/components/admin/bypass-onboarding-toggle";
-import { ShieldCheck, Clock } from "lucide-react";
+import { ShieldCheck, Clock, CheckCheck, Loader2 } from "lucide-react";
 import { EnrollmentCounterBadge } from "@/components/admin/enrollment-counter-badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { bulkApproveStudents } from "@/lib/supabase/actions";
 import type { UserRole } from "@/types";
 
 interface UserRow {
@@ -70,6 +73,50 @@ function formatDate(date: string) {
 export function UsersTable({ initialUsers, courses, enrollments, currentUserId }: UsersTableProps) {
   const [users, setUsers] = useState(initialUsers);
   const [allEnrollments, setAllEnrollments] = useState(enrollments);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const [approveState, approveAction, approvePending] = useActionState(
+    bulkApproveStudents,
+    undefined
+  );
+
+  useEffect(() => {
+    if (approveState?.success) {
+      // Remove approved users from selection and update their status
+      setSelectedIds([]);
+      setUsers((prev) =>
+        prev.map((u) =>
+          selectedIds.includes(u.id) ? { ...u, is_approved: true } : u
+        )
+      );
+    } else if (approveState?.error) {
+      alert(approveState.error);
+    }
+  }, [approveState, selectedIds]);
+
+  const pendingStudents = useMemo(
+    () =>
+      users.filter(
+        (u) => u.role === "student" && u.onboarding_completed && !u.is_approved
+      ),
+    [users]
+  );
+
+  const pendingIds = useMemo(() => pendingStudents.map((u) => u.id), [pendingStudents]);
+
+  const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.length > 0 ? [] : [...pendingIds]
+    );
+  }, [pendingIds]);
+
+  const toggleSelectOne = useCallback((userId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  }, []);
 
   const enrollmentsByUser = useMemo(() => {
     const map: Record<string, { course_id: string; title: string; batch: string | null }[]> = {};
@@ -93,7 +140,41 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>All Users</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>All Users</CardTitle>
+          {pendingIds.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all-pending"
+                  checked={allPendingSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <label
+                  htmlFor="select-all-pending"
+                  className="text-muted-foreground cursor-pointer text-sm"
+                >
+                  Select all pending ({pendingIds.length})
+                </label>
+              </div>
+              <form action={approveAction}>
+                <input type="hidden" name="userIds" value={JSON.stringify(selectedIds)} />
+                <button
+                  type="submit"
+                  disabled={selectedIds.length === 0 || approvePending}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-success px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-success/90"
+                >
+                  {approvePending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCheck className="h-4 w-4" />
+                  )}
+                  Approve Selected ({selectedIds.length})
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
@@ -139,6 +220,13 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                         <div className="flex items-center gap-2">
                           {user.onboarding_completed ? (
                             <div className="flex items-center gap-2">
+                              {!user.is_approved && (
+                                <Checkbox
+                                  id={`select-${user.id}`}
+                                  checked={selectedIds.includes(user.id)}
+                                  onCheckedChange={() => toggleSelectOne(user.id)}
+                                />
+                              )}
                               <ApprovalToggle
                                 userId={user.id}
                                 isApproved={user.is_approved}

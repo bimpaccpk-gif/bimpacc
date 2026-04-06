@@ -474,6 +474,71 @@ export async function toggleStudentApproval(
   return { error: "", success: `User has been ${isApproved ? "Approved" : "Unapproved"}.` };
 }
 
+export async function bulkApproveStudents(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const userIdsStr = formData.get("userIds") as string;
+
+  if (!userIdsStr) {
+    return { error: "No users selected for approval.", success: "" };
+  }
+
+  const userIds: string[] = JSON.parse(userIdsStr);
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return { error: "No users selected for approval.", success: "" };
+  }
+
+  const session = await verifySession();
+
+  const supabase = await createClient();
+
+  // Fetch selected_course_id for all users being approved
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, selected_course_id")
+    .in("id", userIds);
+
+  if (!users || users.length === 0) {
+    return { error: "No matching users found.", success: "" };
+  }
+
+  const admin = createAdminClient();
+
+  // Enroll users who have a selected course and aren't already enrolled
+  for (const user of users) {
+    if (user.selected_course_id) {
+      const { data: existing } = await admin
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("course_id", user.selected_course_id)
+        .single();
+
+      if (!existing) {
+        await admin.from("enrollments").insert({
+          user_id: user.id,
+          course_id: user.selected_course_id,
+          enrolled_by: session.userId,
+        } as never);
+      }
+    }
+
+    await admin.from("users").update({ is_approved: true } as never).eq("id", user.id);
+
+    await logAuditEvent(session.userId, user.id, "user.approved", {
+      action: "bulk_approved",
+    });
+  }
+
+  return {
+    error: "",
+    success: `${users.length} student${users.length > 1 ? "s" : ""} approved.`,
+  };
+}
+
+
 export async function adminBypassOnboarding(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
