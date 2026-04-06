@@ -104,7 +104,7 @@ export async function getCourseAttendance(
     .eq("session_date", sessionDate)
     .in("enrollment_id", enrollmentIds);
 
-  const recordMap = new Map<string, (typeof records)[number]>();
+  const recordMap = new Map<string, Exclude<typeof records, null>[number]>();
   for (const r of records ?? []) {
     recordMap.set(r.enrollment_id, r);
   }
