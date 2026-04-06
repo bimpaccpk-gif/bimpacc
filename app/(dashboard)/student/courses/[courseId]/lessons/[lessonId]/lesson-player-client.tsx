@@ -241,7 +241,7 @@ export function LessonPlayerClient({
               <Award className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               <p className="text-lg font-semibold">Course Complete!</p>
               <p className="text-sm text-muted-foreground">
-                You have completed all lessons in {course}. All your certificates can be viewed on the{" "}
+                You have completed all lessons in {course.title}. All your certificates can be viewed on the{" "}
                 <Link
                   href="/student/certificates"
                   className="font-medium text-amber-600 hover:underline dark:text-amber-400"
