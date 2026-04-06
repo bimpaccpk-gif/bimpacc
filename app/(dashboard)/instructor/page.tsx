@@ -1,6 +1,6 @@
 import { getInstructorDashboardData } from "@/app/actions/instructor";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Users, BarChart3, TrendingUp } from "lucide-react";
+import { BookOpen, Users, BarChart3, TrendingUp, Calendar } from "lucide-react";
 import Link from "next/link";
 
 export default async function InstructorDashboardPage() {
@@ -134,6 +134,12 @@ export default async function InstructorDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2">
+              <Link
+                href="/instructor/attendance"
+                className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"
+              >
+                Manage Attendance
+              </Link>
               <Link
                 href="/admin/courses"
                 className="rounded-lg border px-4 py-2.5 text-left text-sm font-medium text-foreground/80 transition-colors hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50"

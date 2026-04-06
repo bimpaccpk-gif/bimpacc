@@ -24,6 +24,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { usePasswordStrength } from "@/hooks/use-password-strength";
+import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 
 export interface Course {
   id: string;
@@ -57,6 +58,23 @@ export function RegisterForm({ courses }: { courses: Course[] }) {
           Create your account
         </h1>
         <p className="text-muted-foreground/80 text-sm">Start your BIM learning journey today</p>
+      </div>
+
+      {/* Google Sign In */}
+      <div className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both delay-100 duration-700">
+        <GoogleSignInButton />
+      </div>
+
+      {/* Divider */}
+      <div className="animate-in fade-in zoom-in-95 fill-mode-both relative delay-200 duration-700">
+        <div className="absolute inset-0 flex items-center">
+          <div className="border-border/50 w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
+            Or register with email
+          </span>
+        </div>
       </div>
 
       <form

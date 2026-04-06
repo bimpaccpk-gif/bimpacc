@@ -325,3 +325,28 @@ export interface UserDetailData {
     accountAgeDays: number;
   };
 }
+
+// ──────────────────────────────────────────────────────────
+// Attendance
+// ──────────────────────────────────────────────────────────
+
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
+export type AttendanceSource = "csv" | "manual";
+
+export interface AttendanceRecord {
+  id: string;
+  enrollment_id: string;
+  session_date: string;
+  status: AttendanceStatus;
+  watch_time_minutes: number | null;
+  session_duration_minutes: number | null;
+  source: AttendanceSource;
+  marked_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseAttendanceDetail extends AttendanceRecord {
+  student_name: string;
+  student_email: string;
+}

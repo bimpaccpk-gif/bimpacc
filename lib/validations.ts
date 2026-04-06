@@ -198,6 +198,26 @@ export const bulkPauseForStudentsSchema = z.object({
   studentIds: z.array(z.string().uuid()).min(1, "At least one student is required"),
 });
 
+// ─── Attendance ────────────────────────────────────────────
+
+export const importAttendanceSchema = z.object({
+  courseId: z.string().uuid("Invalid course ID"),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
+  sessionDuration: z.coerce.number().positive("Session duration must be greater than 0"),
+  csvContent: z.string().min(1, "CSV content is required"),
+});
+
+export const markAttendanceSchema = z.object({
+  enrollmentId: z.string().uuid("Invalid enrollment ID"),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
+  status: z.enum(["present", "absent", "late", "excused"]),
+  sessionDuration: z.coerce.number().positive().optional().nullable(),
+});
+
+export const deleteAttendanceSchema = z.object({
+  recordId: z.string().uuid("Invalid record ID"),
+});
+
 // ─── Helper ────────────────────────────────────────────────
 
 /**

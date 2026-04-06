@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn } from "@/app/actions/auth";
+import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 import { AlertCircle, LogIn, Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { generateDeviceFingerprints } from "@/lib/device-fingerprint";
 
@@ -51,9 +52,26 @@ export default function LoginPage() {
         </p>
       </div>
 
+      {/* Google Sign In */}
+      <div className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both delay-100 duration-700">
+        <GoogleSignInButton />
+      </div>
+
+      {/* Divider */}
+      <div className="animate-in fade-in zoom-in-95 fill-mode-both relative delay-200 duration-700">
+        <div className="absolute inset-0 flex items-center">
+          <div className="border-border/50 w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
+            Or continue with email
+          </span>
+        </div>
+      </div>
+
       <form
         action={action}
-        className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-150 duration-700 sm:space-y-6"
+        className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-300 duration-700 sm:space-y-6"
       >
         <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
         <input type="hidden" name="hardware_fingerprint" value={hardwareFingerprint ?? ""} />
@@ -160,18 +178,6 @@ export default function LoginPage() {
           )}
         </Button>
       </form>
-
-      {/* Divider */}
-      <div className="animate-in fade-in zoom-in-95 fill-mode-both relative delay-300 duration-700">
-        <div className="absolute inset-0 flex items-center">
-          <div className="border-border/50 w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
-            New here?
-          </span>
-        </div>
-      </div>
 
       {/* Sign Up Link */}
       <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both text-center delay-500 duration-700">

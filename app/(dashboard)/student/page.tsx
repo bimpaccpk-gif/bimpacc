@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BookOpen, CheckCircle, Clock, Award, ArrowRight } from "lucide-react";
+import { StudentAttendanceOverview } from "@/components/student/attendance-overview";
 
 interface DashboardCourse {
   course_id: string;
@@ -218,7 +219,12 @@ export default async function StudentDashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      {/* Attendance Overview */}
+      <StudentAttendanceOverview />
+
+      <div className="grid gap-6 lg:grid-cols-1">
         {/* Available Courses */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
