@@ -477,7 +477,8 @@ export async function getStudentAttendance(
 
   if (error || !data) return [];
 
-  return data.map((r: AttendanceRow) => ({
+  const rows = data as AttendanceRow[];
+  return rows.map((r) => ({
     course_id: r.enrollments.course_id,
     course_title: r.enrollments.courses.title,
     session_date: r.session_date,
