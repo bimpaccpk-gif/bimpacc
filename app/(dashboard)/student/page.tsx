@@ -243,7 +243,7 @@ export default async function StudentDashboardPage() {
                 </div>
                 <h3 className="text-foreground mb-2 text-lg font-semibold">All Caught Up!</h3>
                 <p className="text-muted-foreground text-sm">
-                  You're enrolled in all available courses. Check back later for new offerings.
+                  You&apos;re enrolled in all available courses. Check back later for new offerings.
                 </p>
               </div>
             ) : (

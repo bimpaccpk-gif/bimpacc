@@ -1,11 +1,10 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { verifySession, verifyAdmin, getCurrentUser } from "@/lib/dal";
+import { verifySession } from "@/lib/dal";
 import {
   importAttendanceSchema,
   markAttendanceSchema,
-  deleteAttendanceSchema,
 } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import Papa from "papaparse";
@@ -14,6 +13,30 @@ import type { AttendanceStatus, CourseAttendanceDetail } from "@/types";
 // ─── Helpers ──────────────────────────────────────────────────
 
 type AdminOrInstructor = { userId: string; role: string };
+
+interface EnrollmentWithUser {
+  id: string;
+  user_id: string;
+  users: { id: string; full_name: string; email: string } | null;
+  course_id?: string;
+}
+
+interface AttendanceRow {
+  session_date: string;
+  status: string;
+  watch_time_minutes: number | null;
+  session_duration_minutes: number | null;
+  enrollments: {
+    course_id: string;
+    courses: { id: string; title: string };
+  };
+}
+
+interface RecordWithEnrollment {
+  id: string;
+  enrollment_id: string;
+  enrollments: { course_id: string };
+}
 
 async function verifyAdminOrInstructor(): Promise<AdminOrInstructor> {
   const { userId } = await verifySession();
@@ -66,7 +89,7 @@ export async function getCourseAttendance(
       users!inner(id, full_name, email)
     `
     )
-    .eq("course_id", courseId);
+    .eq("course_id", courseId) as { data: EnrollmentWithUser[] | null; error: unknown };
 
   if (enrollError || !enrollments) {
     console.error("Error fetching enrollments:", enrollError);
@@ -74,19 +97,19 @@ export async function getCourseAttendance(
   }
 
   // Get attendance records for the session date
-  const enrollmentIds = enrollments.map((e: any) => e.id);
+  const enrollmentIds = enrollments.map((e) => e.id);
   const { data: records } = await admin
     .from("attendance_records")
     .select("*")
     .eq("session_date", sessionDate)
     .in("enrollment_id", enrollmentIds);
 
-  const recordMap = new Map<string, any>();
+  const recordMap = new Map<string, (typeof records)[number]>();
   for (const r of records ?? []) {
     recordMap.set(r.enrollment_id, r);
   }
 
-  const result: CourseAttendanceDetail[] = enrollments.map((e: any) => {
+  const result: CourseAttendanceDetail[] = enrollments.map((e) => {
     const record = recordMap.get(e.id);
     return {
       id: record?.id ?? "",
@@ -99,8 +122,8 @@ export async function getCourseAttendance(
       marked_by: record?.marked_by ?? null,
       created_at: record?.created_at ?? new Date().toISOString(),
       updated_at: record?.updated_at ?? new Date().toISOString(),
-      student_name: (e.users as any)?.full_name ?? "Unknown",
-      student_email: (e.users as any)?.email ?? "Unknown",
+      student_name: e.users?.full_name ?? "Unknown",
+      student_email: e.users?.email ?? "Unknown",
     };
   });
 
@@ -128,7 +151,7 @@ export async function getAttendanceSessionDates(
     .select("session_date, status")
     .in(
       "enrollment_id",
-      enrollmentIds.map((e: any) => e.id)
+      enrollmentIds.map((e) => e.id)
     )
     .order("session_date", { ascending: false });
 
@@ -223,7 +246,7 @@ export async function importAttendanceCSV(
       users!inner(id, email, full_name)
     `
     )
-    .eq("course_id", courseId);
+    .eq("course_id", courseId) as { data: { id: string; users: { email: string; full_name: string } }[] | null; error: unknown };
 
   if (!enrollments) {
     return { error: "No enrollments found for this course." };
@@ -250,15 +273,15 @@ export async function importAttendanceCSV(
     let matchedEnrollment: string | null = null;
     if (email) {
       const found = enrollments.find(
-        (e: any) => (e.users as any).email.toLowerCase() === email
+        (e) => e.users.email.toLowerCase() === email
       );
       if (found) matchedEnrollment = found.id;
     }
 
     // Fallback to name match (contains)
     if (!matchedEnrollment && name) {
-      const found = enrollments.find((e: any) =>
-        normalizeName((e.users as any).full_name).includes(normalizeName(name))
+      const found = enrollments.find((e) =>
+        normalizeName(e.users.full_name).includes(normalizeName(name))
       );
       if (found) matchedEnrollment = found.id;
     }
@@ -375,7 +398,7 @@ export async function markAttendance(
 export async function deleteAttendanceRecord(
   recordId: string
 ): Promise<{ error?: string }> {
-  const { userId } = await verifyAdminOrInstructor();
+  await verifyAdminOrInstructor();
   const admin = await createAdminClient();
 
   // Get the record to check course access
@@ -389,14 +412,14 @@ export async function deleteAttendanceRecord(
     `
     )
     .eq("id", recordId)
-    .single();
+    .single() as { data: { id: string; enrollments: { course_id: string } } | null; error: unknown };
 
   if (!record) {
     return { error: "Record not found." };
   }
 
   try {
-    await verifyAttendanceAccess((record as any).enrollments.course_id);
+    await verifyAttendanceAccess(record.enrollments.course_id);
   } catch {
     return { error: "Unauthorized." };
   }
@@ -407,7 +430,7 @@ export async function deleteAttendanceRecord(
     return { error: error.message };
   }
 
-  revalidatePath(`/admin/courses/${(record as any).enrollments.course_id}/attendance`);
+  revalidatePath(`/admin/courses/${record.enrollments.course_id}/attendance`);
   revalidatePath(`/instructor/attendance`);
 
   return {};
@@ -454,7 +477,7 @@ export async function getStudentAttendance(
 
   if (error || !data) return [];
 
-  return data.map((r: any) => ({
+  return data.map((r: AttendanceRow) => ({
     course_id: r.enrollments.course_id,
     course_title: r.enrollments.courses.title,
     session_date: r.session_date,
@@ -500,7 +523,7 @@ export async function getAttendanceStats(
     .select("status")
     .in(
       "enrollment_id",
-      enrollIds?.map((e: any) => e.id) ?? []
+      enrollIds?.map((e: { id: string }) => e.id) ?? []
     )
     .eq("session_date", sessionDate);
 

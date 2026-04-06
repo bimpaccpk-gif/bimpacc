@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/dal";
 import { Calendar, GraduationCap } from "lucide-react";
 import Link from "next/link";

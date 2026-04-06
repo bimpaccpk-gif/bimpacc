@@ -1,48 +1,45 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, use } from "react";
 import { getCourseAttendance, markAttendance, deleteAttendanceRecord, getAttendanceStats } from "@/app/actions/attendance";
 import type { CourseAttendanceDetail } from "@/types";
 import { Loader2, Trash2, CheckCircle2, XCircle, Clock, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 interface AttendanceTableProps {
   courseId: string;
   sessionDate: string;
 }
 
+// Simple cache keyed by `${courseId}|${sessionDate}`
+const attendanceCache = new Map<string, Promise<{ attendance: CourseAttendanceDetail[]; stats: Awaited<ReturnType<typeof getAttendanceStats>> }>>();
+
+function getAttendanceData(courseId: string, sessionDate: string) {
+  const key = `${courseId}|${sessionDate}`;
+  if (!attendanceCache.has(key)) {
+    // Delete old cache entries when keys change to prevent memory leaks
+    attendanceCache.delete(key);
+    attendanceCache.set(key, Promise.all([
+      getCourseAttendance(courseId, sessionDate),
+      getAttendanceStats(courseId, sessionDate),
+    ]).then(([attendance, stats]) => ({ attendance, stats })));
+  }
+  return attendanceCache.get(key)!;
+}
+
 export function AttendanceTable({ courseId, sessionDate }: AttendanceTableProps) {
-  const router = useRouter();
-  const [attendance, setAttendance] = useState<CourseAttendanceDetail[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [stats, setStats] = useState<{
-    totalEnrolled: number;
-    present: number;
-    absent: number;
-    late: number;
-    excused: number;
-    unmarked: number;
-    attendancePercentage: number;
-  } | null>(null);
+  const { attendance: initialData, stats: initialStats } = use(getAttendanceData(courseId, sessionDate));
+  const [attendance, setAttendance] = useState(initialData);
+  const [stats] = useState(initialStats);
   const [bulkMarking, setBulkMarking] = useState<string | null>(null);
 
   const fetchAttendance = useCallback(async () => {
-    setLoading(true);
-    setStatsLoading(true);
     const data = await getCourseAttendance(courseId, sessionDate);
     setAttendance(data);
-    setLoading(false);
 
     const s = await getAttendanceStats(courseId, sessionDate);
-    setStats(s);
-    setStatsLoading(false);
+    attendanceCache.set(`${courseId}|${sessionDate}`, Promise.resolve({ attendance: data, stats: s }));
   }, [courseId, sessionDate]);
-
-  useEffect(() => {
-    void fetchAttendance();
-  }, [fetchAttendance]);
 
   const handleStatusChange = async (enrollmentId: string, status: string) => {
     const res = await markAttendance(enrollmentId, sessionDate, status);
@@ -51,7 +48,7 @@ export function AttendanceTable({ courseId, sessionDate }: AttendanceTableProps)
     } else {
       setAttendance((prev) =>
         prev.map((a) =>
-          a.enrollment_id === enrollmentId ? { ...a, status: status as any, source: "manual" as const } : a
+          a.enrollment_id === enrollmentId ? { ...a, status: status as CourseAttendanceDetail["status"], source: "manual" as const } : a
         )
       );
       fetchAttendance();
@@ -85,13 +82,6 @@ export function AttendanceTable({ courseId, sessionDate }: AttendanceTableProps)
     }
   };
 
-  const statusIcon: Record<string, React.ReactNode> = {
-    present: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-    absent: <XCircle className="h-4 w-4 text-red-500" />,
-    late: <Clock className="h-4 w-4 text-yellow-500" />,
-    excused: <ClipboardCheck className="h-4 w-4 text-blue-500" />,
-  };
-
   const statusBadgeClasses: Record<string, string> = {
     present: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     absent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -108,7 +98,7 @@ export function AttendanceTable({ courseId, sessionDate }: AttendanceTableProps)
   return (
     <div className="space-y-4">
       {/* Stats header */}
-      {stats && !statsLoading && (
+      {stats && (
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold">{formattedDate}</h2>
           <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium">
@@ -144,71 +134,65 @@ export function AttendanceTable({ courseId, sessionDate }: AttendanceTableProps)
       )}
 
       {/* Table */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-muted/30">
-              <tr>
-                <th className="px-4 py-3 font-medium text-muted-foreground">#</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Email</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Watch Time</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Source</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attendance.map((a, i) => (
-                <tr key={a.enrollment_id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium">{a.student_name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{a.student_email}</td>
-                  <td className="px-4 py-3">
-                    {a.watch_time_minutes != null
-                      ? `${a.watch_time_minutes} min`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={a.status}
-                      onChange={(e) => handleStatusChange(a.enrollment_id, e.target.value)}
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer ${
-                        statusBadgeClasses[a.status]
-                      }`}
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-muted/30">
+            <tr>
+              <th className="px-4 py-3 font-medium text-muted-foreground">#</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Email</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Watch Time</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Source</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendance.map((a, i) => (
+              <tr key={a.enrollment_id} className="border-b last:border-0 hover:bg-muted/20">
+                <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
+                <td className="px-4 py-3 font-medium">{a.student_name}</td>
+                <td className="px-4 py-3 text-muted-foreground">{a.student_email}</td>
+                <td className="px-4 py-3">
+                  {a.watch_time_minutes != null
+                    ? `${a.watch_time_minutes} min`
+                    : "\u2014"}
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={a.status}
+                    onChange={(e) => handleStatusChange(a.enrollment_id, e.target.value)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer ${
+                      statusBadgeClasses[a.status]
+                    }`}
+                  >
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                    <option value="late">Late</option>
+                    <option value="excused">Excused</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                    {a.source === "csv" ? "CSV Import" : "Manual"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {a.id && (
+                    <button
+                      onClick={() => handleDelete(a.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      title="Delete record"
                     >
-                      <option value="present">Present</option>
-                      <option value="absent">Absent</option>
-                      <option value="late">Late</option>
-                      <option value="excused">Excused</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                      {a.source === "csv" ? "CSV Import" : "Manual"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {a.id && (
-                      <button
-                        onClick={() => handleDelete(a.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                        title="Delete record"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getStudentAttendance } from "@/app/actions/attendance";
-import { Calendar, TrendingUp } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 interface AttendanceData {
   course_id: string;

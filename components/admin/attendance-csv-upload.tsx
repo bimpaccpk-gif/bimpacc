@@ -73,7 +73,7 @@ export function AttendanceCSVUpload({ courseId }: AttendanceCSVUploadProps) {
 
     // Parse CSV to get row count for progress display
     const lines = csvText.trim().split("\n").filter((l) => l.trim());
-    const rowCount = lines.length - 1; // subtract header
+    void lines; // available for future progress display
 
     const res = await importAttendanceCSV(courseId, sessionDate, duration, csvText);
     setLoading(false);

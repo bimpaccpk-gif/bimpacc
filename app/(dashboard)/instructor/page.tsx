@@ -1,6 +1,6 @@
 import { getInstructorDashboardData } from "@/app/actions/instructor";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Users, BarChart3, TrendingUp, Calendar } from "lucide-react";
+import { BookOpen, Users, BarChart3, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export default async function InstructorDashboardPage() {
