@@ -43,7 +43,7 @@ export function CreateUserDialog() {
         <UserPlus className="mr-2 h-4 w-4" />
         Create User
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create User Account</DialogTitle>
           <DialogDescription>
