@@ -8,6 +8,7 @@ import type {
   ContentAccessType,
   StudentContentAccess,
   CourseAccessTree,
+  SemesterAccessNode,
   SubjectAccessNode,
   LessonAccessNode,
 } from "@/types";
@@ -190,11 +191,64 @@ export async function getCourseAccessForStudent(
     courseTitle: c.title,
     courseIsPaused: c.is_paused ?? false,
     studentOverride: overrideMap.get(`course:${c.id}`) ?? null,
+    semesters: [],
     subjects: [],
     directLessons: [],
   };
 
   if (c.hierarchy_type === 1) {
+    // Course → Semester → Subject → Lesson
+    const { data: semesters } = await admin
+      .from("semesters")
+      .select("id, title, is_paused")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+
+    for (const sem of (semesters as any[]) ?? []) {
+      const semesterNode: SemesterAccessNode = {
+        id: sem.id,
+        title: sem.title,
+        isPaused: sem.is_paused ?? false,
+        studentOverride: overrideMap.get(`semester:${sem.id}`) ?? null,
+        subjects: [],
+      };
+
+      const { data: subjects } = await admin
+        .from("subjects")
+        .select("id, title, is_paused")
+        .eq("semester_id", sem.id)
+        .order("order_index", { ascending: true });
+
+      for (const subj of (subjects as any[]) ?? []) {
+        const subjectNode: SubjectAccessNode = {
+          id: subj.id,
+          title: subj.title,
+          isPaused: subj.is_paused ?? false,
+          studentOverride: overrideMap.get(`subject:${subj.id}`) ?? null,
+          lessons: [],
+        };
+
+        const { data: lessons } = await admin
+          .from("lessons")
+          .select("id, title, is_paused")
+          .eq("subject_id", subj.id)
+          .order("order_index", { ascending: true });
+
+        for (const lesson of (lessons as any[]) ?? []) {
+          subjectNode.lessons.push({
+            id: lesson.id,
+            title: lesson.title,
+            isPaused: lesson.is_paused ?? false,
+            studentOverride: overrideMap.get(`lesson:${lesson.id}`) ?? null,
+          });
+        }
+
+        semesterNode.subjects.push(subjectNode);
+      }
+
+      tree.semesters.push(semesterNode);
+    }
+  } else if (c.hierarchy_type === 2) {
     // Course → Subject → Lesson
     const { data: subjects } = await admin
       .from("subjects")
@@ -229,7 +283,7 @@ export async function getCourseAccessForStudent(
       tree.subjects.push(subjectNode);
     }
   } else {
-    // Direct lessons under course
+    // Type 3: Course → Lesson (direct)
     const { data: lessons } = await admin
       .from("lessons")
       .select("id, title, is_paused")
@@ -425,29 +479,40 @@ export async function pauseCourseCascade(
   ];
 
   if ((course as any)?.hierarchy_type === 1) {
-    // Get subjects
-    const { data: subjects } = await admin.from("subjects").select("id").eq("course_id", courseId);
+    // Type 1: Get semesters -> subjects -> lessons
+    const { data: semesters } = await admin.from("semesters").select("id").eq("course_id", courseId);
 
-    for (const s of (subjects as any[]) ?? []) {
+    for (const sem of (semesters as any[]) ?? []) {
       rows.push({
         user_id: userId,
-        content_type: "subject",
-        content_id: s.id,
+        content_type: "semester",
+        content_id: sem.id,
         is_paused: isPaused,
         paused_by: session.userId,
       });
 
-      // Get lessons under this subject
-      const { data: lessons } = await admin.from("lessons").select("id").eq("subject_id", s.id);
+      const { data: subjects } = await admin.from("subjects").select("id").eq("semester_id", sem.id);
 
-      for (const l of (lessons as any[]) ?? []) {
+      for (const s of (subjects as any[]) ?? []) {
         rows.push({
           user_id: userId,
-          content_type: "lesson",
-          content_id: l.id,
+          content_type: "subject",
+          content_id: s.id,
           is_paused: isPaused,
           paused_by: session.userId,
         });
+
+        const { data: lessons } = await admin.from("lessons").select("id").eq("subject_id", s.id);
+
+        for (const l of (lessons as any[]) ?? []) {
+          rows.push({
+            user_id: userId,
+            content_type: "lesson",
+            content_id: l.id,
+            is_paused: isPaused,
+            paused_by: session.userId,
+          });
+        }
       }
     }
   } else {
@@ -523,7 +588,13 @@ export async function resolveEffectiveAccess(
 
   // Fall back to global
   const table =
-    contentType === "course" ? "courses" : contentType === "subject" ? "subjects" : "lessons";
+    contentType === "course"
+      ? "courses"
+      : contentType === "semester"
+        ? "semesters"
+        : contentType === "subject"
+          ? "subjects"
+          : "lessons";
   const { data: content } = await admin
     .from(table)
     .select("is_paused")

@@ -16,9 +16,9 @@ interface Course {
 }
 
 const hierarchyLabels: Record<number, string> = {
-  1: "Course + Subjects + Lessons",
-  2: "Subjects + Lessons",
-  3: "Lessons Only",
+  1: "Full Course Structure",
+  2: "Standard Course",
+  3: "Simple Course",
 };
 
 const hierarchyColors: Record<number, string> = {

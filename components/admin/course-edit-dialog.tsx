@@ -14,8 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { updateCourse } from "@/app/actions/courses";
+import { getHierarchyOptions } from "@/lib/hierarchy-config";
 import { Edit2, AlertCircle, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HierarchyType } from "@/types";
 
 interface CourseEditDialogProps {
   courseId: string;
@@ -24,6 +26,7 @@ interface CourseEditDialogProps {
   initialBatch: string;
   initialStatus: string;
   initialRegistrationOpen: boolean;
+  initialHierarchyType: HierarchyType;
 }
 
 export function CourseEditDialog({
@@ -33,11 +36,14 @@ export function CourseEditDialog({
   initialBatch,
   initialStatus,
   initialRegistrationOpen,
+  initialHierarchyType,
 }: CourseEditDialogProps) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(updateCourse, undefined);
   const [status, setStatus] = useState(initialStatus || "draft");
   const [registrationOpen, setRegistrationOpen] = useState(initialRegistrationOpen);
+  const [hierarchyType, setHierarchyType] = useState<HierarchyType>(initialHierarchyType);
+  const hierarchyOptions = getHierarchyOptions();
 
   // Close dialog on success
   useEffect(() => {
@@ -65,6 +71,7 @@ export function CourseEditDialog({
         <form action={action} className="mt-6 space-y-6">
           <input type="hidden" name="courseId" value={courseId} />
           <input type="hidden" name="status" value={status} />
+          <input type="hidden" name="hierarchy_type" value={hierarchyType} />
 
           {state?.error && (
             <Alert variant="destructive" className="animate-shake">
@@ -116,6 +123,34 @@ export function CourseEditDialog({
               placeholder="Brief description of what students will learn..."
               className="h-20 w-full resize-none rounded-lg border bg-background px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
+          </div>
+
+          {/* Hierarchy Type */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Hierarchy Structure</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {hierarchyOptions.map((type) => (
+                <button
+                  key={type.type}
+                  type="button"
+                  onClick={() => setHierarchyType(type.type)}
+                  className={cn(
+                    "flex flex-col items-start rounded-lg border-2 p-3 text-left transition-all",
+                    hierarchyType === type.type
+                      ? "border-primary bg-primary/5"
+                      : "border-muted text-muted-foreground hover:border-primary/30 hover:bg-muted/50"
+                  )}
+                >
+                  <span className={cn(
+                    "text-sm font-semibold",
+                    hierarchyType === type.type ? "text-primary" : "text-foreground"
+                  )}>
+                    {type.config.name}
+                  </span>
+                  <span className="text-[10px] font-mono mt-0.5 opacity-70">{type.config.description}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2">

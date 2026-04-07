@@ -109,6 +109,7 @@ export async function updateCourse(
   const batch = (formData.get("batch") as string)?.trim();
   const status = (formData.get("status") as string) ?? "draft";
   const registration_open = formData.get("registration_open") === "on";
+  const hierarchyTypeStr = formData.get("hierarchy_type") as string;
 
   if (!id || !title || !batch) {
     return { error: "Course ID, title, and batch are required.", success: "" };
@@ -116,10 +117,14 @@ export async function updateCourse(
 
   const supabase = await createClient();
 
-  // Note: hierarchy_type cannot be changed after creation
+  const updatePayload: any = { title, description, batch, status, registration_open };
+  if (hierarchyTypeStr) {
+    updatePayload.hierarchy_type = parseInt(hierarchyTypeStr, 10);
+  }
+
   const { error } = await supabase
     .from("courses")
-    .update({ title, description, batch, status, registration_open } as never)
+    .update(updatePayload as never)
     .eq("id", id);
 
   if (error) {

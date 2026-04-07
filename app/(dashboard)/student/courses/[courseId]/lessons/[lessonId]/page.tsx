@@ -102,36 +102,46 @@ async function getLessonWithSiblings(
   let lessons: LessonRow[] = [];
 
   if (hierarchyType === 1) {
-    const { data: subjects } = await supabase
-      .from("subjects")
-      .select("id, title, order_index")
+    // Course → Semester → Subject → Lesson
+    const { data: semesters } = await supabase
+      .from("semesters")
+      .select("id, order_index")
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    if (subjects && subjects.length > 0) {
-      const subjectIds = subjects.map((s) => s.id);
-      const { data: rawLessons } = await supabase
-        .from("lessons")
-        .select(
-          "id, title, description, video_url, content, order_index, duration_minutes, subject_id"
-        )
-        .in("subject_id", subjectIds)
+    if (semesters && semesters.length > 0) {
+      const semesterIds = semesters.map((s) => s.id);
+      const { data: subjects } = await supabase
+        .from("subjects")
+        .select("id, title, semester_id, order_index")
+        .in("semester_id", semesterIds)
         .order("order_index", { ascending: true });
 
-      const subjectMap = new Map<string, string>();
-      subjects.forEach((s) => subjectMap.set(s.id, s.title));
+      if (subjects && subjects.length > 0) {
+        const subjectIds = subjects.map((s) => s.id);
+        const { data: rawLessons } = await supabase
+          .from("lessons")
+          .select(
+            "id, title, description, video_url, content, order_index, duration_minutes, subject_id"
+          )
+          .in("subject_id", subjectIds)
+          .order("order_index", { ascending: true });
 
-      lessons = (rawLessons ?? []).map((l) => ({
-        id: l.id,
-        title: l.title,
-        description: l.description,
-        video_url: l.video_url,
-        content: l.content,
-        order_index: l.order_index,
-        duration_minutes: l.duration_minutes,
-        subject_id: l.subject_id,
-        subject_title: subjectMap.get(l.subject_id) ?? null,
-      }));
+        const subjectMap = new Map<string, string>();
+        subjects.forEach((s) => subjectMap.set(s.id, s.title));
+
+        lessons = (rawLessons ?? []).map((l) => ({
+          id: l.id,
+          title: l.title,
+          description: l.description,
+          video_url: l.video_url,
+          content: l.content,
+          order_index: l.order_index,
+          duration_minutes: l.duration_minutes,
+          subject_id: l.subject_id,
+          subject_title: subjectMap.get(l.subject_id) ?? null,
+        }));
+      }
     }
   } else {
     const { data: rawLessons } = await supabase

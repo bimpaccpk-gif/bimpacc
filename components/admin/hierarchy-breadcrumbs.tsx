@@ -16,7 +16,9 @@ interface HierarchyBreadcrumbsProps {
   hierarchyType: HierarchyType;
   subjectId?: string;
   subjectTitle?: string;
-  currentLevel: "course" | "subject" | "lesson";
+  semesterId?: string;
+  semesterTitle?: string;
+  currentLevel: "course" | "semester" | "subject" | "lesson";
 }
 
 export function HierarchyBreadcrumbs({
@@ -25,34 +27,45 @@ export function HierarchyBreadcrumbs({
   hierarchyType,
   subjectId,
   subjectTitle,
+  semesterId,
+  semesterTitle,
   currentLevel,
 }: HierarchyBreadcrumbsProps) {
   const config = getHierarchyConfig(hierarchyType);
-  
+
   const getBreadcrumbs = (): BreadcrumbItem[] => {
     const breadcrumbs: BreadcrumbItem[] = [
       { label: "Courses", href: "/admin/courses" }
     ];
 
     switch (hierarchyType) {
-      case 1: // Course → Subject → Lesson
+      case 1: // Course → Semester → Subject → Lesson
         if (currentLevel === "course") {
           breadcrumbs.push({ label: courseTitle });
+        } else if (currentLevel === "semester") {
+          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
+          breadcrumbs.push({ label: semesterTitle || "Semester" });
         } else if (currentLevel === "subject") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
-          breadcrumbs.push({ label: subjectTitle || "Subjects" });
+          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
+          breadcrumbs.push({ label: semesterTitle || "Semester", href: `/admin/courses/${courseId}/semesters/${semesterId}` });
+          breadcrumbs.push({ label: subjectTitle || "Subject" });
         } else if (currentLevel === "lesson") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
-          breadcrumbs.push({ label: subjectTitle || "Subject", href: `/admin/courses/${courseId}/subjects/${subjectId}/lessons` });
+          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
+          breadcrumbs.push({ label: semesterTitle || "Semester", href: `/admin/courses/${courseId}/semesters/${semesterId}` });
+          breadcrumbs.push({ label: subjectTitle || "Subject", href: `/admin/courses/${courseId}/semesters/${semesterId}/subjects/${subjectId}/lessons` });
           breadcrumbs.push({ label: "Lessons" });
         }
         break;
 
-      case 2: // Subject → Lesson
+      case 2: // Course → Subject → Lesson
         if (currentLevel === "course") {
           breadcrumbs.push({ label: courseTitle });
+        } else if (currentLevel === "subject") {
+          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
+          breadcrumbs.push({ label: subjectTitle || "Subject" });
         } else if (currentLevel === "lesson") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/lessons` });
+          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
+          breadcrumbs.push({ label: subjectTitle || "Subject", href: `/admin/courses/${courseId}/subjects/${subjectId}/lessons` });
           breadcrumbs.push({ label: "Lessons" });
         }
         break;

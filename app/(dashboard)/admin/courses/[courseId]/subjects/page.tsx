@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HierarchyIndicator } from "@/components/admin/hierarchy-indicator";
 import { InlineSubjectManager } from "@/components/admin/inline-subject-manager";
 import { HierarchyType } from "@/types";
+import { redirect } from "next/navigation";
 
 interface SubjectRow {
   id: string;
@@ -57,6 +58,11 @@ export default async function AdminSubjectsPage({
         </Link>
       </div>
     );
+  }
+
+  // Type 1 courses manage subjects through semesters — redirect there
+  if (course.hierarchy_type === 1) {
+    return redirect(`/admin/courses/${courseId}/semesters`);
   }
 
   return (

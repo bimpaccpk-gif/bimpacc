@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Layers,
   Shield,
+  Calendar,
 } from "lucide-react";
 import {
   setStudentContentAccess,
@@ -82,7 +83,7 @@ function AccessToggle({
   override,
   onToggle,
 }: {
-  contentType: "course" | "subject" | "lesson";
+  contentType: "course" | "semester" | "subject" | "lesson";
   contentId: string;
   userId: string;
   globalPaused: boolean;
@@ -198,6 +199,82 @@ function LessonRow({
           onToggle={onRefresh}
         />
       </div>
+    </div>
+  );
+}
+
+function SemesterAccordion({
+  semester,
+  userId,
+  courseGlobalPaused,
+  onRefresh,
+}: {
+  semester: {
+    id: string;
+    title: string;
+    isPaused: boolean;
+    studentOverride: StudentContentAccess | null;
+    subjects: {
+      id: string;
+      title: string;
+      isPaused: boolean;
+      studentOverride: StudentContentAccess | null;
+      lessons: {
+        id: string;
+        title: string;
+        isPaused: boolean;
+        studentOverride: StudentContentAccess | null;
+      }[];
+    }[];
+  };
+  userId: string;
+  courseGlobalPaused: boolean;
+  onRefresh: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const effectiveGlobal = courseGlobalPaused || semester.isPaused;
+
+  return (
+    <div className="border-border/50 rounded-md border">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="hover:bg-muted/30 flex w-full items-center gap-2 px-3 py-2 text-left transition-colors"
+      >
+        {expanded ? (
+          <ChevronDown className="text-muted-foreground h-3 w-3 shrink-0" />
+        ) : (
+          <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0" />
+        )}
+        <Calendar className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <span className="flex-1 truncate text-xs font-medium">{semester.title}</span>
+        <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <StatusBadge status={getEffectiveStatus(effectiveGlobal, semester.studentOverride)} />
+          <AccessToggle
+            contentType="semester"
+            contentId={semester.id}
+            userId={userId}
+            globalPaused={effectiveGlobal}
+            override={semester.studentOverride}
+            onToggle={onRefresh}
+          />
+        </div>
+      </button>
+      {expanded && (
+        <div className="border-border/30 bg-muted/10 divide-border/20 space-y-1 border-t p-2">
+          {semester.subjects.map((subject) => (
+            <SubjectAccordion
+              key={subject.id}
+              subject={subject}
+              userId={userId}
+              courseGlobalPaused={effectiveGlobal}
+              onRefresh={onRefresh}
+            />
+          ))}
+          {semester.subjects.length === 0 && (
+            <p className="text-muted-foreground py-1.5 pl-6 text-[10px] italic">No subjects</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -392,7 +469,25 @@ export function EnrollmentAccessDialog({
                 </div>
               </div>
 
-              {/* Subjects (hierarchy type 1) */}
+              {/* Semesters (hierarchy type 1) */}
+              {tree.semesters.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-muted-foreground px-1 text-[10px] font-semibold tracking-wider uppercase">
+                    Semesters & Subjects
+                  </p>
+                  {tree.semesters.map((semester) => (
+                    <SemesterAccordion
+                      key={semester.id}
+                      semester={semester}
+                      userId={userId}
+                      courseGlobalPaused={tree.courseIsPaused}
+                      onRefresh={handleRefresh}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Subjects (hierarchy type 2) */}
               {tree.subjects.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-muted-foreground px-1 text-[10px] font-semibold tracking-wider uppercase">

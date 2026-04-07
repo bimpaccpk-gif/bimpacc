@@ -167,7 +167,7 @@ export interface UserEnrollmentDetail {
   progress_percent: number;
 }
 
-export type ContentAccessType = "course" | "subject" | "lesson";
+export type ContentAccessType = "course" | "semester" | "subject" | "lesson";
 
 export interface StudentContentAccess {
   id: string;
@@ -187,11 +187,20 @@ export interface ContentAccessStatus {
   overrideId: string | null;
 }
 
+export interface SemesterAccessNode {
+  id: string;
+  title: string;
+  isPaused: boolean;
+  studentOverride: StudentContentAccess | null;
+  subjects: SubjectAccessNode[];
+}
+
 export interface CourseAccessTree {
   courseId: string;
   courseTitle: string;
   courseIsPaused: boolean;
   studentOverride: StudentContentAccess | null;
+  semesters: SemesterAccessNode[];
   subjects: SubjectAccessNode[];
   directLessons: LessonAccessNode[];
 }

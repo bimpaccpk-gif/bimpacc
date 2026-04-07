@@ -59,9 +59,9 @@ const hierarchyIcons: Record<number, React.ReactNode> = {
 };
 
 const hierarchyGroups = [
-  { type: 1 as HierarchyType, title: "Course, Subject and Lesson Hierarchy" },
-  { type: 2 as HierarchyType, title: "Subject and Lesson Hierarchy" },
-  { type: 3 as HierarchyType, title: "Lesson Hierarchy" },
+  { type: 1 as HierarchyType, title: "Full Course Structure (Semesters → Subjects → Lessons)" },
+  { type: 2 as HierarchyType, title: "Standard Course (Subjects → Lessons)" },
+  { type: 3 as HierarchyType, title: "Simple Course (Lessons Only)" },
 ];
 
 function formatDate(date: string) {
@@ -319,6 +319,7 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   initialBatch={course.batch}
                                   initialStatus={course.status}
                                   initialRegistrationOpen={course.registration_open}
+                                  initialHierarchyType={course.hierarchy_type}
                                 />
                                 <div className="w-[160px] sm:w-[150px]">
                                   <ManageContentDialog

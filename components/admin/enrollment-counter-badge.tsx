@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Layers,
   Shield,
+  Calendar,
 } from "lucide-react";
 import {
   setStudentContentAccess,
@@ -79,7 +80,7 @@ function AccessToggle({
   override,
   onToggle,
 }: {
-  contentType: "course" | "subject" | "lesson";
+  contentType: "course" | "semester" | "subject" | "lesson";
   contentId: string;
   userId: string;
   globalPaused: boolean;
@@ -188,6 +189,81 @@ function LessonRow({
           onToggle={onRefresh}
         />
       </div>
+    </div>
+  );
+}
+
+function SemesterAccordion({
+  semester,
+  userId,
+  courseGlobalPaused,
+  onRefresh,
+}: {
+  semester: {
+    id: string;
+    title: string;
+    isPaused: boolean;
+    studentOverride: StudentContentAccess | null;
+    subjects: {
+      id: string;
+      title: string;
+      isPaused: boolean;
+      studentOverride: StudentContentAccess | null;
+      lessons: {
+        id: string;
+        title: string;
+        isPaused: boolean;
+        studentOverride: StudentContentAccess | null;
+      }[];
+    }[];
+  };
+  userId: string;
+  courseGlobalPaused: boolean;
+  onRefresh: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const effectiveGlobal = courseGlobalPaused || semester.isPaused;
+  return (
+    <div className="border-border/40 rounded-md border">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="hover:bg-muted/30 flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors"
+      >
+        {expanded ? (
+          <ChevronDown className="text-muted-foreground h-3 w-3 shrink-0" />
+        ) : (
+          <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0" />
+        )}
+        <Calendar className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <span className="flex-1 truncate text-[11px] font-medium">{semester.title}</span>
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <StatusBadge status={getEffectiveStatus(effectiveGlobal, semester.studentOverride)} />
+          <AccessToggle
+            contentType="semester"
+            contentId={semester.id}
+            userId={userId}
+            globalPaused={effectiveGlobal}
+            override={semester.studentOverride}
+            onToggle={onRefresh}
+          />
+        </div>
+      </button>
+      {expanded && (
+        <div className="border-border/20 bg-muted/5 divide-border/10 space-y-1 border-t p-1.5">
+          {semester.subjects.map((subject) => (
+            <SubjectAccordion
+              key={subject.id}
+              subject={subject}
+              userId={userId}
+              courseGlobalPaused={effectiveGlobal}
+              onRefresh={onRefresh}
+            />
+          ))}
+          {semester.subjects.length === 0 && (
+            <p className="text-muted-foreground py-1 pl-6 text-[9px] italic">No subjects</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
