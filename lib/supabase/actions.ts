@@ -3,6 +3,7 @@
 import { verifySession, verifyAdmin } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { logAuditEvent } from "@/app/actions/admin";
+import { revalidatePath } from "next/cache";
 import type { UserRole } from "@/types";
 
 interface UserProfile {
@@ -174,6 +175,8 @@ export async function adminCreateUser(
     });
   }
 
+  revalidatePath("/admin/users");
+
   return {
     error: "",
     success: `Account created for ${fullName} (${role}).${courseId && role === "student" ? " Enrolled in selected course." : ""}${bypassOnboarding && role === "student" ? " Onboarding bypassed." : ""}`,
@@ -339,6 +342,11 @@ export async function adminBulkCreateUsers(
 
   const courseMessage = courseId && role === "student" ? " and enrolled in selected course" : "";
   const bypassMessage = bypassOnboarding && role === "student" ? " with onboarding bypassed" : "";
+
+  if (successCount > 0) {
+    revalidatePath("/admin/users");
+  }
+
   return {
     error: "",
     success: `Bulk creation complete: ${successCount} succeeded, ${failCount} failed${courseMessage}${bypassMessage}. Temporary password for all users: TempPass123!`,
