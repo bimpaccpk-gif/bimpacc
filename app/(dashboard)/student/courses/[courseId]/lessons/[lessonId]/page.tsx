@@ -15,16 +15,42 @@ import { createClient as createStorageClient } from "@/lib/supabase/server";
 
 // ─── YouTube video ID extractor ───────────────────────────
 
+/**
+ * Extract a YouTube video ID from any common format.
+ * Supported: watch URLs, short URLs, embed/nocookie URLs, Shorts URLs,
+ * bare video IDs (11 chars alphanumeric + dash/underscore).
+ */
 function getYouTubeVideoId(url: string): string | null {
   if (!url) return null;
+
+  // Standard watch URL
   const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.+&v=)([^&\s]+)/);
   if (watchMatch) return watchMatch[1];
+
+  // Shorts URL
+  const shortsMatch = url.match(/youtube\.com\/shorts\/([^?\s]+)/);
+  if (shortsMatch) return shortsMatch[1];
+
+  // Short URL (youtu.be)
   const shortMatch = url.match(/youtu\.be\/([^?\s]+)/);
   if (shortMatch) return shortMatch[1];
+
+  // Embed URL
   const embedMatch = url.match(/youtube\.com\/embed\/([^?\s]+)/);
   if (embedMatch) return embedMatch[1];
+
+  // Privacy-enhanced embed URL
   const nocookieMatch = url.match(/youtube-nocookie\.com\/embed\/([^?\s]+)/);
   if (nocookieMatch) return nocookieMatch[1];
+
+  // Live URL
+  const liveMatch = url.match(/youtube\.com\/live\/([^?\s]+)/);
+  if (liveMatch) return liveMatch[1];
+
+  // If nothing matched, check if it's a bare video ID (11 chars)
+  const bareMatch = url.match(/^([A-Za-z0-9_-]{11})$/);
+  if (bareMatch) return bareMatch[1];
+
   return null;
 }
 

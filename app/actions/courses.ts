@@ -5,6 +5,46 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { HierarchyType } from "@/types";
 
+/**
+ * Extract a YouTube video ID from any common format.
+ * If input looks like a YouTube URL, extracts the ID.
+ * If input is already a bare 11-char video ID, returns as-is.
+ * Returns null for non-YouTube URLs or empty input.
+ */
+function extractYouTubeVideoId(input: string): string | null {
+  if (!input) return null;
+
+  // Standard watch URL
+  const watchMatch = input.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.+&v=)([^&\s]+)/);
+  if (watchMatch) return watchMatch[1];
+
+  // Shorts URL
+  const shortsMatch = input.match(/youtube\.com\/shorts\/([^?\s]+)/);
+  if (shortsMatch) return shortsMatch[1];
+
+  // Short URL (youtu.be)
+  const shortMatch = input.match(/youtu\.be\/([^?\s]+)/);
+  if (shortMatch) return shortMatch[1];
+
+  // Embed URL
+  const embedMatch = input.match(/youtube\.com\/embed\/([^?\s]+)/);
+  if (embedMatch) return embedMatch[1];
+
+  // Privacy-enhanced embed URL
+  const nocookieMatch = input.match(/youtube-nocookie\.com\/embed\/([^?\s]+)/);
+  if (nocookieMatch) return nocookieMatch[1];
+
+  // Live URL
+  const liveMatch = input.match(/youtube\.com\/live\/([^?\s]+)/);
+  if (liveMatch) return liveMatch[1];
+
+  // If already a bare video ID (11 chars)
+  const bareMatch = input.match(/^([A-Za-z0-9_-]{11})$/);
+  if (bareMatch) return bareMatch[1];
+
+  return null;
+}
+
 // ─── Courses ───────────────────────────────────────────────
 
 export async function createCourse(
@@ -353,7 +393,7 @@ export async function createLesson(
     title,
     description,
     content,
-    video_url: videoUrl || null,
+    video_url: extractYouTubeVideoId(videoUrl) || null,
     duration_minutes: durationStr ? parseInt(durationStr) : null,
     order_index: (count ?? 0) + 1,
   };
@@ -406,7 +446,7 @@ export async function updateLesson(
       title,
       description,
       content,
-      video_url: videoUrl || null,
+      video_url: extractYouTubeVideoId(videoUrl) || null,
       duration_minutes: durationStr ? parseInt(durationStr) : null,
     } as never)
     .eq("id", id);
