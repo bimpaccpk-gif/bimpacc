@@ -40,6 +40,14 @@ interface SubjectWithLessons {
   lessons: LessonRow[];
 }
 
+interface SemesterWithSubjectsWithLessons {
+  id: string;
+  title: string;
+  description: string;
+  isPaused: boolean;
+  subjects: SubjectWithLessons[];
+}
+
 interface LessonRow {
   id: string;
   title: string;
@@ -124,6 +132,97 @@ async function getSubjectsWithLessons(
       order_index: s.order_index,
       isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
       lessons: lessonsBySubject.get(s.id) ?? [],
+    };
+  });
+}
+
+async function getSemestersWithSubjectsWithLessons(
+  courseId: string,
+  userId: string
+): Promise<SemesterWithSubjectsWithLessons[]> {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  // Fetch per-student overrides
+  const { data: overrides } = await admin
+    .from("student_content_access")
+    .select("*")
+    .eq("user_id", userId);
+
+  const overrideMap = new Map<string, boolean>();
+  for (const o of (overrides as any[]) ?? []) {
+    overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
+  }
+
+  // Fetch semesters for this course
+  const { data: semesters } = await supabase
+    .from("semesters")
+    .select("id, title, description, order_index, is_paused")
+    .eq("course_id", courseId)
+    .order("order_index", { ascending: true });
+
+  if (!semesters || semesters.length === 0) return [];
+
+  // Fetch subjects belonging to these semesters
+  const semesterIds = semesters.map((s) => s.id);
+  const { data: subjects } = await supabase
+    .from("subjects")
+    .select("id, title, description, order_index, semester_id, is_paused")
+    .in("semester_id", semesterIds)
+    .order("order_index", { ascending: true });
+
+  // Fetch lessons for these subjects
+  const subjectIds = (subjects ?? []).map((s: any) => s.id);
+  let lessonsBySubject = new Map<string, LessonRow[]>();
+  if (subjectIds.length > 0) {
+    const { data: lessons } = await supabase
+      .from("lessons")
+      .select(
+        "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
+      )
+      .in("subject_id", subjectIds)
+      .order("order_index", { ascending: true });
+
+    (lessons ?? []).forEach((l: any) => {
+      const list = lessonsBySubject.get(l.subject_id) ?? [];
+      const lessonOverride = overrideMap.get(`lesson:${l.id}`);
+      list.push({
+        id: l.id,
+        title: l.title,
+        description: l.description,
+        video_url: l.video_url,
+        content: l.content,
+        order_index: l.order_index,
+        duration_minutes: l.duration_minutes,
+        isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
+      });
+      lessonsBySubject.set(l.subject_id, list);
+    });
+  }
+
+  const subjectsBySemester = new Map<string, SubjectWithLessons[]>();
+  (subjects ?? []).forEach((s: any) => {
+    const subjectOverride = overrideMap.get(`subject:${s.id}`);
+    const subjectsList = subjectsBySemester.get(s.semester_id) ?? [];
+    subjectsList.push({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      order_index: s.order_index,
+      isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
+      lessons: lessonsBySubject.get(s.id) ?? [],
+    });
+    subjectsBySemester.set(s.semester_id, subjectsList);
+  });
+
+  return semesters.map((s: any) => {
+    const semesterOverride = overrideMap.get(`semester:${s.id}`);
+    return {
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      isPaused: semesterOverride !== undefined ? semesterOverride : (s.is_paused ?? false),
+      subjects: subjectsBySemester.get(s.id) ?? [],
     };
   });
 }
@@ -350,14 +449,18 @@ export default async function CourseDetailPage({
   await verifyEnrollment(user.id, course.id);
 
   // Fetch content based on hierarchy type
+  let semesters: SemesterWithSubjectsWithLessons[] = [];
   let subjects: SubjectWithLessons[] = [];
   let directLessons: LessonRow[] = [];
 
   if (course.hierarchy_type === 1) {
+    // Course → Semester → Subject → Lesson
+    semesters = await getSemestersWithSubjectsWithLessons(course.id, user.id);
+  } else if (course.hierarchy_type === 2) {
     // Course → Subject → Lesson
     subjects = await getSubjectsWithLessons(course.id, user.id);
   } else {
-    // Type 2 & 3: lessons directly under course
+    // Type 3: Course → Lesson
     directLessons = await getDirectLessons(course.id, user.id);
   }
 
@@ -365,14 +468,16 @@ export default async function CourseDetailPage({
   const supabase = await createClient();
   const completedIds = await getCompletedLessonIds(supabase, user.id, course.id);
 
-  const totalLessons =
-    course.hierarchy_type === 1
-      ? subjects.reduce((sum, s) => sum + s.lessons.length, 0)
-      : directLessons.length;
+  const totalSemesterLessons = semesters.reduce(
+    (sum, sem) => sum + sem.subjects.reduce((s, sub) => s + sub.lessons.length, 0),
+    0
+  );
+  const totalSubjectLessons = subjects.reduce((sum, s) => sum + s.lessons.length, 0);
+  const totalLessons = totalSemesterLessons + totalSubjectLessons + directLessons.length;
 
   // Find first incomplete lesson for "Continue Learning" button
-  const allLessonsFlat =
-    course.hierarchy_type === 1 ? subjects.flatMap((s) => s.lessons) : directLessons;
+  const allSemesterLessons = semesters.flatMap((sem) => sem.subjects.flatMap((s) => s.lessons));
+  const allLessonsFlat = allSemesterLessons.concat(subjects.flatMap((s) => s.lessons), directLessons);
   const firstIncomplete = allLessonsFlat.find((l) => !completedIds.has(l.id));
   const continueLesson = firstIncomplete ?? allLessonsFlat[0];
 
@@ -420,10 +525,10 @@ export default async function CourseDetailPage({
         {/* Course Info Bar */}
         <div className="bg-background border-border flex flex-wrap items-center justify-between gap-4 border-t px-6 py-4">
           <div className="text-muted-foreground flex items-center gap-6 text-sm">
-            {subjects.length > 0 && (
+            {semesters.length > 0 && (
               <span className="flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
-                {subjects.length} Subject{subjects.length !== 1 ? "s" : ""}
+                {semesters.length} Semester{semesters.length !== 1 ? "s" : ""}
               </span>
             )}
             <span className="flex items-center gap-1.5">
@@ -466,6 +571,7 @@ export default async function CourseDetailPage({
       <CourseContent
         courseId={course.id}
         hierarchyType={course.hierarchy_type}
+        semesters={semesters}
         subjects={subjects}
         directLessons={directLessons}
         completedIds={completedIds}

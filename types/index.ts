@@ -6,6 +6,7 @@ export interface HierarchyConfig {
   type: HierarchyType;
   name: string;
   description: string;
+  hasSemesters: boolean;
   hasSubjects: boolean;
   hasLessons: boolean;
   entityNames: {
@@ -62,9 +63,20 @@ export interface Course {
   updated_at: string;
 }
 
-export interface Subject {
+export interface Semester {
   id: string;
   course_id: string;
+  title: string;
+  description?: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subject {
+  id: string;
+  course_id?: string;
+  semester_id?: string;
   title: string;
   description?: string;
   order_index: number;

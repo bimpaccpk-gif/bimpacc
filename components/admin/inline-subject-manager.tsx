@@ -3,7 +3,7 @@
 import { useState, useEffect, useActionState, useCallback } from "react";
 import { createSubject, deleteSubject, reorderSubjects } from "@/app/actions/courses";
 import { createClient } from "@/lib/supabase/client";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Loader2, BookOpen, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { InlineLessonManager } from "./inline-lesson-manager";
@@ -20,16 +20,16 @@ interface Subject {
 
 interface InlineSubjectManagerProps {
   courseId: string;
+  semesterId?: string;
   initialSubjects?: Subject[];
 }
 
-export function InlineSubjectManager({ courseId, initialSubjects }: InlineSubjectManagerProps) {
+export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: InlineSubjectManagerProps) {
   const [subjects, setSubjects] = useState(initialSubjects ?? []);
   const [loading, setLoading] = useState(!initialSubjects);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
-  const [deleteState, deleteAction, deletePending] = useActionState(deleteSubject, undefined);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,16 +39,18 @@ export function InlineSubjectManager({ courseId, initialSubjects }: InlineSubjec
     const fetchSubjects = async () => {
       setLoading(true);
       const supabase = createClient();
-      const { data } = await supabase
-        .from("subjects")
-        .select("id, title, description, order_index")
-        .eq("course_id", courseId)
-        .order("order_index", { ascending: true });
+      let query = supabase.from("subjects").select("id, title, description, order_index");
+      if (semesterId) {
+        query = query.eq("semester_id", semesterId);
+      } else {
+        query = query.eq("course_id", courseId);
+      }
+      const { data } = await query.order("order_index", { ascending: true });
       setSubjects(data ?? []);
       setLoading(false);
     };
     fetchSubjects();
-  }, [courseId, initialSubjects]);
+  }, [courseId, semesterId, initialSubjects]);
 
   const handleAddSubject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +62,16 @@ export function InlineSubjectManager({ courseId, initialSubjects }: InlineSubjec
     const formData = new FormData();
     formData.append("courseId", courseId);
     formData.append("title", newTitle.trim());
+    if (semesterId) formData.append("semesterId", semesterId);
 
     const result = await createSubject(undefined, formData);
     setIsSubmitting(false);
-    
+
     if (result.success && result.subject) {
       setSubjects([...subjects, result.subject as Subject]);
       setNewTitle("");
       setShowAddForm(false);
-      setExpandedSubjects(new Set([...expandedSubjects, result.subject.id])); // Auto-expand
+      setExpandedSubjects(new Set([...expandedSubjects, result.subject.id]));
     } else if (result.error) {
       setError(result.error);
     }
@@ -166,7 +169,9 @@ export function InlineSubjectManager({ courseId, initialSubjects }: InlineSubjec
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">No subjects yet</h3>
                   <p className="mt-1 text-center text-sm text-muted-foreground max-w-sm">
-                    Start building your course by adding your first subject. Each subject can contain multiple lessons.
+                    {semesterId
+                      ? "Start building this semester by adding your first subject. Each subject can contain multiple lessons."
+                      : "Start building your course by adding your first subject. Each subject can contain multiple lessons."}
                   </p>
                   <Button
                     onClick={() => setShowAddForm(true)}

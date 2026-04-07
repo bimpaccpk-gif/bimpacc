@@ -167,12 +167,12 @@ export async function deleteCourse(
   };
 }
 
-// ─── Subjects ──────────────────────────────────────────────
+// ─── Semesters ──────────────────────────────────────────────
 
-export async function createSubject(
-  _prevState: { error: string; success: string; subject?: any } | undefined,
+export async function createSemester(
+  _prevState: { error: string; success: string; semester?: any } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string; subject?: any }> {
+): Promise<{ error: string; success: string; semester?: any }> {
   try {
     await verifyAdmin();
   } catch {
@@ -190,11 +190,11 @@ export async function createSubject(
   const supabase = await createClient();
 
   const { count } = await supabase
-    .from("subjects")
+    .from("semesters")
     .select("*", { count: "exact", head: true })
     .eq("course_id", courseId);
 
-  const { data, error } = await supabase.from("subjects").insert({
+  const { data, error } = await supabase.from("semesters").insert({
     course_id: courseId,
     title,
     description,
@@ -205,7 +205,163 @@ export async function createSubject(
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/subjects`);
+  revalidatePath(`/admin/courses/${courseId}/semesters`);
+  return { error: "", success: `Semester "${title}" created.`, semester: data };
+}
+
+export async function updateSemester(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
+
+  const id = formData.get("semesterId") as string;
+  const courseId = formData.get("courseId") as string;
+  const title = (formData.get("title") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() ?? "";
+
+  if (!id || !title) {
+    return { error: "Semester ID and title are required.", success: "" };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("semesters")
+    .update({ title, description } as never)
+    .eq("id", id);
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  revalidatePath(`/admin/courses/${courseId}/semesters`);
+  return { error: "", success: "Semester updated." };
+}
+
+export async function deleteSemester(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
+
+  const id = formData.get("semesterId") as string;
+  const courseId = formData.get("courseId") as string;
+
+  if (!id) {
+    return { error: "Semester ID is required.", success: "" };
+  }
+
+  const supabase = await createClient();
+
+  const { data: semester } = await supabase
+    .from("semesters")
+    .select("title")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase.from("semesters").delete().eq("id", id);
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  revalidatePath(`/admin/courses/${courseId}/semesters`);
+  return {
+    error: "",
+    success: `Semester "${(semester as any)?.title ?? id}" deleted.`,
+  };
+}
+
+export async function reorderSemesters(
+  courseId: string,
+  updates: { id: string; order_index: number }[]
+): Promise<{ error: string; success: boolean }> {
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: false };
+  }
+
+  const supabase = await createClient();
+
+  const promises = updates.map((u) =>
+    supabase.from("semesters").update({ order_index: u.order_index } as never).eq("id", u.id)
+  );
+
+  await Promise.all(promises);
+  revalidatePath(`/admin/courses/${courseId}/semesters`);
+  return { error: "", success: true };
+}
+
+// ─── Subjects ──────────────────────────────────────────────
+
+export async function createSubject(
+  _prevState: { error: string; success: string; subject?: any } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string; subject?: any }> {
+  try {
+    await verifyAdmin();
+  } catch {
+    return { error: "Unauthorized. Admin access required.", success: "" };
+  }
+
+  const courseId = formData.get("courseId") as string;
+  const semesterId = formData.get("semesterId") as string;
+  const title = (formData.get("title") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim() ?? "";
+
+  if (!title) {
+    return { error: "Title is required.", success: "" };
+  }
+
+  if (!courseId && !semesterId) {
+    return { error: "Course ID or Semester ID is required.", success: "" };
+  }
+
+  const supabase = await createClient();
+
+  // Determine count scope
+  let countQuery = supabase.from("subjects").select("*", { count: "exact", head: true });
+  let revalPath = `/admin/courses/${courseId}/subjects`;
+  if (semesterId) {
+    countQuery = countQuery.eq("semester_id", semesterId);
+    revalPath = `/admin/courses/${courseId}/semesters/${semesterId}/subjects`;
+  } else {
+    countQuery = countQuery.eq("course_id", courseId);
+    revalPath = `/admin/courses/${courseId}/subjects`;
+  }
+
+  const { count } = await countQuery;
+
+  const insertData: Record<string, any> = {
+    title,
+    description,
+    order_index: (count ?? 0) + 1,
+  };
+  if (semesterId) {
+    insertData.semester_id = semesterId;
+    insertData.course_id = courseId;
+  } else {
+    insertData.course_id = courseId;
+    insertData.semester_id = null;
+  }
+
+  const { data, error } = await supabase.from("subjects").insert(insertData as never).select().single();
+
+  if (error) {
+    return { error: error.message, success: "" };
+  }
+
+  revalidatePath(revalPath);
   return { error: "", success: `Subject "${title}" created.`, subject: data };
 }
 
@@ -283,7 +439,8 @@ export async function deleteSubject(
 
 export async function reorderSubjects(
   courseId: string,
-  updates: { id: string; order_index: number }[]
+  updates: { id: string; order_index: number }[],
+  semesterId?: string
 ): Promise<{ error: string; success: boolean }> {
   try {
     await verifyAdmin();
@@ -298,7 +455,11 @@ export async function reorderSubjects(
   );
 
   await Promise.all(promises);
-  revalidatePath(`/admin/courses/${courseId}/subjects`);
+  if (semesterId) {
+    revalidatePath(`/admin/courses/${courseId}/semesters/${semesterId}/subjects`);
+  } else {
+    revalidatePath(`/admin/courses/${courseId}/subjects`);
+  }
   return { error: "", success: true };
 }
 

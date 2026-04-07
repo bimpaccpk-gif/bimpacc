@@ -4,37 +4,40 @@ export const HIERARCHY_CONFIGS: Record<HierarchyType, HierarchyConfig> = {
   1: {
     type: 1,
     name: "Full Course Structure",
-    description: "Course → Subject → Lesson",
+    description: "Course → Semester → Subject → Lesson",
+    hasSemesters: true,
     hasSubjects: true,
     hasLessons: true,
     entityNames: {
       level1: "Course",
-      level2: "Subject", 
-      level3: "Lesson"
+      level2: "Semester",
+      level3: "Subject",
     }
   },
   2: {
     type: 2,
-    name: "Subject-Lesson Structure", 
-    description: "Subject → Lesson",
-    hasSubjects: false,
+    name: "Standard Course",
+    description: "Course → Subject → Lesson",
+    hasSemesters: false,
+    hasSubjects: true,
     hasLessons: true,
     entityNames: {
-      level1: "Subject",
-      level2: "Lesson",
-      level3: ""
+      level1: "Course",
+      level2: "Subject",
+      level3: "Lesson",
     }
   },
   3: {
     type: 3,
-    name: "Lesson Only",
-    description: "Standalone Lessons",
+    name: "Simple Course",
+    description: "Course → Lesson",
+    hasSemesters: false,
     hasSubjects: false,
     hasLessons: true,
     entityNames: {
-      level1: "Lesson",
-      level2: "",
-      level3: ""
+      level1: "Course",
+      level2: "Lesson",
+      level3: "",
     }
   }
 };

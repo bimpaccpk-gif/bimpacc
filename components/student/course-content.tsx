@@ -26,6 +26,14 @@ interface SubjectWithLessons {
   lessons: LessonRow[];
 }
 
+interface SemesterWithSubjects {
+  id: string;
+  title: string;
+  description: string;
+  isPaused: boolean;
+  subjects: SubjectWithLessons[];
+}
+
 function LessonItem({
   lesson,
   index,
@@ -226,22 +234,44 @@ function SubjectAccordion({
 export function CourseContent({
   courseId,
   hierarchyType,
+  semesters,
   subjects,
   directLessons,
   completedIds,
 }: {
   courseId: string;
   hierarchyType: number;
+  semesters?: SemesterWithSubjects[];
   subjects: SubjectWithLessons[];
   directLessons: LessonRow[];
   completedIds: Set<string>;
 }) {
   const [search, setSearch] = useState("");
 
-  const totalLessons =
-    hierarchyType === 1
-      ? subjects.reduce((sum, s) => sum + s.lessons.length, 0)
-      : directLessons.length;
+  const totalSemesterLessons = (semesters ?? []).reduce(
+    (sum, sem) => sum + sem.subjects.reduce((s, sub) => s + sub.lessons.length, 0),
+    0
+  );
+  const totalSubjectLessons = subjects.reduce((sum, s) => sum + s.lessons.length, 0);
+  const totalLessons = totalSemesterLessons + totalSubjectLessons + directLessons.length;
+
+  const filteredSemesters = (semesters ?? []).filter((sem) => {
+    if (!search) return true;
+    return (
+      sem.title.toLowerCase().includes(search.toLowerCase()) ||
+      sem.description?.toLowerCase().includes(search.toLowerCase()) ||
+      sem.subjects.some(
+        (s) =>
+          s.title.toLowerCase().includes(search.toLowerCase()) ||
+          s.description?.toLowerCase().includes(search.toLowerCase()) ||
+          s.lessons.some(
+            (l) =>
+              l.title.toLowerCase().includes(search.toLowerCase()) ||
+              l.description?.toLowerCase().includes(search.toLowerCase())
+          )
+      )
+    );
+  });
 
   const filteredSubjects = search
     ? subjects.filter(
@@ -265,17 +295,23 @@ export function CourseContent({
     : directLessons;
 
   const resultsVisible = hierarchyType === 1
-    ? filteredSubjects.reduce((sum, s) => {
-        const matchCount = search
-          ? s.lessons.filter(
-              (l) =>
-                l.title.toLowerCase().includes(search.toLowerCase()) ||
-                l.description?.toLowerCase().includes(search.toLowerCase())
-            ).length + (s.title.toLowerCase().includes(search.toLowerCase()) ? s.lessons.length : 0)
-          : s.lessons.length;
-        return sum + matchCount;
-      }, 0)
-    : filteredDirectLessons.length;
+    ? filteredSemesters.reduce((sum, sem) => sum + sem.subjects.reduce((s, sub) => s + (search ? sub.lessons.filter(
+        (l) =>
+          l.title.toLowerCase().includes(search.toLowerCase()) ||
+          l.description?.toLowerCase().includes(search.toLowerCase())
+      ).length : sub.lessons.length), 0), 0)
+    : hierarchyType === 2
+      ? filteredSubjects.reduce((sum, s) => {
+          const matchCount = search
+            ? s.lessons.filter(
+                (l) =>
+                  l.title.toLowerCase().includes(search.toLowerCase()) ||
+                  l.description?.toLowerCase().includes(search.toLowerCase())
+              ).length + (s.title.toLowerCase().includes(search.toLowerCase()) ? s.lessons.length : 0)
+            : s.lessons.length;
+          return sum + matchCount;
+        }, 0)
+      : filteredDirectLessons.length;
 
   if (totalLessons === 0) {
     return (
@@ -314,6 +350,51 @@ export function CourseContent({
       )}
 
       {hierarchyType === 1 ? (
+        filteredSemesters.length === 0 && search ? (
+          <p className="text-muted-foreground py-4 text-center text-sm">
+            No lessons match &ldquo;{search}&rdquo;
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {filteredSemesters.map((semester, si) => (
+              <details key={semester.id} className="group border-border overflow-hidden rounded-xl border" open={si === 0}>
+                <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                  <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
+                    {si + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-foreground font-semibold">
+                      {semester.title}
+                    </h3>
+                    {semester.description && (
+                      <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
+                        {semester.description}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground mr-2 text-xs">
+                    {semester.subjects.length} subject{semester.subjects.length !== 1 ? "s" : ""}
+                    ({semester.subjects.reduce((s, sub) => s + sub.lessons.length, 0)} lessons)
+                  </span>
+                  <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="bg-background space-y-3 p-4">
+                  {semester.subjects.map((subject, subI) => (
+                    <SubjectAccordion
+                      key={subject.id}
+                      subject={subject}
+                      index={subI}
+                      courseId={courseId}
+                      completedIds={completedIds}
+                      highlight={search || undefined}
+                    />
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        )
+      ) : hierarchyType === 2 ? (
         filteredSubjects.length === 0 && search ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
             No lessons match &ldquo;{search}&rdquo;
