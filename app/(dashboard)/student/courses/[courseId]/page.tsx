@@ -75,7 +75,6 @@ async function getSubjectsWithLessons(
   courseId: string,
   userId: string
 ): Promise<SubjectWithLessons[]> {
-  const supabase = await createClient();
   const admin = createAdminClient();
 
   // Fetch per-student overrides
@@ -89,7 +88,7 @@ async function getSubjectsWithLessons(
     overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
   }
 
-  const { data: subjects } = await supabase
+  const { data: subjects } = await admin
     .from("subjects")
     .select("id, title, description, order_index, is_paused")
     .eq("course_id", courseId)
@@ -98,7 +97,7 @@ async function getSubjectsWithLessons(
   if (!subjects || subjects.length === 0) return [];
 
   const subjectIds = subjects.map((s) => s.id);
-  const { data: lessons } = await supabase
+  const { data: lessons } = await admin
     .from("lessons")
     .select(
       "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
@@ -140,7 +139,6 @@ async function getSemestersWithSubjectsWithLessons(
   courseId: string,
   userId: string
 ): Promise<SemesterWithSubjectsWithLessons[]> {
-  const supabase = await createClient();
   const admin = createAdminClient();
 
   // Fetch per-student overrides
@@ -155,27 +153,44 @@ async function getSemestersWithSubjectsWithLessons(
   }
 
   // Fetch semesters for this course
-  const { data: semesters } = await supabase
+  const { data: semesters } = await admin
     .from("semesters")
-    .select("id, title, description, order_index, is_paused")
+    .select("id, title, description, order_index")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
 
   if (!semesters || semesters.length === 0) return [];
 
-  // Fetch subjects belonging to these semesters
+  // Fetch subjects from both possible shapes:
+  // 1) semester-linked subjects (new type-1 structure)
+  // 2) direct course-linked subjects with no semester (legacy fallback)
   const semesterIds = semesters.map((s) => s.id);
-  const { data: subjects } = await supabase
+  const semesterIdSet = new Set(semesterIds);
+
+  let semesterSubjects: any[] = [];
+  if (semesterIds.length > 0) {
+    const { data } = await admin
+      .from("subjects")
+      .select("id, title, description, order_index, semester_id, is_paused")
+      .in("semester_id", semesterIds)
+      .order("order_index", { ascending: true });
+    semesterSubjects = data ?? [];
+  }
+
+  const { data: legacySubjects } = await admin
     .from("subjects")
     .select("id, title, description, order_index, semester_id, is_paused")
-    .in("semester_id", semesterIds)
+    .eq("course_id", courseId)
+    .is("semester_id", null)
     .order("order_index", { ascending: true });
+
+  const subjects = [...semesterSubjects, ...(legacySubjects ?? [])];
 
   // Fetch lessons for these subjects
   const subjectIds = (subjects ?? []).map((s: any) => s.id);
   let lessonsBySubject = new Map<string, LessonRow[]>();
   if (subjectIds.length > 0) {
-    const { data: lessons } = await supabase
+    const { data: lessons } = await admin
       .from("lessons")
       .select(
         "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
@@ -201,34 +216,53 @@ async function getSemestersWithSubjectsWithLessons(
   }
 
   const subjectsBySemester = new Map<string, SubjectWithLessons[]>();
+  const unassignedSubjects: SubjectWithLessons[] = [];
   (subjects ?? []).forEach((s: any) => {
     const subjectOverride = overrideMap.get(`subject:${s.id}`);
-    const subjectsList = subjectsBySemester.get(s.semester_id) ?? [];
-    subjectsList.push({
+    const subjectNode = {
       id: s.id,
       title: s.title,
       description: s.description,
       order_index: s.order_index,
       isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
       lessons: lessonsBySubject.get(s.id) ?? [],
-    });
-    subjectsBySemester.set(s.semester_id, subjectsList);
+    };
+
+    if (s.semester_id && semesterIdSet.has(s.semester_id)) {
+      const subjectsList = subjectsBySemester.get(s.semester_id) ?? [];
+      subjectsList.push(subjectNode);
+      subjectsBySemester.set(s.semester_id, subjectsList);
+    } else {
+      unassignedSubjects.push(subjectNode);
+    }
   });
 
-  return semesters.map((s: any) => {
+  const semesterNodes: SemesterWithSubjectsWithLessons[] = semesters.map((s: any) => {
     const semesterOverride = overrideMap.get(`semester:${s.id}`);
     return {
       id: s.id,
       title: s.title,
       description: s.description,
-      isPaused: semesterOverride !== undefined ? semesterOverride : (s.is_paused ?? false),
+      isPaused: semesterOverride !== undefined ? semesterOverride : false,
       subjects: subjectsBySemester.get(s.id) ?? [],
     };
   });
+
+  // Legacy fallback bucket for old subjects not linked to semesters yet.
+  if (unassignedSubjects.length > 0) {
+    semesterNodes.push({
+      id: "legacy-unassigned-semester",
+      title: "General",
+      description: "Subjects pending semester assignment",
+      isPaused: false,
+      subjects: unassignedSubjects,
+    });
+  }
+
+  return semesterNodes;
 }
 
 async function getDirectLessons(courseId: string, userId: string): Promise<LessonRow[]> {
-  const supabase = await createClient();
   const admin = createAdminClient();
 
   // Fetch per-student overrides
@@ -242,7 +276,7 @@ async function getDirectLessons(courseId: string, userId: string): Promise<Lesso
     overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
   }
 
-  const { data } = await supabase
+  const { data } = await admin
     .from("lessons")
     .select("id, title, description, video_url, content, order_index, duration_minutes, is_paused")
     .eq("course_id", courseId)
