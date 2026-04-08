@@ -402,6 +402,86 @@ export async function adminDeleteUser(
   };
 }
 
+export async function bulkDeleteUsers(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const userIdsStr = formData.get("userIds") as string;
+
+  if (!userIdsStr) {
+    return { error: "No users selected for deletion.", success: "" };
+  }
+
+  let userIds: string[];
+  try {
+    userIds = JSON.parse(userIdsStr);
+  } catch {
+    return { error: "Invalid user IDs format.", success: "" };
+  }
+
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return { error: "No users selected for deletion.", success: "" };
+  }
+
+  const session = await verifySession();
+
+  // Prevent self-deletion
+  if (userIds.includes(session.userId)) {
+    return { error: "You cannot delete your own account.", success: "" };
+  }
+
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  let successCount = 0;
+  const errors: string[] = [];
+
+  for (const userId of userIds) {
+    try {
+      // Get user profile for logging
+      const { data: profile } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", userId)
+        .single();
+
+      // Log audit event before deletion
+      await logAuditEvent(session.userId, userId, "user.deleted", {
+        full_name: (profile as any)?.full_name ?? userId,
+        action: "bulk_delete",
+      });
+
+      // Delete from database (this will cascade to enrollments)
+      const { error: dbError } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", userId);
+
+      if (dbError) {
+        errors.push(`Failed to delete user ${userId}: ${dbError.message}`);
+        continue;
+      }
+
+      // Delete from auth
+      const { error: authError } = await admin.auth.admin.deleteUser(userId);
+
+      if (authError) {
+        console.error(`Error deleting auth user ${userId}:`, authError.message);
+      }
+
+      successCount++;
+    } catch (err: any) {
+      errors.push(`Error deleting user ${userId}: ${err.message}`);
+    }
+  }
+
+  const errorMsg = errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}` : "";
+
+  return {
+    error: errors.length > 0 ? `${errors.length} deletion(s) failed.${errorMsg}` : "",
+    success: `Successfully deleted ${successCount} user(s).${errorMsg}`,
+  };
+}
+
 export async function updateUserProfile(updates: { full_name?: string; avatar_url?: string }) {
   const session = await verifySession();
   const supabase = await createClient();
