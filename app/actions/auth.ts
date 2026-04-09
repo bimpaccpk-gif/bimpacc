@@ -316,14 +316,22 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(
+  deviceFingerprint: string,
+  hardwareFingerprint: string,
+  deviceComponents: string | null
+) {
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  // Store fingerprints in a temporary cookie that the callback can read
+  // Since we can't use cookies directly here, we'll pass them as URL params
+  // The callback will extract them from the URL
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?df=${encodeURIComponent(deviceFingerprint)}&hf=${encodeURIComponent(hardwareFingerprint)}&dc=${encodeURIComponent(deviceComponents || "")}`,
     },
   });
 

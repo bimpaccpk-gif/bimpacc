@@ -5,6 +5,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
+  // Extract device fingerprints from URL params
+  const deviceFingerprint = searchParams.get("df") || null;
+  const hardwareFingerprint = searchParams.get("hf") || null;
+  const deviceComponentsStr = searchParams.get("dc") || null;
+
   const supabase = await createClient();
 
   if (!code) {
@@ -40,15 +45,48 @@ export async function GET(request: Request) {
     (email?.split("@")[0] ?? "Google User");
   const avatarUrl = session.user.user_metadata?.avatar_url ?? null;
 
-  // Step 1: Check if a users row already exists with this auth ID (normal email/password users)
+  // Parse device components
+  let deviceComponents: any = null;
+  try {
+    if (deviceComponentsStr) {
+      deviceComponents = JSON.parse(deviceComponentsStr);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  // Step 1: Check if a users row already exists with this auth ID
   const { data: existingUser } = await admin
     .from("users")
-    .select("id, role")
+    .select("id, role, hardware_fingerprint")
     .eq("id", googleAuthId)
     .single();
 
   if (existingUser) {
-    // User already exists (e.g. previously signed up with email/password)
+    // User already exists - enforce device lock for students
+    if (existingUser.role === "student" && hardwareFingerprint) {
+      const storedHardware = existingUser.hardware_fingerprint as string | null;
+      
+      if (!storedHardware) {
+        // First Google login - bind device
+        await admin
+          .from("users")
+          .update({
+            device_fingerprint: deviceFingerprint,
+            hardware_fingerprint: hardwareFingerprint,
+            device_components: deviceComponents,
+            device_locked_at: new Date().toISOString(),
+          } as never)
+          .eq("id", googleAuthId);
+      } else if (storedHardware !== hardwareFingerprint) {
+        // Device mismatch - block login
+        await supabase.auth.signOut();
+        return NextResponse.redirect(
+          new URL("/login?error=device_mismatch", request.url)
+        );
+      }
+    }
+    
     return NextResponse.redirect(new URL(`/${existingUser.role}`, request.url));
   }
 
@@ -62,10 +100,16 @@ export async function GET(request: Request) {
 
     if (emailMatch) {
       // Found pre-created user — update their ID to match the Google Auth UID
-      // This ensures FK relationships (enrollments, etc.) still work
       await admin
         .from("users")
-        .update({ id: googleAuthId, avatar_url: avatarUrl })
+        .update({ 
+          id: googleAuthId, 
+          avatar_url: avatarUrl,
+          device_fingerprint: deviceFingerprint,
+          hardware_fingerprint: hardwareFingerprint,
+          device_components: deviceComponents,
+          device_locked_at: new Date().toISOString(),
+        })
         .eq("id", emailMatch.id);
 
       return NextResponse.redirect(new URL(`/${emailMatch.role}`, request.url));
@@ -83,6 +127,10 @@ export async function GET(request: Request) {
     is_paused: false,
     onboarding_completed: false,
     onboarding_bypassed: false,
+    device_fingerprint: deviceFingerprint,
+    hardware_fingerprint: hardwareFingerprint,
+    device_components: deviceComponents,
+    device_locked_at: new Date().toISOString(),
   });
 
   return NextResponse.redirect(new URL("/student", request.url));
