@@ -37,23 +37,48 @@ async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string,
   const [
     { data: semesters },
     { data: subjects },
-    { data: lessons }
   ] = await Promise.all([
     supabase.from("semesters").select("course_id").in("course_id", courseIds),
-    supabase.from("subjects").select("course_id").in("course_id", courseIds),
-    supabase.from("lessons").select("course_id").in("course_id", courseIds),
+    supabase.from("subjects").select("id, course_id").in("course_id", courseIds),
   ]);
 
   (semesters ?? []).forEach((s: any) => {
     if (counts[s.course_id]) counts[s.course_id].semesters += 1;
   });
 
+  const subjectIdToCourseId: Record<string, string> = {};
   (subjects ?? []).forEach((s: any) => {
-    if (counts[s.course_id]) counts[s.course_id].subjects += 1;
+    if (counts[s.course_id]) {
+      counts[s.course_id].subjects += 1;
+      subjectIdToCourseId[s.id] = s.course_id;
+    }
   });
 
-  (lessons ?? []).forEach((l: any) => {
-    if (counts[l.course_id]) counts[l.course_id].lessons += 1;
+  const subjectIds = Object.keys(subjectIdToCourseId);
+
+  const [
+    { data: courseLessons },
+    { data: subjectLessons },
+  ] = await Promise.all([
+    supabase.from("lessons").select("course_id").in("course_id", courseIds),
+    subjectIds.length > 0 
+      ? supabase.from("lessons").select("subject_id").in("subject_id", subjectIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  (courseLessons ?? []).forEach((l: any) => {
+    if (l.course_id && counts[l.course_id]) {
+      counts[l.course_id].lessons += 1;
+    }
+  });
+
+  (subjectLessons ?? []).forEach((l: any) => {
+    if (l.subject_id) {
+      const cId = subjectIdToCourseId[l.subject_id];
+      if (cId && counts[cId]) {
+        counts[cId].lessons += 1;
+      }
+    }
   });
 
   return counts;
