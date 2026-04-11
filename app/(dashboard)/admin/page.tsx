@@ -1,13 +1,27 @@
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
   BookOpen,
   Activity,
   UserPlus,
+  Sparkles,
+  BarChart3,
+  AlertTriangle,
+  FileText,
+  Target,
+  ShieldAlert,
+  Bot,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/dal";
+import PredictiveAnalyticsPanel from "@/components/admin/ai-predictive-analytics";
+import StudentRiskDetectionPanel from "@/components/admin/ai-student-risk-detection";
+import AutomatedReportPanel from "@/components/admin/ai-automated-report";
+import EnrollmentRecommendationsPanel from "@/components/admin/ai-enrollment-recommendations";
+import AnomalyDetectionPanel from "@/components/admin/ai-anomaly-detection";
+import AdminChatAssistant from "@/components/admin/ai-chat-assistant";
 
 export default async function AdminDashboardPage() {
   await getCurrentUser();
@@ -74,6 +88,7 @@ export default async function AdminDashboardPage() {
         </p>
       </div>
 
+      {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card
@@ -95,6 +110,7 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
+      {/* Recent Users & Quick Actions */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -148,6 +164,151 @@ export default async function AdminDashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* AI Features Section */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="h-5 w-5 text-brand-600" />
+          <h2 className="text-lg font-semibold text-foreground">AI Features</h2>
+        </div>
+
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-6">
+            <TabsTrigger value="analytics" className="flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            <TabsTrigger value="risk" className="flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Risk</span>
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="enrollments" className="flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Enrollments</span>
+            </TabsTrigger>
+            <TabsTrigger value="anomalies" className="flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Anomalies</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="flex items-center gap-1.5">
+              <Bot className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Chat</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Predictive Analytics Tab */}
+          <TabsContent value="analytics">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-brand-600" />
+                  AI Predictive Analytics
+                </CardTitle>
+                <CardDescription>
+                  Machine learning insights, platform health scoring, and enrollment forecasts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PredictiveAnalyticsPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Student Risk Detection Tab */}
+          <TabsContent value="risk">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  Student Risk Detection
+                </CardTitle>
+                <CardDescription>
+                  ML-powered identification of students at risk of dropping out
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StudentRiskDetectionPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Automated Reports Tab */}
+          <TabsContent value="reports">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-brand-600" />
+                  Automated Report Generation
+                </CardTitle>
+                <CardDescription>
+                  AI-generated comprehensive reports on platform performance
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AutomatedReportPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Enrollment Recommendations Tab */}
+          <TabsContent value="enrollments">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="h-5 w-5 text-brand-600" />
+                  Smart Enrollment Recommendations
+                </CardTitle>
+                <CardDescription>
+                  AI-powered course suggestions based on student profiles and performance
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EnrollmentRecommendationsPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Anomaly Detection Tab */}
+          <TabsContent value="anomalies">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-destructive" />
+                  Anomaly Detection
+                </CardTitle>
+                <CardDescription>
+                  AI detection of unusual patterns and potential security concerns
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AnomalyDetectionPanel />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Chat Assistant Tab */}
+          <TabsContent value="chat">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-brand-600" />
+                  AI Admin Assistant
+                </CardTitle>
+                <CardDescription>
+                  Ask questions about your LMS data in natural language
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AdminChatAssistant />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

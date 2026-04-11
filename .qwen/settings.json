@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(node *)"
     ]
-  }
+  },
+  "$version": 3
 }
