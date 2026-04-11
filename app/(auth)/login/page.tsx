@@ -91,140 +91,145 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* Divider */}
-      <div className="animate-in fade-in zoom-in-95 fill-mode-both relative delay-200 duration-700">
-        <div className="absolute inset-0 flex items-center">
-          <div className="border-border/50 w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
-            Or continue with email
-          </span>
-        </div>
-      </div>
-
-      <form
-        action={action}
-        className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-300 duration-700 sm:space-y-6"
-      >
-        <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
-        <input type="hidden" name="hardware_fingerprint" value={hardwareFingerprint ?? ""} />
-        <input type="hidden" name="device_components" value={deviceComponents ?? ""} />
-        <input type="hidden" name="generated_at" value={generatedAt ?? ""} />
-        <input
-          type="hidden"
-          name="user_agent"
-          value={typeof navigator !== "undefined" ? navigator.userAgent : ""}
-        />
-        {state?.error && (
-          <Alert
-            variant="destructive"
-            className="animate-in fade-in slide-in-from-top-2 border-destructive/20 bg-destructive/10 duration-300"
-          >
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-sm font-medium">{state.error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Form Fields */}
-        <div className="flex flex-col space-y-4 sm:space-y-5">
-          {/* Email */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="email" className="text-foreground/80 text-sm font-medium">
-              Email Address
-            </Label>
-            <div className="group relative">
-              <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
-                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Ex: you@gmail.com"
-                className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pl-10 transition-all sm:h-12 sm:pl-11 dark:border-white/5"
-                required
-              />
+      {/* Only show email/password login and sign up in local development */}
+      {process.env.NODE_ENV === "development" && (
+        <>
+          {/* Divider */}
+          <div className="animate-in fade-in zoom-in-95 fill-mode-both relative delay-200 duration-700">
+            <div className="absolute inset-0 flex items-center">
+              <div className="border-border/50 w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background/60 text-muted-foreground/60 dark:bg-card/60 rounded-full px-3 font-medium backdrop-blur-md">
+                Or continue with email
+              </span>
             </div>
           </div>
 
-          {/* Password */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-foreground/80 text-sm font-medium">
-                Password
-              </Label>
+          <form
+            action={action}
+            className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both space-y-5 delay-300 duration-700 sm:space-y-6"
+          >
+            <input type="hidden" name="device_fingerprint" value={fingerprint ?? ""} />
+            <input type="hidden" name="hardware_fingerprint" value={hardwareFingerprint ?? ""} />
+            <input type="hidden" name="device_components" value={deviceComponents ?? ""} />
+            <input type="hidden" name="generated_at" value={generatedAt ?? ""} />
+            <input
+              type="hidden"
+              name="user_agent"
+              value={typeof navigator !== "undefined" ? navigator.userAgent : ""}
+            />
+            {state?.error && (
+              <Alert
+                variant="destructive"
+                className="animate-in fade-in slide-in-from-top-2 border-destructive/20 bg-destructive/10 duration-300"
+              >
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm font-medium">{state.error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Form Fields */}
+            <div className="flex flex-col space-y-4 sm:space-y-5">
+              {/* Email */}
+              <div className="space-y-2 sm:space-y-2.5">
+                <Label htmlFor="email" className="text-foreground/80 text-sm font-medium">
+                  Email Address
+                </Label>
+                <div className="group relative">
+                  <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Ex: you@gmail.com"
+                    className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pl-10 transition-all sm:h-12 sm:pl-11 dark:border-white/5"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-2 sm:space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-foreground/80 text-sm font-medium">
+                    Password
+                  </Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-muted-foreground/80 hover:text-primary text-xs font-medium transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="group relative">
+                  <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
+                    <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pr-10 pl-10 transition-all sm:h-12 sm:pr-11 sm:pl-11 dark:border-white/5"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-muted-foreground/50 hover:text-foreground absolute top-1/2 right-3.5 -translate-y-1/2 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
+                    ) : (
+                      <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="from-primary to-primary/80 text-primary-foreground shadow-primary/25 hover:from-primary/90 hover:to-primary/70 h-11 w-full rounded-xl bg-gradient-to-r text-base font-semibold shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 sm:h-12"
+              disabled={pending || isVerifying}
+            >
+              {pending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
+                  Signing in...
+                </>
+              ) : isVerifying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
+                  Verifying device...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Sign Up Link */}
+          <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both text-center delay-500 duration-700">
+            <p className="text-muted-foreground/80 text-sm">
+              Don&apos;t have an account?{" "}
               <Link
-                href="/forgot-password"
-                className="text-muted-foreground/80 hover:text-primary text-xs font-medium transition-colors"
+                href="/register"
+                className="group text-primary hover:text-primary/80 inline-flex items-center font-semibold transition-colors"
               >
-                Forgot password?
+                Create an account
               </Link>
-            </div>
-            <div className="group relative">
-              <div className="text-muted-foreground/50 group-focus-within:text-primary pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 transition-colors">
-                <Lock className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                className="bg-background/50 focus-visible:border-primary focus-visible:ring-primary/50 h-11 rounded-xl border-white/10 pr-10 pl-10 transition-all sm:h-12 sm:pr-11 sm:pl-11 dark:border-white/5"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-muted-foreground/50 hover:text-foreground absolute top-1/2 right-3.5 -translate-y-1/2 transition-colors focus:outline-none"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
-                ) : (
-                  <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
-                )}
-              </button>
-            </div>
+            </p>
           </div>
-        </div>
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          className="from-primary to-primary/80 text-primary-foreground shadow-primary/25 hover:from-primary/90 hover:to-primary/70 h-11 w-full rounded-xl bg-gradient-to-r text-base font-semibold shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 sm:h-12"
-          disabled={pending || isVerifying}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
-              Signing in...
-            </>
-          ) : isVerifying ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
-              Verifying device...
-            </>
-          ) : (
-            <>
-              Sign In
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" />
-            </>
-          )}
-        </Button>
-      </form>
-
-      {/* Sign Up Link */}
-      <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both text-center delay-500 duration-700">
-        <p className="text-muted-foreground/80 text-sm">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="group text-primary hover:text-primary/80 inline-flex items-center font-semibold transition-colors"
-          >
-            Create an account
-          </Link>
-        </p>
-      </div>
+        </>
+      )}
     </div>
   );
 }
