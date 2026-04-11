@@ -88,6 +88,8 @@ export async function adminChangeUserRole(
     new_role: role,
   });
 
+  revalidatePath("/admin/users");
+
   return { error: "", success: `Role updated to ${role}.` };
 }
 
@@ -396,6 +398,8 @@ export async function adminDeleteUser(
     console.error("Error deleting auth user:", authError.message);
   }
 
+  revalidatePath("/admin/users");
+
   return {
     error: "",
     success: `User "${(profile as any)?.full_name ?? userId}" deleted from database and auth.`,
@@ -475,6 +479,10 @@ export async function bulkDeleteUsers(
   }
 
   const errorMsg = errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}` : "";
+
+  if (successCount > 0) {
+    revalidatePath("/admin/users");
+  }
 
   return {
     error: errors.length > 0 ? `${errors.length} deletion(s) failed.${errorMsg}` : "",
@@ -559,6 +567,8 @@ export async function toggleStudentApproval(
     action: isApproved ? "approved" : "unapproved",
   });
 
+  revalidatePath("/admin/users");
+
   return { error: "", success: `User has been ${isApproved ? "Approved" : "Unapproved"}.` };
 }
 
@@ -619,6 +629,8 @@ export async function bulkApproveStudents(
       action: "bulk_approved",
     });
   }
+
+  revalidatePath("/admin/users");
 
   return {
     error: "",
@@ -688,5 +700,8 @@ export async function adminBypassOnboarding(
   );
 
   const action = bypass ? "bypassed" : "restored";
+
+  revalidatePath("/admin/users");
+
   return { error: "", success: `Onboarding has been ${action} for this student.` };
 }
