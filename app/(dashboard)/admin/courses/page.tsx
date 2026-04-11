@@ -18,33 +18,43 @@ async function getCourses(): Promise<CourseRow[]> {
   return data ?? [];
 }
 
-async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string, number>> {
+export interface CourseItemCounts {
+  semesters: number;
+  subjects: number;
+  lessons: number;
+}
+
+async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string, CourseItemCounts>> {
   if (courses.length === 0) return {};
   const supabase = await createClient();
-  const counts: Record<string, number> = {};
+  const counts: Record<string, CourseItemCounts> = {};
 
-  const subjectCourseIds = courses.filter((c) => c.hierarchy_type === 1).map((c) => c.id);
-  const lessonCourseIds = courses.filter((c) => c.hierarchy_type === 2 || c.hierarchy_type === 3).map((c) => c.id);
+  const courseIds = courses.map((c) => c.id);
+  courseIds.forEach(id => {
+    counts[id] = { semesters: 0, subjects: 0, lessons: 0 };
+  });
 
-  if (subjectCourseIds.length > 0) {
-    const { data: subjects } = await supabase
-      .from("subjects")
-      .select("course_id")
-      .in("course_id", subjectCourseIds);
-    (subjects ?? []).forEach((s: any) => {
-      counts[s.course_id] = (counts[s.course_id] ?? 0) + 1;
-    });
-  }
+  const [
+    { data: semesters },
+    { data: subjects },
+    { data: lessons }
+  ] = await Promise.all([
+    supabase.from("semesters").select("course_id").in("course_id", courseIds),
+    supabase.from("subjects").select("course_id").in("course_id", courseIds),
+    supabase.from("lessons").select("course_id").in("course_id", courseIds),
+  ]);
 
-  if (lessonCourseIds.length > 0) {
-    const { data: lessons } = await supabase
-      .from("lessons")
-      .select("course_id")
-      .in("course_id", lessonCourseIds);
-    (lessons ?? []).forEach((l: any) => {
-      counts[l.course_id] = (counts[l.course_id] ?? 0) + 1;
-    });
-  }
+  (semesters ?? []).forEach((s: any) => {
+    if (counts[s.course_id]) counts[s.course_id].semesters += 1;
+  });
+
+  (subjects ?? []).forEach((s: any) => {
+    if (counts[s.course_id]) counts[s.course_id].subjects += 1;
+  });
+
+  (lessons ?? []).forEach((l: any) => {
+    if (counts[l.course_id]) counts[l.course_id].lessons += 1;
+  });
 
   return counts;
 }

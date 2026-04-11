@@ -29,7 +29,7 @@ export interface CourseRow {
 
 interface CourseListProps {
   initialCourses: CourseRow[];
-  itemCounts: Record<string, number>;
+  itemCounts: Record<string, { semesters: number; subjects: number; lessons: number }>;
 }
 
 const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
@@ -246,13 +246,18 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                 {/* Inline Stats for Mobile */}
                                 <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
                                   <div className="flex items-center gap-1.5">
-                                    <Activity className="h-4 w-4 text-primary" />
+                                    <Activity className="h-4 w-4 text-primary shrink-0" />
                                     <span>
-                                      {itemCounts[course.id] ?? 0}{" "}
-                                      {course.hierarchy_type === 1 ? "Subjects" : "Lessons"}
+                                      {course.hierarchy_type === 1 && (
+                                        <>{itemCounts[course.id]?.semesters ?? 0} Sem. • {itemCounts[course.id]?.subjects ?? 0} Subj. • </>
+                                      )}
+                                      {course.hierarchy_type === 2 && (
+                                        <>{itemCounts[course.id]?.subjects ?? 0} Subj. • </>
+                                      )}
+                                      {itemCounts[course.id]?.lessons ?? 0} Lessons
                                     </span>
                                   </div>
-                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md px-2 py-1">
+                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md px-2 py-1 shrink-0">
                                     <span>{config.name} Setup</span>
                                   </div>
                                 </div>
@@ -284,22 +289,27 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                   </span>
                                 )}
 
-                                <div className="text-muted-foreground/80 flex items-center gap-3 text-xs font-bold">
+                                <div className="text-muted-foreground/80 flex flex-col items-end gap-2 text-[11px] font-bold mt-3 w-full">
                                   <div
-                                    className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
-                                    title={`${itemCounts[course.id] ?? 0} active content items`}
+                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
+                                    title="Content Counts"
                                   >
-                                    <Activity className="h-3 w-3 text-primary" />
-                                    <span>
-                                      {itemCounts[course.id] ?? 0}{" "}
-                                      {course.hierarchy_type === 1 ? "Subj" : "Less."}
+                                    <Activity className="h-3 w-3 text-primary shrink-0" />
+                                    <span className="truncate">
+                                      {course.hierarchy_type === 1 && (
+                                        <>{itemCounts[course.id]?.semesters ?? 0} Sem • {itemCounts[course.id]?.subjects ?? 0} Subj • </>
+                                      )}
+                                      {course.hierarchy_type === 2 && (
+                                        <>{itemCounts[course.id]?.subjects ?? 0} Subj • </>
+                                      )}
+                                      {itemCounts[course.id]?.lessons ?? 0} Less.
                                     </span>
                                   </div>
                                   <div
-                                    className="bg-muted/40 border-border/50 flex items-center gap-1 rounded-md border px-2 py-1"
+                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
                                     title={`Created on ${formatDate(course.created_at)}`}
                                   >
-                                    <Calendar className="h-3 w-3 text-primary" />
+                                    <Calendar className="h-3 w-3 text-primary shrink-0" />
                                     <span>
                                       {new Date(course.created_at).toLocaleDateString("en-US", {
                                         month: "short",
