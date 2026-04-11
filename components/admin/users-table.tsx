@@ -109,6 +109,15 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
+  // Sync prop changes (e.g. from router.refresh()) to local state
+  useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+
+  useEffect(() => {
+    setAllEnrollments(enrollments);
+  }, [enrollments]);
+
   const [approveState, approveAction, approvePending] = useActionState(
     bulkApproveStudents,
     undefined
