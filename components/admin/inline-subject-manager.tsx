@@ -11,6 +11,25 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 
+// Subject = hierarchy level 2 → Teal
+const SUB_COLOR = {
+  border: "border-teal-300/60 dark:border-teal-700/60",
+  borderHover: "hover:border-teal-400 dark:hover:border-teal-600",
+  ring: "ring-teal-500/20",
+  ringDrag: "ring-2 ring-teal-500",
+  numBg: "bg-teal-100 dark:bg-teal-950/70 text-teal-700 dark:text-teal-400",
+  expandActive: "bg-teal-600 text-white",
+  expandInactive: "bg-muted text-muted-foreground",
+  innerBg: "bg-teal-50/40 dark:bg-teal-950/20",
+  icon: "text-teal-600 dark:text-teal-400",
+  iconBg: "bg-teal-100 dark:bg-teal-950/50",
+  addBtnBorder: "border-teal-300/50 dark:border-teal-700/50",
+  addBtnHoverBorder: "hover:border-teal-400 dark:hover:border-teal-600",
+  addBtnHoverBg: "hover:bg-teal-50 dark:hover:bg-teal-950/40",
+  addBorder: "border-teal-300/50 dark:border-teal-700/50",
+  addBg: "bg-teal-50/60 dark:bg-teal-950/30",
+};
+
 interface Subject {
   id: string;
   title: string;
@@ -146,7 +165,7 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-10 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          className={`w-full h-10 border-dashed border-2 transition-colors ${SUB_COLOR.addBtnBorder} ${SUB_COLOR.addBtnHoverBorder} ${SUB_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Subject
@@ -164,8 +183,8 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
             >
               {subjects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-6 py-12">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                    <BookOpen className="h-8 w-8 text-muted-foreground/50" />
+                  <div className={`flex h-16 w-16 items-center justify-center rounded-full ${SUB_COLOR.iconBg}`}>
+                    <BookOpen className={`h-8 w-8 ${SUB_COLOR.icon}`} />
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">No subjects yet</h3>
                   <p className="mt-1 text-center text-sm text-muted-foreground max-w-sm">
@@ -191,12 +210,12 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            "group rounded-xl border bg-card",
-                            snapshot.isDragging 
-                              ? "shadow-lg ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform" 
-                              : expandedSubjects.has(subject.id) 
-                                ? "shadow-md ring-1 ring-primary/10 transition-[shadow,border-color] duration-200" 
-                                : "hover:shadow-sm hover:border-primary/30 transition-[shadow,border-color] duration-200"
+                            `group rounded-xl border ${SUB_COLOR.border}`,
+                            snapshot.isDragging
+                              ? `${SUB_COLOR.ringDrag} scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform shadow-lg`
+                              : expandedSubjects.has(subject.id)
+                                ? `shadow-md ${SUB_COLOR.ring} transition-[shadow,border-color] duration-200`
+                                : `hover:shadow-sm ${SUB_COLOR.borderHover} transition-[shadow,border-color] duration-200`
                           )}
                           style={{
                             ...provided.draggableProps.style,
@@ -212,7 +231,7 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
                               <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-foreground" />
                             </div>
                             
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${SUB_COLOR.numBg}`}>
                               {index + 1}
                             </div>
                             <button
@@ -227,9 +246,9 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
                               </div>
                               <div className={cn(
                                 "flex items-center justify-center h-6 w-6 rounded-full transition-colors",
-                                expandedSubjects.has(subject.id) 
-                                  ? "bg-primary text-primary-foreground" 
-                                  : "bg-muted text-muted-foreground"
+                                expandedSubjects.has(subject.id)
+                                  ? SUB_COLOR.expandActive
+                                  : SUB_COLOR.expandInactive
                               )}>
                                 {expandedSubjects.has(subject.id) ? (
                                   <ChevronDown className="h-4 w-4" />
@@ -250,7 +269,7 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
 
                           {/* Expandable Lessons Section */}
                           {expandedSubjects.has(subject.id) && (
-                            <div className="border-t bg-muted/30 p-5">
+                            <div className={`border-t ${SUB_COLOR.innerBg} p-5`}>
                               <div className="rounded-lg bg-background p-4 shadow-sm border border-border/50">
                                 <InlineLessonManager
                                   courseId={courseId}
@@ -279,7 +298,7 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
 
       {/* Add Subject Form */}
       {showAddForm ? (
-        <form onSubmit={handleAddSubject} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-5">
+        <form onSubmit={handleAddSubject} className={`rounded-xl border-2 ${SUB_COLOR.addBorder} ${SUB_COLOR.addBg} p-5`}>
           {error && (
             <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive dark:bg-destructive/20 dark:text-destructive">
               {error}
@@ -321,7 +340,7 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-12 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          className={`w-full h-12 border-dashed border-2 transition-colors ${SUB_COLOR.addBtnBorder} ${SUB_COLOR.addBtnHoverBorder} ${SUB_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-5 w-5" />
           Add Subject

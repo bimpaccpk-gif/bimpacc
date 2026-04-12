@@ -10,6 +10,23 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 
+// Lesson = hierarchy level 3 → Amber
+const LESSON_COLOR = {
+  border: "border-amber-300/60 dark:border-amber-700/60",
+  borderHover: "hover:border-amber-400 dark:hover:border-amber-600",
+  ring: "ring-amber-500/20",
+  ringDrag: "ring-2 ring-amber-500",
+  numBg: "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400",
+  icon: "text-amber-600 dark:text-amber-400",
+  iconBg: "bg-amber-100 dark:bg-amber-950/50",
+  headerBorder: "border-amber-200 dark:border-amber-800",
+  addBtnBorder: "border-amber-300/50 dark:border-amber-700/50",
+  addBtnHoverBorder: "hover:border-amber-400 dark:hover:border-amber-600",
+  addBtnHoverBg: "hover:bg-amber-50 dark:hover:bg-amber-950/40",
+  addBorder: "border-amber-300/50 dark:border-amber-700/50",
+  addBg: "bg-amber-50/60 dark:bg-amber-950/30",
+};
+
 interface Lesson {
   id: string;
   title: string;
@@ -136,7 +153,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <FileText className={`h-4 w-4 ${LESSON_COLOR.icon}`} />
           <span className="text-sm font-medium">
             {lessons.length} {lessons.length === 1 ? "Lesson" : "Lessons"}
           </span>
@@ -148,7 +165,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-10 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          className={`w-full h-10 border-dashed border-2 transition-colors ${LESSON_COLOR.addBtnBorder} ${LESSON_COLOR.addBtnHoverBorder} ${LESSON_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Lesson
@@ -174,10 +191,10 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             className={cn(
-                              "group flex items-center gap-3 rounded-lg border bg-card p-3",
-                              snapshot.isDragging 
-                                ? "shadow-lg ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform" 
-                                : "hover:shadow-sm hover:border-primary/30 transition-[shadow,border-color] duration-200"
+                              `group flex items-center gap-3 rounded-lg border ${LESSON_COLOR.border} bg-card`,
+                              snapshot.isDragging
+                                ? `${LESSON_COLOR.ringDrag} scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform shadow-lg`
+                                : `hover:shadow-sm ${LESSON_COLOR.borderHover} transition-[shadow,border-color] duration-200`
                             )}
                             style={{
                               ...provided.draggableProps.style,
@@ -191,7 +208,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                               <GripVertical className="h-4 w-4 text-muted-foreground/50 hover:text-foreground" />
                             </div>
                             
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-semibold text-primary">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold ${LESSON_COLOR.numBg}`}>
                               {index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -241,14 +258,14 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
       {/* Empty State */}
       {lessons.length === 0 && !showAddForm && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8">
-          <Video className="h-8 w-8 text-muted-foreground/50" />
+          <Video className={`h-8 w-8 ${LESSON_COLOR.icon}`} />
           <p className="mt-2 text-sm text-muted-foreground">No lessons yet</p>
         </div>
       )}
 
       {/* Add Lesson Form */}
       {showAddForm ? (
-        <form onSubmit={handleAddLesson} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 space-y-4">
+        <form onSubmit={handleAddLesson} className={`rounded-xl border-2 ${LESSON_COLOR.addBorder} ${LESSON_COLOR.addBg} p-4 space-y-4`}>
           <div className="space-y-3">
             <Input
               placeholder="Lesson title *"
@@ -307,7 +324,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-10 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5"
+          className={`w-full h-10 border-dashed border-2 transition-colors ${LESSON_COLOR.addBtnBorder} ${LESSON_COLOR.addBtnHoverBorder} ${LESSON_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Lesson

@@ -11,6 +11,27 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 
+// Semester = hierarchy level 1 → Violet
+const SEM_COLOR = {
+  border: "border-violet-300/60 dark:border-violet-700/60",
+  borderHover: "hover:border-violet-400 dark:hover:border-violet-600",
+  ring: "ring-violet-500/20",
+  ringDrag: "ring-2 ring-violet-500",
+  numBg: "bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-400",
+  expandActive: "bg-violet-600 text-white",
+  expandInactive: "bg-muted text-muted-foreground",
+  addBorder: "border-violet-300/50 dark:border-violet-700/50",
+  addBg: "bg-violet-50/60 dark:bg-violet-950/30",
+  addHoverBorder: "hover:border-violet-400 dark:hover:border-violet-600",
+  addHoverBg: "hover:bg-violet-50/80 dark:hover:bg-violet-950/40",
+  innerBg: "bg-violet-50/40 dark:bg-violet-950/20",
+  icon: "text-violet-600 dark:text-violet-400",
+  iconBg: "bg-violet-100 dark:bg-violet-950/50",
+  addBtnBorder: "border-violet-300/50 dark:border-violet-700/50",
+  addBtnHoverBorder: "hover:border-violet-400 dark:hover:border-violet-600",
+  addBtnHoverBg: "hover:bg-violet-50 dark:hover:bg-violet-950/40",
+};
+
 interface Semester {
   id: string;
   title: string;
@@ -137,7 +158,7 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-10 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          className={`w-full h-10 border-dashed border-2 transition-colors ${SEM_COLOR.addBtnBorder} ${SEM_COLOR.addBtnHoverBorder} ${SEM_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Semester
@@ -154,8 +175,8 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
             >
               {semesters.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 px-6 py-12">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                    <CalendarRange className="h-8 w-8 text-muted-foreground/50" />
+                  <div className={`flex h-16 w-16 items-center justify-center rounded-full ${SEM_COLOR.iconBg}`}>
+                    <CalendarRange className={`h-8 w-8 ${SEM_COLOR.icon}`} />
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">No semesters yet</h3>
                   <p className="mt-1 text-center text-sm text-muted-foreground max-w-sm">
@@ -179,12 +200,12 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={cn(
-                            "group rounded-xl border bg-card",
+                            `group rounded-xl border ${SEM_COLOR.border}`,
                             snapshot.isDragging
-                              ? "shadow-lg ring-2 ring-primary scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform"
+                              ? `${SEM_COLOR.ringDrag} scale-[1.02] bg-background/95 backdrop-blur-sm will-change-transform shadow-lg`
                               : expandedSemesters.has(semester.id)
-                                ? "shadow-md ring-1 ring-primary/10 transition-[shadow,border-color] duration-200"
-                                : "hover:shadow-sm hover:border-primary/30 transition-[shadow,border-color] duration-200"
+                                ? `shadow-md ${SEM_COLOR.ring} transition-[shadow,border-color] duration-200`
+                                : `hover:shadow-sm ${SEM_COLOR.borderHover} transition-[shadow,border-color] duration-200`
                           )}
                           style={{
                             ...provided.draggableProps.style,
@@ -199,7 +220,7 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                               <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-foreground" />
                             </div>
 
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${SEM_COLOR.numBg}`}>
                               {index + 1}
                             </div>
                             <button
@@ -215,8 +236,8 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                               <div className={cn(
                                 "flex items-center justify-center h-6 w-6 rounded-full transition-colors",
                                 expandedSemesters.has(semester.id)
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground"
+                                  ? SEM_COLOR.expandActive
+                                  : SEM_COLOR.expandInactive
                               )}>
                                 {expandedSemesters.has(semester.id) ? (
                                   <ChevronDown className="h-4 w-4" />
@@ -236,7 +257,7 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                           </div>
 
                           {expandedSemesters.has(semester.id) && (
-                            <div className="border-t bg-muted/30 p-5">
+                            <div className={`border-t ${SEM_COLOR.innerBg} p-5`}>
                               <div className="rounded-lg bg-background p-4 shadow-sm border border-border/50">
                                 <InlineSubjectManager
                                   courseId={courseId}
@@ -263,7 +284,7 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
       </DragDropContext>
 
       {showAddForm ? (
-        <form onSubmit={handleAddSemester} className="rounded-xl border-2 border-primary/20 bg-primary/5 p-5">
+        <form onSubmit={handleAddSemester} className={`rounded-xl border-2 ${SEM_COLOR.addBorder} ${SEM_COLOR.addBg} p-5`}>
           {error && (
             <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive dark:bg-destructive/20 dark:text-destructive">
               {error}
@@ -305,7 +326,7 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
         <Button
           onClick={() => setShowAddForm(true)}
           variant="outline"
-          className="w-full h-12 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          className={`w-full h-12 border-dashed border-2 transition-colors ${SEM_COLOR.addBtnBorder} ${SEM_COLOR.addBtnHoverBorder} ${SEM_COLOR.addBtnHoverBg}`}
         >
           <Plus className="mr-2 h-5 w-5" />
           Add Semester

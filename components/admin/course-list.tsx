@@ -395,6 +395,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                 <EnrolledStudentsDialog
                                   courseId={course.id}
                                   courseTitle={course.title}
+                                  hierarchyType={course.hierarchy_type}
                                 />
                                 <CourseEditDialog
                                   courseId={course.id}
@@ -415,6 +416,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                 <CourseAccessDialog
                                   courseId={course.id}
                                   courseTitle={course.title}
+                                  hierarchyType={course.hierarchy_type}
                                 />
                                 <CourseDeleteButton
                                   courseId={course.id}

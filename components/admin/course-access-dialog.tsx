@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Pause, Play, Shield, Users, Check, Search, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { HierarchyType } from "@/types";
 import {
   getCourseStudentAccessList,
   setStudentContentAccess,
@@ -18,12 +19,52 @@ import {
   bulkPauseForStudents,
 } from "@/app/actions/content-access";
 
+// Match hierarchy colors
+const hierarchyAccessColors: Record<number, {
+  avatarBg: string;
+  avatarText: string;
+  progressBg: string;
+  progressText: string;
+  dateBg: string;
+  dateText: string;
+  dialogIcon: string;
+}> = {
+  1: {
+    avatarBg: "bg-blue-100 dark:bg-blue-950/70",
+    avatarText: "text-blue-700 dark:text-blue-400",
+    progressBg: "bg-blue-100 dark:bg-blue-900/60",
+    progressText: "text-blue-700 dark:text-blue-400",
+    dateBg: "bg-blue-50 dark:bg-blue-950/40",
+    dateText: "text-blue-600 dark:text-blue-400",
+    dialogIcon: "text-blue-600 dark:text-blue-400",
+  },
+  2: {
+    avatarBg: "bg-teal-100 dark:bg-teal-950/70",
+    avatarText: "text-teal-700 dark:text-teal-400",
+    progressBg: "bg-teal-100 dark:bg-teal-900/60",
+    progressText: "text-teal-700 dark:text-teal-400",
+    dateBg: "bg-teal-50 dark:bg-teal-950/40",
+    dateText: "text-teal-600 dark:text-teal-400",
+    dialogIcon: "text-teal-600 dark:text-teal-400",
+  },
+  3: {
+    avatarBg: "bg-amber-100 dark:bg-amber-950/70",
+    avatarText: "text-amber-700 dark:text-amber-400",
+    progressBg: "bg-amber-100 dark:bg-amber-900/60",
+    progressText: "text-amber-700 dark:text-amber-400",
+    dateBg: "bg-amber-50 dark:bg-amber-950/40",
+    dateText: "text-amber-600 dark:text-amber-400",
+    dialogIcon: "text-amber-600 dark:text-amber-400",
+  },
+};
+
 interface CourseAccessDialogProps {
   courseId: string;
   courseTitle: string;
+  hierarchyType?: HierarchyType;
 }
 
-export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialogProps) {
+export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }: CourseAccessDialogProps) {
   const [open, setOpen] = useState(false);
   const [students, setStudents] = useState<
     Array<{
@@ -116,6 +157,7 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
 
   const pausedCount = students.filter((s) => s.isPaused).length;
   const activeCount = students.length - pausedCount;
+  const colors = hierarchyAccessColors[hierarchyType] ?? hierarchyAccessColors[1];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -130,7 +172,7 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="text-primary h-5 w-5" />
+            <Shield className={`h-5 w-5 ${colors.dialogIcon}`} />
             Student Access
           </DialogTitle>
           <DialogDescription>Manage student access for {courseTitle}</DialogDescription>
@@ -245,15 +287,19 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
                   key={student.userId}
                   className="flex items-center justify-between gap-3 px-1 py-2.5"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{student.userName}</p>
-                    <p className="text-muted-foreground truncate text-xs">{student.email}</p>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colors.avatarBg} ${colors.avatarText}`}>
+                      {student.userName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{student.userName}</p>
+                      <p className="text-muted-foreground truncate text-xs">{student.email}</p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-4">
                     {student.enrolledAt && (
-                      <div className="text-right">
-                        <p className="text-[10px] text-muted-foreground">Enrolled</p>
-                        <p className="text-xs font-medium">
+                      <div className={`text-right rounded-md px-2.5 py-1 ${colors.dateBg}`}>
+                        <p className={`text-[10px] font-medium ${colors.dateText}`}>
                           {new Date(student.enrolledAt).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -261,9 +307,8 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
                         </p>
                       </div>
                     )}
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground">Progress</p>
-                      <p className="text-xs font-medium">
+                    <div className={`text-right rounded-md px-2.5 py-1 ${colors.progressBg}`}>
+                      <p className={`text-xs font-medium ${colors.progressText}`}>
                         {student.progress != null ? `${student.progress}%` : "0%"}
                       </p>
                     </div>

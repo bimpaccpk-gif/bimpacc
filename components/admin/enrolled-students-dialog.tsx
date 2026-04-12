@@ -11,13 +11,54 @@ import {
 import { Button } from "@/components/ui/button";
 import { Users, Loader2, AlertCircle } from "lucide-react";
 import { getEnrolledStudents, type EnrolledStudent } from "@/app/actions/ai-admin";
+import { HierarchyType } from "@/types";
+
+// Match the course card hierarchy colors
+const hierarchyStudentColors: Record<number, {
+  avatarBg: string;
+  avatarText: string;
+  progressBadgeBg: string;
+  progressBadgeText: string;
+  dateBadgeBg: string;
+  dateBadgeText: string;
+  dialogIcon: string;
+}> = {
+  1: {
+    avatarBg: "bg-blue-100 dark:bg-blue-950/70",
+    avatarText: "text-blue-700 dark:text-blue-400",
+    progressBadgeBg: "bg-blue-100 dark:bg-blue-900/60",
+    progressBadgeText: "text-blue-700 dark:text-blue-400",
+    dateBadgeBg: "bg-blue-50 dark:bg-blue-950/40",
+    dateBadgeText: "text-blue-600 dark:text-blue-400",
+    dialogIcon: "text-blue-600 dark:text-blue-400",
+  },
+  2: {
+    avatarBg: "bg-teal-100 dark:bg-teal-950/70",
+    avatarText: "text-teal-700 dark:text-teal-400",
+    progressBadgeBg: "bg-teal-100 dark:bg-teal-900/60",
+    progressBadgeText: "text-teal-700 dark:text-teal-400",
+    dateBadgeBg: "bg-teal-50 dark:bg-teal-950/40",
+    dateBadgeText: "text-teal-600 dark:text-teal-400",
+    dialogIcon: "text-teal-600 dark:text-teal-400",
+  },
+  3: {
+    avatarBg: "bg-amber-100 dark:bg-amber-950/70",
+    avatarText: "text-amber-700 dark:text-amber-400",
+    progressBadgeBg: "bg-amber-100 dark:bg-amber-900/60",
+    progressBadgeText: "text-amber-700 dark:text-amber-400",
+    dateBadgeBg: "bg-amber-50 dark:bg-amber-950/40",
+    dateBadgeText: "text-amber-600 dark:text-amber-400",
+    dialogIcon: "text-amber-600 dark:text-amber-400",
+  },
+};
 
 interface EnrolledStudentsDialogProps {
   courseId: string;
   courseTitle: string;
+  hierarchyType: HierarchyType;
 }
 
-export function EnrolledStudentsDialog({ courseId, courseTitle }: EnrolledStudentsDialogProps) {
+export function EnrolledStudentsDialog({ courseId, courseTitle, hierarchyType }: EnrolledStudentsDialogProps) {
   const [open, setOpen] = useState(false);
   const [students, setStudents] = useState<EnrolledStudent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,13 +90,15 @@ export function EnrolledStudentsDialog({ courseId, courseTitle }: EnrolledStuden
     fetchStudents();
   }, [open, courseId]);
 
+  const colors = hierarchyStudentColors[hierarchyType] ?? hierarchyStudentColors[1];
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button
         variant="outline"
         size="icon"
         title="View Enrolled Students"
-        className="shrink-0"
+        className={`shrink-0 border-transparent ${colors.avatarBg} ${colors.avatarText}`}
         onClick={() => setOpen(true)}
       >
         <Users className="h-4 w-4" />
@@ -63,7 +106,7 @@ export function EnrolledStudentsDialog({ courseId, courseTitle }: EnrolledStuden
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-brand-600" />
+            <Users className={`h-5 w-5 ${colors.dialogIcon}`} />
             Enrolled Students — {courseTitle}
           </DialogTitle>
           <DialogDescription>
@@ -85,26 +128,26 @@ export function EnrolledStudentsDialog({ courseId, courseTitle }: EnrolledStuden
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
+            <Loader2 className={`h-6 w-6 animate-spin ${colors.dialogIcon}`} />
           </div>
         ) : students.length === 0 && !error ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Users className="h-10 w-10 text-muted-foreground/50" />
+            <Users className={`h-10 w-10 ${colors.dialogIcon} opacity-50`} />
             <p className="mt-2 text-sm font-medium text-foreground">No students enrolled yet</p>
             <p className="text-xs text-muted-foreground">
               Enroll students from the Users page
             </p>
           </div>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-lg border">
-            <div className="divide-y">
+          <div className={`mt-4 overflow-hidden rounded-lg border ${colors.avatarBg} border-transparent`}>
+            <div className="divide-y divide-muted/30">
               {students.map((student) => (
                 <div
                   key={student.id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 bg-background/80 hover:bg-muted/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-400">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${colors.avatarBg} ${colors.avatarText}`}>
                       {(student.full_name ?? student.email).charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -115,14 +158,14 @@ export function EnrolledStudentsDialog({ courseId, courseTitle }: EnrolledStuden
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs font-medium text-foreground">
+                    <div className={`text-right rounded-md px-2.5 py-1 ${colors.progressBadgeBg}`}>
+                      <p className={`text-xs font-medium ${colors.progressBadgeText}`}>
                         {student.progress != null ? `${student.progress}%` : "0%"}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">progress</p>
+                      <p className={`text-[10px] ${colors.progressBadgeText} opacity-70`}>progress</p>
                     </div>
-                    <div className="text-right text-xs text-muted-foreground">
-                      <p className="text-[10px]">
+                    <div className={`text-right rounded-md px-2.5 py-1 ${colors.dateBadgeBg}`}>
+                      <p className={`text-[10px] font-medium ${colors.dateBadgeText}`}>
                         {new Date(student.enrolled_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
