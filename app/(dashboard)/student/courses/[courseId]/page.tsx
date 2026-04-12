@@ -19,6 +19,131 @@ import {
 } from "lucide-react";
 import { CourseContent } from "@/components/student/course-content";
 
+// Match hierarchy colors: each level gets its own distinct color
+// Type 1: Semester=Violet, Subject=Blue, Lesson=Amber
+// Type 2: Subject=Teal, Lesson=Amber
+// Type 3: Lesson=Amber
+const hierarchyDetailColors: Record<number, {
+  heroFrom: string;
+  heroVia: string;
+  heroTo: string;
+  badgeBg: string;
+  badgeText: string;
+  // Semester colors (only used in Type 1)
+  semester: {
+    numBg: string;
+    numText: string;
+    accordionBg: string;
+    accordionHoverBg: string;
+    subjectCountBg: string;
+    subjectCountText: string;
+  };
+  // Subject colors
+  subject: {
+    numBg: string;
+    numText: string;
+    accordionBg: string;
+    accordionHoverBg: string;
+    subjectCountBg: string;
+    subjectCountText: string;
+  };
+  // Lesson colors (used at all levels)
+  lesson: {
+    numBg: string;
+    numText: string;
+    lessonIcon: string;
+    lessonButton: string;
+  };
+}> = {
+  1: {
+    heroFrom: "from-blue-500",
+    heroVia: "via-blue-600",
+    heroTo: "to-blue-400",
+    badgeBg: "bg-blue-100/90 dark:bg-blue-950/80",
+    badgeText: "text-blue-700 dark:text-blue-400",
+    semester: {
+      numBg: "bg-violet-100 dark:bg-violet-950/70",
+      numText: "text-violet-700 dark:text-violet-400",
+      accordionBg: "bg-violet-50/50 dark:bg-violet-950/20",
+      accordionHoverBg: "hover:bg-violet-50/80 dark:hover:bg-violet-950/30",
+      subjectCountBg: "bg-violet-100/80 dark:bg-violet-900/50",
+      subjectCountText: "text-violet-700 dark:text-violet-400",
+    },
+    subject: {
+      numBg: "bg-emerald-100 dark:bg-emerald-950/70",
+      numText: "text-emerald-700 dark:text-emerald-400",
+      accordionBg: "bg-emerald-50/50 dark:bg-emerald-950/20",
+      accordionHoverBg: "hover:bg-emerald-50/80 dark:hover:bg-emerald-950/30",
+      subjectCountBg: "bg-emerald-100/80 dark:bg-emerald-900/50",
+      subjectCountText: "text-emerald-700 dark:text-emerald-400",
+    },
+    lesson: {
+      numBg: "bg-amber-100 dark:bg-amber-950/70",
+      numText: "text-amber-700 dark:text-amber-400",
+      lessonIcon: "text-amber-600 dark:text-amber-400",
+      lessonButton: "bg-amber-600 hover:bg-amber-700",
+    },
+  },
+  2: {
+    heroFrom: "from-violet-500",
+    heroVia: "via-violet-600",
+    heroTo: "to-violet-400",
+    badgeBg: "bg-violet-100/90 dark:bg-violet-950/80",
+    badgeText: "text-violet-700 dark:text-violet-400",
+    semester: {
+      numBg: "bg-muted dark:bg-muted/50",
+      numText: "text-muted-foreground",
+      accordionBg: "bg-muted/20 dark:bg-muted/10",
+      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
+      subjectCountBg: "bg-muted/50",
+      subjectCountText: "text-muted-foreground",
+    },
+    subject: {
+      numBg: "bg-teal-100 dark:bg-teal-950/70",
+      numText: "text-teal-700 dark:text-teal-400",
+      accordionBg: "bg-teal-50/50 dark:bg-teal-950/20",
+      accordionHoverBg: "hover:bg-teal-50/80 dark:hover:bg-teal-950/30",
+      subjectCountBg: "bg-teal-100/80 dark:bg-teal-900/50",
+      subjectCountText: "text-teal-700 dark:text-teal-400",
+    },
+    lesson: {
+      numBg: "bg-amber-100 dark:bg-amber-950/70",
+      numText: "text-amber-700 dark:text-amber-400",
+      lessonIcon: "text-amber-600 dark:text-amber-400",
+      lessonButton: "bg-amber-600 hover:bg-amber-700",
+    },
+  },
+  3: {
+    heroFrom: "from-amber-500",
+    heroVia: "via-amber-600",
+    heroTo: "to-amber-400",
+    badgeBg: "bg-amber-100/90 dark:bg-amber-950/80",
+    badgeText: "text-amber-700 dark:text-amber-400",
+    semester: {
+      numBg: "bg-muted dark:bg-muted/50",
+      numText: "text-muted-foreground",
+      accordionBg: "bg-muted/20 dark:bg-muted/10",
+      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
+      subjectCountBg: "bg-muted/50",
+      subjectCountText: "text-muted-foreground",
+    },
+    subject: {
+      numBg: "bg-muted dark:bg-muted/50",
+      numText: "text-muted-foreground",
+      accordionBg: "bg-muted/20 dark:bg-muted/10",
+      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
+      subjectCountBg: "bg-muted/50",
+      subjectCountText: "text-muted-foreground",
+    },
+    lesson: {
+      numBg: "bg-amber-100 dark:bg-amber-950/70",
+      numText: "text-amber-700 dark:text-amber-400",
+      lessonIcon: "text-amber-600 dark:text-amber-400",
+      lessonButton: "bg-amber-600 hover:bg-amber-700",
+    },
+  },
+};
+
 // ─── Data fetchers ────────────────────────────────────────
 
 interface CourseDetail {
@@ -501,6 +626,7 @@ export default async function CourseDetailPage({
   // Fetch completed lesson IDs
   const supabase = await createClient();
   const completedIds = await getCompletedLessonIds(supabase, user.id, course.id);
+  const c = hierarchyDetailColors[course.hierarchy_type] ?? hierarchyDetailColors[3];
 
   const totalSemesterLessons = semesters.reduce(
     (sum, sem) => sum + sem.subjects.reduce((s, sub) => s + sub.lessons.length, 0),
@@ -529,7 +655,7 @@ export default async function CourseDetailPage({
       {/* Course Header */}
       <div className="border-border overflow-hidden rounded-2xl border">
         {/* Hero */}
-        <div className="from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br">
+        <div className={`from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br ${c.heroFrom} ${c.heroVia} ${c.heroTo}`}>
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -538,13 +664,13 @@ export default async function CourseDetailPage({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <BookOpen className="text-primary-foreground/40 h-16 w-16" />
+              <BookOpen className="text-white/40 h-16 w-16" />
             </div>
           )}
           <div className="from-background/60 absolute inset-0 bg-gradient-to-t to-transparent" />
           <div className="text-primary-foreground absolute right-0 bottom-0 left-0 p-6">
             <div className="mb-2 flex items-center gap-2">
-              <span className="bg-primary-foreground/20 rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${c.badgeBg} ${c.badgeText}`}>
                 Batch {course.batch}
               </span>
               <span className="bg-success text-primary-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-lg">
@@ -609,6 +735,7 @@ export default async function CourseDetailPage({
         subjects={subjects}
         directLessons={directLessons}
         completedIds={completedIds}
+        colors={c}
       />
     </div>
   );

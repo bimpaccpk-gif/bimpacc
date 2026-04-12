@@ -13,6 +13,7 @@ interface EnrolledCourseRow {
   course_batch: string;
   course_description: string;
   thumbnail_url: string | null;
+  hierarchy_type: number;
 }
 
 async function getEnrolledCourses(userId: string): Promise<EnrolledCourseRow[]> {
@@ -30,7 +31,7 @@ async function getEnrolledCourses(userId: string): Promise<EnrolledCourseRow[]> 
   const courseIds = enrollments.map((e: any) => e.course_id);
   const { data: courses } = await supabase
     .from("courses")
-    .select("id, title, batch, description, thumbnail_url")
+    .select("id, title, batch, description, thumbnail_url, hierarchy_type")
     .in("id", courseIds);
 
   const courseMap = new Map<string, any>();
@@ -46,9 +47,65 @@ async function getEnrolledCourses(userId: string): Promise<EnrolledCourseRow[]> 
       course_batch: course?.batch ?? "",
       course_description: course?.description ?? "",
       thumbnail_url: course?.thumbnail_url ?? null,
+      hierarchy_type: course?.hierarchy_type ?? 3,
     };
   });
 }
+
+// Match admin card hierarchy colors: Type 1=Blue, Type 2=Violet, Type 3=Amber
+const hierarchyCourseColors: Record<number, {
+  cardBorder: string;
+  edgeGradient: string;
+  progressFrom: string;
+  progressTo: string;
+  textHover: string;
+  buttonBg: string;
+  buttonHoverBg: string;
+  thumbnailFrom: string;
+  thumbnailVia: string;
+  batchBg: string;
+  batchText: string;
+}> = {
+  1: {
+    cardBorder: "border-blue-200 dark:border-blue-800",
+    edgeGradient: "from-blue-600 to-blue-400",
+    progressFrom: "from-blue-600",
+    progressTo: "to-blue-400",
+    textHover: "group-hover:text-blue-600 dark:group-hover:text-blue-400",
+    buttonBg: "bg-blue-600 hover:bg-blue-700",
+    buttonHoverBg: "hover:bg-blue-700",
+    thumbnailFrom: "from-blue-500",
+    thumbnailVia: "via-blue-600",
+    batchBg: "bg-blue-100/90 dark:bg-blue-950/80",
+    batchText: "text-blue-700 dark:text-blue-400",
+  },
+  2: {
+    cardBorder: "border-violet-200 dark:border-violet-800",
+    edgeGradient: "from-violet-600 to-violet-400",
+    progressFrom: "from-violet-600",
+    progressTo: "to-violet-400",
+    textHover: "group-hover:text-violet-600 dark:group-hover:text-violet-400",
+    buttonBg: "bg-violet-600 hover:bg-violet-700",
+    buttonHoverBg: "hover:bg-violet-700",
+    thumbnailFrom: "from-violet-500",
+    thumbnailVia: "via-violet-600",
+    batchBg: "bg-violet-100/90 dark:bg-violet-950/80",
+    batchText: "text-violet-700 dark:text-violet-400",
+  },
+  3: {
+    cardBorder: "border-amber-200 dark:border-amber-800",
+    edgeGradient: "from-amber-600 to-amber-400",
+    progressFrom: "from-amber-600",
+    progressTo: "to-amber-400",
+    textHover: "group-hover:text-amber-600 dark:group-hover:text-amber-400",
+    buttonBg: "bg-amber-600 hover:bg-amber-700",
+    buttonHoverBg: "hover:bg-amber-700",
+    thumbnailFrom: "from-amber-500",
+    thumbnailVia: "via-amber-600",
+    batchBg: "bg-amber-100/90 dark:bg-amber-950/80",
+    batchText: "text-amber-700 dark:text-amber-400",
+  },
+};
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("en-US", {
@@ -84,13 +141,17 @@ export default async function MyCoursesPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
+          {courses.map((course) => {
+            const colors = hierarchyCourseColors[course.hierarchy_type] ?? hierarchyCourseColors[3];
+            return (
             <Card
               key={course.course_id}
-              className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${colors.cardBorder}`}
             >
+              {/* Left Edge Accent */}
+              <div className={`absolute inset-y-0 left-0 z-10 w-1.5 bg-gradient-to-b ${colors.edgeGradient}`} />
               {/* Thumbnail */}
-              <div className="from-primary via-brand-500 to-primary/80 relative aspect-video overflow-hidden bg-gradient-to-br">
+              <div className={`relative aspect-video overflow-hidden bg-gradient-to-br ${colors.thumbnailFrom} ${colors.thumbnailVia} to-transparent`}>
                 {course.thumbnail_url ? (
                   <img
                     src={course.thumbnail_url}
@@ -99,12 +160,12 @@ export default async function MyCoursesPage() {
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <BookOpen className="text-primary-foreground/60 h-12 w-12" />
+                    <BookOpen className="text-white/60 h-12 w-12" />
                   </div>
                 )}
                 {course.course_batch && (
-                  <div className="absolute bottom-3 left-3">
-                    <span className="bg-background/60 text-foreground rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
+                  <div className="absolute bottom-3 left-4">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${colors.batchBg} ${colors.batchText}`}>
                       Batch {course.course_batch}
                     </span>
                   </div>
@@ -112,7 +173,7 @@ export default async function MyCoursesPage() {
               </div>
 
               <CardHeader className="pb-2">
-                <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
+                <CardTitle className={`line-clamp-2 text-lg transition-colors ${colors.textHover}`}>
                   {course.course_title}
                 </CardTitle>
               </CardHeader>
@@ -126,7 +187,7 @@ export default async function MyCoursesPage() {
                   </div>
                   <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
                     <div
-                      className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r transition-all duration-500"
+                      className={`h-full rounded-full bg-gradient-to-r ${colors.progressFrom} ${colors.progressTo} transition-all duration-500`}
                       style={{ width: `${course.progress}%` }}
                     />
                   </div>
@@ -140,14 +201,15 @@ export default async function MyCoursesPage() {
 
                 {/* Action */}
                 <Link href={`/student/courses/${course.course_id}`}>
-                  <Button size="sm" className="w-full gap-2">
+                  <Button size="sm" className={`w-full gap-2 ${colors.buttonBg} transition-colors`}>
                     Continue Learning
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

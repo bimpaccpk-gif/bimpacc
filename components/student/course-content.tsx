@@ -40,12 +40,19 @@ function LessonItem({
   courseId,
   isCompleted,
   highlight,
+  colors,
 }: {
   lesson: LessonRow;
   index: number;
   courseId: string;
   isCompleted: boolean;
   highlight?: string;
+  colors: {
+    numBg: string;
+    numText: string;
+    lessonIcon: string;
+    lessonButton: string;
+  };
 }) {
   const title = lesson.title;
   const desc = lesson.description;
@@ -73,14 +80,14 @@ function LessonItem({
   }
 
   return (
-    <div className="border-border bg-background hover:border-primary/30 overflow-hidden rounded-xl border transition-colors">
+    <div className={`border-border bg-background overflow-hidden rounded-xl border transition-colors hover:border-amber-300 dark:hover:border-amber-700`}>
       <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3 flex-1">
           <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${
               isCompleted
                 ? "bg-success/10 text-success dark:text-success/80"
-                : "bg-primary/10 text-primary dark:text-primary/80"
+                : `${colors.numBg} ${colors.numText}`
             }`}
           >
             {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
@@ -111,9 +118,9 @@ function LessonItem({
               {lesson.duration_minutes} min
             </span>
           )}
-          {lesson.video_url && <PlayCircle className="text-primary h-5 w-5" />}
+          {lesson.video_url && <PlayCircle className={`h-5 w-5 ${colors.lessonIcon}`} />}
           <Link href={`/student/courses/${courseId}/lessons/${lesson.id}`}>
-            <Button size="sm" variant="secondary" className="gap-1.5">
+            <Button size="sm" className={`gap-1.5 ${colors.lessonButton} transition-colors`}>
               {lesson.video_url ? "Watch" : "View"}
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
@@ -142,12 +149,28 @@ function SubjectAccordion({
   courseId,
   completedIds,
   highlight,
+  colors,
+  lessonColors,
 }: {
   subject: SubjectWithLessons;
   index: number;
   courseId: string;
   completedIds: Set<string>;
   highlight?: string;
+  colors: {
+    numBg: string;
+    numText: string;
+    accordionBg: string;
+    accordionHoverBg: string;
+    subjectCountBg: string;
+    subjectCountText: string;
+  };
+  lessonColors: {
+    numBg: string;
+    numText: string;
+    lessonIcon: string;
+    lessonButton: string;
+  };
 }) {
   const filteredLessons = highlight
     ? subject.lessons.filter(
@@ -188,10 +211,9 @@ function SubjectAccordion({
   return (
     <details
       className="group border-border overflow-hidden rounded-xl border"
-      open={index === 0}
     >
-      <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors [&::-webkit-details-marker]:hidden">
-        <div className="bg-primary/10 text-primary dark:text-primary/80 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
+      <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.numBg} ${colors.numText}`}>
           {index + 1}
         </div>
         <div className="min-w-0 flex-1">
@@ -208,14 +230,14 @@ function SubjectAccordion({
             </p>
           )}
         </div>
-        <span className="text-muted-foreground mr-2 text-xs">
+        <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.subjectCountBg} ${colors.subjectCountText}`}>
           {matchedLessons.length}/{subject.lessons.length} lessons
           {highlight ? " matching" : ""}
         </span>
         <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
       </summary>
 
-      <div className="bg-background space-y-3 p-4">
+      <div className={`space-y-3 p-4 ${colors.accordionBg}`}>
         {matchedLessons.map((lesson, i) => (
           <LessonItem
             key={lesson.id}
@@ -224,6 +246,7 @@ function SubjectAccordion({
             courseId={courseId}
             isCompleted={completedIds.has(lesson.id)}
             highlight={highlight}
+            colors={lessonColors}
           />
         ))}
       </div>
@@ -238,6 +261,7 @@ export function CourseContent({
   subjects,
   directLessons,
   completedIds,
+  colors,
 }: {
   courseId: string;
   hierarchyType: number;
@@ -245,6 +269,30 @@ export function CourseContent({
   subjects: SubjectWithLessons[];
   directLessons: LessonRow[];
   completedIds: Set<string>;
+  colors: {
+    semester: {
+      numBg: string;
+      numText: string;
+      accordionBg: string;
+      accordionHoverBg: string;
+      subjectCountBg: string;
+      subjectCountText: string;
+    };
+    subject: {
+      numBg: string;
+      numText: string;
+      accordionBg: string;
+      accordionHoverBg: string;
+      subjectCountBg: string;
+      subjectCountText: string;
+    };
+    lesson: {
+      numBg: string;
+      numText: string;
+      lessonIcon: string;
+      lessonButton: string;
+    };
+  };
 }) {
   const [search, setSearch] = useState("");
 
@@ -357,9 +405,9 @@ export function CourseContent({
         ) : (
           <div className="space-y-4">
             {filteredSemesters.map((semester, si) => (
-              <details key={semester.id} className="group border-border overflow-hidden rounded-xl border" open={si === 0}>
-                <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
-                  <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
+              <details key={semester.id} className="group border-border overflow-hidden rounded-xl border">
+                <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.semester.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.semester.numBg} ${colors.semester.numText}`}>
                     {si + 1}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -372,13 +420,13 @@ export function CourseContent({
                       </p>
                     )}
                   </div>
-                  <span className="text-muted-foreground mr-2 text-xs">
+                  <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.semester.subjectCountBg} ${colors.semester.subjectCountText}`}>
                     {semester.subjects.length} subject{semester.subjects.length !== 1 ? "s" : ""}
                     ({semester.subjects.reduce((s, sub) => s + sub.lessons.length, 0)} lessons)
                   </span>
                   <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="bg-background space-y-3 p-4">
+                <div className={`space-y-3 p-4 ${colors.semester.accordionBg}`}>
                   {semester.subjects.map((subject, subI) => (
                     <SubjectAccordion
                       key={subject.id}
@@ -387,6 +435,8 @@ export function CourseContent({
                       courseId={courseId}
                       completedIds={completedIds}
                       highlight={search || undefined}
+                      colors={colors.subject}
+                      lessonColors={colors.lesson}
                     />
                   ))}
                 </div>
@@ -409,6 +459,8 @@ export function CourseContent({
                 courseId={courseId}
                 completedIds={completedIds}
                 highlight={search || undefined}
+                colors={colors.subject}
+                lessonColors={colors.lesson}
               />
             ))}
           </div>
@@ -427,6 +479,7 @@ export function CourseContent({
               courseId={courseId}
               isCompleted={completedIds.has(lesson.id)}
               highlight={search}
+              colors={colors.lesson}
             />
           ))}
         </div>
