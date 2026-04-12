@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +12,10 @@ export async function GET(request: Request) {
   const deviceComponentsStr = searchParams.get("dc") || null;
 
   const supabase = await createClient();
+
+  // Get user-agent from request headers
+  const headersList = await headers();
+  const userAgent = headersList.get("user-agent") || null;
 
   if (!code) {
     return NextResponse.redirect(
@@ -55,6 +60,19 @@ export async function GET(request: Request) {
     // Ignore parse errors
   }
 
+  // Helper to log login history
+  const logLogin = async (userId: string, status: string) => {
+    await admin.from("login_history").insert({
+      user_id: userId,
+      email: email ?? "",
+      status,
+      device_fingerprint: deviceFingerprint,
+      hardware_fingerprint: hardwareFingerprint,
+      device_components: deviceComponents,
+      user_agent: userAgent,
+    });
+  };
+
   // Step 1: Check if a users row already exists with this auth ID
   const { data: existingUser } = await admin
     .from("users")
@@ -80,6 +98,7 @@ export async function GET(request: Request) {
           .eq("id", googleAuthId);
       } else if (storedHardware !== hardwareFingerprint) {
         // Device mismatch - block login
+        await logLogin(googleAuthId, "failed_device");
         await supabase.auth.signOut();
         return NextResponse.redirect(
           new URL("/login?error=device_mismatch", request.url)
@@ -87,6 +106,8 @@ export async function GET(request: Request) {
       }
     }
     
+    // Log successful Google login
+    await logLogin(googleAuthId, "success");
     return NextResponse.redirect(new URL(`/${existingUser.role}`, request.url));
   }
 
@@ -112,6 +133,8 @@ export async function GET(request: Request) {
         })
         .eq("id", emailMatch.id);
 
+      // Log successful Google login for pre-created user
+      await logLogin(googleAuthId, "success");
       return NextResponse.redirect(new URL(`/${emailMatch.role}`, request.url));
     }
   }
@@ -133,5 +156,7 @@ export async function GET(request: Request) {
     device_locked_at: new Date().toISOString(),
   });
 
+  // Log first Google login for new user
+  await logLogin(googleAuthId, "success");
   return NextResponse.redirect(new URL("/student", request.url));
 }
