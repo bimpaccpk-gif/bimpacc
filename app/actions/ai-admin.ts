@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { verifyAdmin } from "@/lib/dal";
 import { callAI } from "@/lib/ai";
 
@@ -923,6 +923,47 @@ export async function detectAnomalies(): Promise<AnomalyReport[]> {
   anomalies.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
   return anomalies;
+}
+
+export interface EnrolledStudent {
+  id: string;
+  full_name: string | null;
+  email: string;
+  enrolled_at: string;
+  progress: number | null;
+  enrolled_by: string | null;
+}
+
+export async function getEnrolledStudents(
+  courseId: string
+): Promise<{ data: EnrolledStudent[]; error: string | null }> {
+  await verifyAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  const { data: enrollments, error } = await admin
+    .from("enrollments")
+    .select("user_id, enrolled_at, progress, enrolled_by, users!enrollments_user_id_fkey(id, full_name, email)")
+    .eq("course_id", courseId)
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    return { data: [], error: error.message };
+  }
+
+  const enrolledStudents: EnrolledStudent[] = (enrollments ?? []).map((e: any) => {
+    const user = Array.isArray(e.users) ? e.users[0] : e.users;
+    return {
+      id: e.user_id,
+      full_name: user?.full_name ?? null,
+      email: user?.email ?? "",
+      enrolled_at: e.enrolled_at,
+      progress: e.progress,
+      enrolled_by: e.enrolled_by,
+    };
+  });
+
+  return { data: enrolledStudents, error: null };
 }
 
 // ============================================================

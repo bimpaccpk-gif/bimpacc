@@ -314,6 +314,8 @@ export async function getCourseStudentAccessList(
     email: string;
     isPaused: boolean;
     overrideId: string | null;
+    progress: number | null;
+    enrolledAt: string | null;
   }>;
   error: string;
 }> {
@@ -332,11 +334,12 @@ export async function getCourseStudentAccessList(
 
   const admin = createAdminClient();
 
-  // Get all enrollments for this course with user info
+  // Get all enrollments for this course with user info and progress
   const { data: enrollments } = await admin
     .from("enrollments")
-    .select("user_id, users(id, full_name, email)")
-    .eq("course_id", courseId);
+    .select("user_id, progress, enrolled_at, users!enrollments_user_id_fkey(id, full_name, email)")
+    .eq("course_id", courseId)
+    .order("enrolled_at", { ascending: false });
 
   // Get all course-level overrides for these students
   const userIds = ((enrollments as any[]) ?? []).map((e: any) => e.user_id);
@@ -374,6 +377,8 @@ export async function getCourseStudentAccessList(
       email: user?.email ?? "",
       isPaused,
       overrideId: override?.id ?? null,
+      progress: e.progress ?? null,
+      enrolledAt: e.enrolled_at ?? null,
     };
   });
 

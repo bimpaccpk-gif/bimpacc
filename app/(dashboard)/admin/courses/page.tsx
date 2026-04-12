@@ -61,7 +61,7 @@ async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string,
     { data: subjectLessons },
   ] = await Promise.all([
     supabase.from("lessons").select("course_id").in("course_id", courseIds),
-    subjectIds.length > 0 
+    subjectIds.length > 0
       ? supabase.from("lessons").select("subject_id").in("subject_id", subjectIds)
       : Promise.resolve({ data: [] }),
   ]);
@@ -84,10 +84,27 @@ async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string,
   return counts;
 }
 
+async function getEnrollmentCounts(courseIds: string[]): Promise<Record<string, number>> {
+  if (courseIds.length === 0) return {};
+  const supabase = await createClient();
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("course_id")
+    .in("course_id", courseIds);
+
+  const counts: Record<string, number> = {};
+  courseIds.forEach((id) => { counts[id] = 0; });
+  (enrollments ?? []).forEach((e: any) => {
+    if (counts[e.course_id] !== undefined) counts[e.course_id] += 1;
+  });
+  return counts;
+}
+
 export default async function AdminCoursesPage() {
   await getCurrentUser();
   const courses = await getCourses();
   const itemCounts = await getCourseItemCounts(courses);
+  const enrollmentCounts = await getEnrollmentCounts(courses.map((c) => c.id));
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 max-w-6xl mx-auto">
@@ -105,7 +122,7 @@ export default async function AdminCoursesPage() {
       </div>
 
       {/* Course List */}
-      <CourseList initialCourses={courses} itemCounts={itemCounts} />
+      <CourseList initialCourses={courses} itemCounts={itemCounts} enrollmentCounts={enrollmentCounts} />
     </div>
   );
 }

@@ -8,9 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, Pause, Play, Shield, Users, Check, Search } from "lucide-react";
+import { Loader2, Pause, Play, Shield, Users, Check, Search, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   getCourseStudentAccessList,
@@ -33,9 +32,12 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
       email: string;
       isPaused: boolean;
       overrideId: string | null;
+      progress: number | null;
+      enrolledAt: string | null;
     }>
   >([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -43,11 +45,24 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await getCourseStudentAccessList(courseId);
-    if (!error) {
-      setStudents(data);
+    setError(null);
+    try {
+      const result = await getCourseStudentAccessList(courseId);
+      console.log("getCourseStudentAccessList result:", result);
+      if (result.error) {
+        setError(result.error);
+        setStudents([]);
+      } else {
+        setStudents(result.data);
+        console.log(`Loaded ${result.data.length} students`);
+      }
+    } catch (err: any) {
+      console.error("fetchStudents exception:", err);
+      setError(err.message ?? "Failed to load students");
+      setStudents([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [courseId]);
 
   useEffect(() => {
@@ -60,10 +75,8 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
     setPendingIds((prev) => new Set(prev).add(userId));
     try {
       if (currentlyPaused) {
-        // Currently paused → remove override to resume
         await removeStudentContentAccess(userId, "course", courseId);
       } else {
-        // Currently active → pause
         await setStudentContentAccess(userId, "course", courseId, true, "Paused by admin");
       }
       await fetchStudents();
@@ -106,11 +119,15 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="bg-primary/10 text-primary hover:bg-primary/20 dark:text-primary inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="bg-primary/10 text-primary hover:bg-primary/20 dark:text-primary inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors"
+      >
         <Shield className="h-3 w-3" />
         Student Access
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
+      </button>
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Shield className="text-primary h-5 w-5" />
@@ -120,68 +137,85 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
         </DialogHeader>
 
         {/* Bulk actions and stats */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b pb-2">
-          <div className="text-muted-foreground flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {students.length} enrolled
-            </span>
-            <span className="text-success flex items-center gap-1">
-              <Check className="h-3 w-3" />
-              {activeCount} active
-            </span>
-            <span className="text-destructive flex items-center gap-1">
-              <Pause className="h-3 w-3" />
-              {pausedCount} paused
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-destructive/20 text-destructive hover:bg-destructive/10 dark:border-destructive/30 h-7 gap-1 text-[10px]"
-              onClick={() => handleBulkPause(true)}
-              disabled={bulkLoading || students.length === 0}
-            >
-              {bulkLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
+        {students.length > 0 && (
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b pb-2">
+            <div className="text-muted-foreground flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {students.length} enrolled
+              </span>
+              <span className="text-success flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                {activeCount} active
+              </span>
+              <span className="text-destructive flex items-center gap-1">
                 <Pause className="h-3 w-3" />
-              )}
-              Pause All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-success/30 text-success hover:bg-success/10 hover:text-success dark:border-success/20 h-7 gap-1 text-[10px]"
-              onClick={() => handleBulkPause(false)}
-              disabled={bulkLoading || students.length === 0}
-            >
-              {bulkLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Play className="h-3 w-3" />
-              )}
-              Resume All
-            </Button>
+                {pausedCount} paused
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/20 text-destructive hover:bg-destructive/10 dark:border-destructive/30 h-7 gap-1 text-[10px]"
+                onClick={() => handleBulkPause(true)}
+                disabled={bulkLoading || students.length === 0}
+              >
+                {bulkLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Pause className="h-3 w-3" />
+                )}
+                Pause All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-success/30 text-success hover:bg-success/10 hover:text-success dark:border-success/20 h-7 gap-1 text-[10px]"
+                onClick={() => handleBulkPause(false)}
+                disabled={bulkLoading || students.length === 0}
+              >
+                {bulkLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Play className="h-3 w-3" />
+                )}
+                Resume All
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Search */}
-        <div className="relative shrink-0">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-          <Input
-            placeholder="Search students..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
+        {students.length > 0 && (
+          <div className="relative shrink-0">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
+            <Input
+              placeholder="Search students..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 pl-8 text-xs"
+            />
+          </div>
+        )}
 
         {/* Message */}
         {message && (
           <div className="bg-success/10 text-success shrink-0 rounded-md px-3 py-1.5 text-xs font-medium">
             {message}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="shrink-0 rounded-md bg-destructive/10 px-3 py-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div>
+                <p className="text-xs font-medium text-destructive">Failed to load students</p>
+                <p className="mt-0.5 text-xs text-destructive/80">{error}</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -193,15 +227,18 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
             </div>
           )}
 
-          {!loading && filtered.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              {students.length === 0
-                ? "No students enrolled in this course."
-                : "No students match your search."}
-            </p>
+          {!loading && !error && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Users className="h-10 w-10 text-muted-foreground/50" />
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {students.length === 0
+                  ? "No students enrolled in this course."
+                  : "No students match your search."}
+              </p>
+            </div>
           )}
 
-          {!loading && filtered.length > 0 && (
+          {!loading && !error && filtered.length > 0 && (
             <div className="divide-border/50 divide-y">
               {filtered.map((student) => (
                 <div
@@ -212,7 +249,24 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
                     <p className="truncate text-sm font-medium">{student.userName}</p>
                     <p className="text-muted-foreground truncate text-xs">{student.email}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-4">
+                    {student.enrolledAt && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground">Enrolled</p>
+                        <p className="text-xs font-medium">
+                          {new Date(student.enrolledAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">Progress</p>
+                      <p className="text-xs font-medium">
+                        {student.progress != null ? `${student.progress}%` : "0%"}
+                      </p>
+                    </div>
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                         student.isPaused
@@ -259,13 +313,15 @@ export function CourseAccessDialog({ courseId, courseTitle }: CourseAccessDialog
         </div>
 
         {/* Legend */}
-        <div className="shrink-0 border-t pt-2">
-          <p className="text-muted-foreground px-1 text-[10px]">
-            <span className="font-semibold">Active</span> = student can access course.{" "}
-            <span className="font-semibold">Paused</span> = access blocked for this student only.
-            Click toggle to change.
-          </p>
-        </div>
+        {students.length > 0 && (
+          <div className="shrink-0 border-t pt-2">
+            <p className="text-muted-foreground px-1 text-[10px]">
+              <span className="font-semibold">Active</span> = student can access course.{" "}
+              <span className="font-semibold">Paused</span> = access blocked for this student only.
+              Click toggle to change.
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

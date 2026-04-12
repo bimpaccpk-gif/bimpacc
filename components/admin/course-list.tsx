@@ -8,11 +8,12 @@ import { CourseEditDialog } from "@/components/admin/course-edit-dialog";
 import { CourseDeleteButton } from "@/components/admin/course-delete-button";
 import { ManageContentDialog } from "@/components/admin/manage-content-dialog";
 import { CourseAccessDialog } from "@/components/admin/course-access-dialog";
+import { EnrolledStudentsDialog } from "@/components/admin/enrolled-students-dialog";
 import { getHierarchyConfig } from "@/lib/hierarchy-config";
 import { HierarchyType } from "@/types";
 import { cn } from "@/lib/utils";
 import { reorderCourses } from "@/app/actions/courses";
-import { Sparkles, Layers, List, BookOpen, Activity, Calendar, GripVertical } from "lucide-react";
+import { Sparkles, Layers, List, BookOpen, Activity, Calendar, GripVertical, Users } from "lucide-react";
 
 export interface CourseRow {
   id: string;
@@ -30,6 +31,7 @@ export interface CourseRow {
 interface CourseListProps {
   initialCourses: CourseRow[];
   itemCounts: Record<string, { semesters: number; subjects: number; lessons: number }>;
+  enrollmentCounts: Record<string, number>;
 }
 
 const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
@@ -72,7 +74,7 @@ function formatDate(date: string) {
   });
 }
 
-export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
+export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: CourseListProps) {
   // Sort courses by order_index primarily, then fallback to creation date (handled by server query initially)
   const [courses, setCourses] = useState(() => {
     return [...initialCourses].sort((a, b) => {
@@ -246,6 +248,10 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                 {/* Inline Stats for Mobile */}
                                 <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
                                   <div className="flex items-center gap-1.5">
+                                    <Users className="h-4 w-4 text-primary shrink-0" />
+                                    <span>{enrollmentCounts[course.id] ?? 0} Students</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
                                     <Activity className="h-4 w-4 text-primary shrink-0" />
                                     <span>
                                       {course.hierarchy_type === 1 && (
@@ -292,6 +298,15 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
                                 <div className="text-muted-foreground/80 flex flex-col items-end gap-2 text-[11px] font-bold mt-3 w-full">
                                   <div
                                     className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
+                                    title="Enrolled Students"
+                                  >
+                                    <Users className="h-3 w-3 text-primary shrink-0" />
+                                    <span className="truncate">
+                                      {enrollmentCounts[course.id] ?? 0} Student{enrollmentCounts[course.id] !== 1 ? "s" : ""}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
                                     title="Content Counts"
                                   >
                                     <Activity className="h-3 w-3 text-primary shrink-0" />
@@ -322,6 +337,10 @@ export function CourseList({ initialCourses, itemCounts }: CourseListProps) {
 
                               {/* Actions */}
                               <div className="flex shrink-0 items-center gap-2 p-1 pl-4 sm:pl-2">
+                                <EnrolledStudentsDialog
+                                  courseId={course.id}
+                                  courseTitle={course.title}
+                                />
                                 <CourseEditDialog
                                   courseId={course.id}
                                   initialTitle={course.title}
