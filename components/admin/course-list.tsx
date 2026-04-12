@@ -55,15 +55,66 @@ const statusConfig: Record<string, { label: string; className: string; dotClass:
 };
 
 const hierarchyIcons: Record<number, React.ReactNode> = {
-  1: <Layers className="text-primary h-6 w-6" />,
-  2: <List className="text-primary h-6 w-6" />,
-  3: <BookOpen className="text-primary h-6 w-6" />,
+  1: <Layers className="h-6 w-6" />,
+  2: <List className="h-6 w-6" />,
+  3: <BookOpen className="h-6 w-6" />,
+};
+
+// Distinct colors per hierarchy type for instant visual identification
+const hierarchyColors: Record<number, {
+  edgeGradient: string;
+  iconBg: string;
+  iconColor: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeRing: string;
+  textAccent: string;
+  iconAccent: string;
+  hoverBg: string;
+  dragHoverBg: string;
+}> = {
+  1: {
+    edgeGradient: "from-blue-600 to-blue-400",
+    iconBg: "bg-blue-100 dark:bg-blue-950/60 border-blue-200/40 dark:border-blue-800/40",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    badgeBg: "bg-blue-100 dark:bg-blue-900/60",
+    badgeText: "text-blue-700 dark:text-blue-400",
+    badgeRing: "ring-blue-200 dark:ring-blue-800/40",
+    textAccent: "text-blue-600 dark:text-blue-400",
+    iconAccent: "text-blue-600 dark:text-blue-400",
+    hoverBg: "hover:border-blue-200 dark:hover:border-blue-800",
+    dragHoverBg: "hover:bg-blue-50 dark:hover:bg-blue-950/20",
+  },
+  2: {
+    edgeGradient: "from-violet-600 to-violet-400",
+    iconBg: "bg-violet-100 dark:bg-violet-950/60 border-violet-200/40 dark:border-violet-800/40",
+    iconColor: "text-violet-600 dark:text-violet-400",
+    badgeBg: "bg-violet-100 dark:bg-violet-900/60",
+    badgeText: "text-violet-700 dark:text-violet-400",
+    badgeRing: "ring-violet-200 dark:ring-violet-800/40",
+    textAccent: "text-violet-600 dark:text-violet-400",
+    iconAccent: "text-violet-600 dark:text-violet-400",
+    hoverBg: "hover:border-violet-200 dark:hover:border-violet-800",
+    dragHoverBg: "hover:bg-violet-50 dark:hover:bg-violet-950/20",
+  },
+  3: {
+    edgeGradient: "from-amber-600 to-amber-400",
+    iconBg: "bg-amber-100 dark:bg-amber-950/60 border-amber-200/40 dark:border-amber-800/40",
+    iconColor: "text-amber-600 dark:text-amber-400",
+    badgeBg: "bg-amber-100 dark:bg-amber-900/60",
+    badgeText: "text-amber-700 dark:text-amber-400",
+    badgeRing: "ring-amber-200 dark:ring-amber-800/40",
+    textAccent: "text-amber-600 dark:text-amber-400",
+    iconAccent: "text-amber-600 dark:text-amber-400",
+    hoverBg: "hover:border-amber-200 dark:hover:border-amber-800",
+    dragHoverBg: "hover:bg-amber-50 dark:hover:bg-amber-950/20",
+  },
 };
 
 const hierarchyGroups = [
-  { type: 1 as HierarchyType, title: "Full Course Structure (Semesters → Subjects → Lessons)" },
-  { type: 2 as HierarchyType, title: "Standard Course (Subjects → Lessons)" },
-  { type: 3 as HierarchyType, title: "Simple Course (Lessons Only)" },
+  { type: 1 as HierarchyType, title: "Full Course Structure (Semesters → Subjects → Lessons)", color: "text-blue-600 dark:text-blue-400" },
+  { type: 2 as HierarchyType, title: "Standard Course (Subjects → Lessons)", color: "text-violet-600 dark:text-violet-400" },
+  { type: 3 as HierarchyType, title: "Simple Course (Lessons Only)", color: "text-amber-600 dark:text-amber-400" },
 ];
 
 function formatDate(date: string) {
@@ -172,7 +223,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
             key={group.type}
             className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4"
           >
-            <h2 className="text-foreground/90 pl-1 text-xl font-bold tracking-tight">
+            <h2 className={cn("pl-1 text-xl font-bold tracking-tight", group.color)}>
               {group.title}
             </h2>
             <DragDropContext onDragEnd={(result) => handleDragEnd(result, group.type)}>
@@ -182,6 +233,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                     {groupCourses.map((course, index) => {
                       const status = statusConfig[course.status] ?? statusConfig.draft;
                       const config = getHierarchyConfig(course.hierarchy_type);
+                      const colors = hierarchyColors[course.hierarchy_type];
 
                       return (
                         <Draggable key={course.id} draggableId={course.id} index={index}>
@@ -190,27 +242,30 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                "group bg-background/60 dark:bg-card/60 relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10",
+                                `group bg-background/60 dark:bg-card/60 relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10`,
+                                colors.hoverBg,
                                 snapshot.isDragging
-                                  ? "bg-background/95 ring-primary z-50 scale-[1.02] shadow-2xl ring-2 will-change-transform"
-                                  : "hover:shadow-primary/5 shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                                  ? `bg-background/95 z-50 scale-[1.02] shadow-2xl ring-2 will-change-transform ring-[${colors.iconAccent.replace("text-", "")}]`
+                                  : "shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                               )}
                               style={provided.draggableProps.style}
                             >
                               {/* Left Edge Accent */}
-                              <div className="from-primary to-primary/70 absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b opacity-60 transition-opacity group-hover:opacity-100" />
+                              <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${colors.edgeGradient} opacity-60 transition-opacity group-hover:opacity-100`} />
 
                               {/* Drag Handle */}
                               <div
                                 {...provided.dragHandleProps}
-                                className="hover:bg-primary/10 -ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors active:cursor-grabbing"
+                                className={`-ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors active:cursor-grabbing ${colors.dragHoverBg}`}
                               >
-                                <GripVertical className="text-muted-foreground/50 hover:text-primary h-5 w-5" />
+                                <GripVertical className={`h-5 w-5 ${colors.iconAccent} opacity-50 group-hover:opacity-100`} />
                               </div>
 
                               {/* Icon Container */}
-                              <div className="border-primary/10 bg-primary/10 dark:bg-primary/20 hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-300 group-hover:scale-110 sm:flex">
-                                {hierarchyIcons[course.hierarchy_type]}
+                              <div className={`hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-300 group-hover:scale-110 sm:flex ${colors.iconBg}`}>
+                                <div className={colors.iconColor}>
+                                  {hierarchyIcons[course.hierarchy_type]}
+                                </div>
                               </div>
 
                               {/* Main Details (Title, Description) */}
@@ -232,11 +287,11 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <h3 className="text-foreground group-hover:text-primary dark:group-hover:text-primary/80 truncate text-xl font-bold tracking-tight transition-colors">
+                                  <h3 className={`truncate text-xl font-bold tracking-tight transition-colors text-foreground group-hover:${colors.textAccent.split(" ")[0]}`}>
                                     {course.title}
                                   </h3>
                                   {course.batch && (
-                                    <span className="inline-flex shrink-0 items-center rounded-md bg-primary/10 px-2 py-1 text-xs font-bold tracking-wider text-primary uppercase shadow-sm ring-1 ring-primary/20 dark:bg-primary/20 dark:text-primary">
+                                    <span className={`inline-flex shrink-0 items-center rounded-md px-2 py-1 text-xs font-bold tracking-wider uppercase shadow-sm ring-1 ${colors.badgeBg} ${colors.badgeText} ${colors.badgeRing}`}>
                                       Batch {course.batch}
                                     </span>
                                   )}
@@ -248,11 +303,11 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                 {/* Inline Stats for Mobile */}
                                 <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
                                   <div className="flex items-center gap-1.5">
-                                    <Users className="h-4 w-4 text-primary shrink-0" />
+                                    <Users className={`h-4 w-4 shrink-0 ${colors.iconAccent}`} />
                                     <span>{enrollmentCounts[course.id] ?? 0} Students</span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
-                                    <Activity className="h-4 w-4 text-primary shrink-0" />
+                                    <Activity className={`h-4 w-4 shrink-0 ${colors.iconAccent}`} />
                                     <span>
                                       {course.hierarchy_type === 1 && (
                                         <>{itemCounts[course.id]?.semesters ?? 0} Sem. • {itemCounts[course.id]?.subjects ?? 0} Subj. • </>
@@ -263,7 +318,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                       {itemCounts[course.id]?.lessons ?? 0} Lessons
                                     </span>
                                   </div>
-                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md px-2 py-1 shrink-0">
+                                  <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 shrink-0 ${colors.badgeBg} ${colors.badgeText}`}>
                                     <span>{config.name} Setup</span>
                                   </div>
                                 </div>
@@ -297,19 +352,19 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
 
                                 <div className="text-muted-foreground/80 flex flex-col items-end gap-2 text-[11px] font-bold mt-3 w-full">
                                   <div
-                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
+                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
                                     title="Enrolled Students"
                                   >
-                                    <Users className="h-3 w-3 text-primary shrink-0" />
+                                    <Users className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
                                     <span className="truncate">
                                       {enrollmentCounts[course.id] ?? 0} Student{enrollmentCounts[course.id] !== 1 ? "s" : ""}
                                     </span>
                                   </div>
                                   <div
-                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
+                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
                                     title="Content Counts"
                                   >
-                                    <Activity className="h-3 w-3 text-primary shrink-0" />
+                                    <Activity className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
                                     <span className="truncate">
                                       {course.hierarchy_type === 1 && (
                                         <>{itemCounts[course.id]?.semesters ?? 0} Sem • {itemCounts[course.id]?.subjects ?? 0} Subj • </>
@@ -321,10 +376,10 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                     </span>
                                   </div>
                                   <div
-                                    className="bg-muted/40 border-border/50 flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between"
+                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
                                     title={`Created on ${formatDate(course.created_at)}`}
                                   >
-                                    <Calendar className="h-3 w-3 text-primary shrink-0" />
+                                    <Calendar className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
                                     <span>
                                       {new Date(course.created_at).toLocaleDateString("en-US", {
                                         month: "short",
