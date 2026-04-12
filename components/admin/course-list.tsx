@@ -286,8 +286,8 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                     {status.label}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <h3 className={`truncate text-xl font-bold tracking-tight transition-colors text-foreground group-hover:${colors.textAccent.split(" ")[0]}`}>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <h3 className={`text-xl font-bold tracking-tight transition-colors text-foreground group-hover:${colors.textAccent.split(" ")[0]}`}>
                                     {course.title}
                                   </h3>
                                   {course.batch && (
@@ -296,7 +296,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-muted-foreground/80 mt-1 max-w-2xl truncate text-sm leading-relaxed">
+                                <p className="text-muted-foreground/80 mt-1 text-sm leading-relaxed">
                                   {course.description || "No description provided."}
                                 </p>
 
