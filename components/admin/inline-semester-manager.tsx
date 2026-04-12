@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Loader2, CalendarRange, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { InlineSubjectManager } from "./inline-subject-manager";
+import { SemesterEditDialog } from "./semester-edit-dialog";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
@@ -17,7 +18,8 @@ const SEM_COLOR = {
   borderHover: "hover:border-violet-400 dark:hover:border-violet-600",
   ring: "ring-violet-500/20",
   ringDrag: "ring-2 ring-violet-500",
-  numBg: "bg-violet-100 dark:bg-violet-950/70 text-violet-700 dark:text-violet-400",
+  numBg: "bg-violet-100 dark:bg-violet-950/70",
+  numText: "text-violet-700 dark:text-violet-400",
   expandActive: "bg-violet-600 text-white",
   expandInactive: "bg-muted text-muted-foreground",
   addBorder: "border-violet-300/50 dark:border-violet-700/50",
@@ -92,6 +94,12 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
       setError(result.error);
     }
   };
+
+  const handleEditSemester = useCallback((semesterId: string, title: string, description: string) => {
+    setSemesters(prev => prev.map((s) =>
+      s.id === semesterId ? { ...s, title, description } : s
+    ));
+  }, []);
 
   const handleDeleteSemester = async (semesterId: string) => {
     const formData = new FormData();
@@ -254,6 +262,14 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <SemesterEditDialog
+                              semesterId={semester.id}
+                              courseId={courseId}
+                              initialTitle={semester.title}
+                              initialDescription={semester.description}
+                              colorClasses={{ numBg: SEM_COLOR.numBg, numText: SEM_COLOR.numText }}
+                              onSuccess={handleEditSemester}
+                            />
                           </div>
 
                           {expandedSemesters.has(semester.id) && (

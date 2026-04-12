@@ -9,6 +9,7 @@ import { Plus, Trash2, Loader2, Play, Clock, Video, FileText, GripVertical } fro
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
+import { LessonEditDialog } from "./lesson-edit-dialog";
 
 // Lesson = hierarchy level 3 → Amber
 const LESSON_COLOR = {
@@ -16,7 +17,8 @@ const LESSON_COLOR = {
   borderHover: "hover:border-amber-400 dark:hover:border-amber-600",
   ring: "ring-amber-500/20",
   ringDrag: "ring-2 ring-amber-500",
-  numBg: "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400",
+  numBg: "bg-amber-100 dark:bg-amber-950/70",
+  numText: "text-amber-700 dark:text-amber-400",
   icon: "text-amber-600 dark:text-amber-400",
   iconBg: "bg-amber-100 dark:bg-amber-950/50",
   headerBorder: "border-amber-200 dark:border-amber-800",
@@ -31,6 +33,7 @@ interface Lesson {
   id: string;
   title: string;
   description: string;
+  content: string | null;
   video_url: string | null;
   duration_minutes: number | null;
   order_index: number;
@@ -60,7 +63,7 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
     
     let query = supabase
       .from("lessons")
-      .select("id, title, description, video_url, duration_minutes, order_index")
+      .select("id, title, description, content, video_url, duration_minutes, order_index")
       .order("order_index", { ascending: true });
 
     if (subjectId) {
@@ -97,6 +100,12 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
     }
     setAdding(false);
   };
+
+  const handleEditLesson = useCallback((lessonId: string, title: string, description: string, content: string, videoUrl: string, duration: number | null) => {
+    setLessons(prev => prev.map((l) =>
+      l.id === lessonId ? { ...l, title, description, content, video_url: videoUrl, duration_minutes: duration } : l
+    ));
+  }, []);
 
   const handleDeleteLesson = async (lessonId: string) => {
     const formData = new FormData();
@@ -236,6 +245,18 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <LessonEditDialog
+                              lessonId={lesson.id}
+                              courseId={courseId}
+                              subjectId={subjectId}
+                              initialTitle={lesson.title}
+                              initialDescription={lesson.description}
+                              initialContent={lesson.content}
+                              initialVideoUrl={lesson.video_url}
+                              initialDuration={lesson.duration_minutes}
+                              colorClasses={{ numBg: LESSON_COLOR.numBg, numText: LESSON_COLOR.numText }}
+                              onSuccess={handleEditLesson}
+                            />
                           </div>
                         );
 

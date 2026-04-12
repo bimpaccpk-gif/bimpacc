@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Loader2, BookOpen, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { InlineLessonManager } from "./inline-lesson-manager";
+import { SubjectEditDialog } from "./subject-edit-dialog";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
@@ -17,7 +18,8 @@ const SUB_COLOR = {
   borderHover: "hover:border-teal-400 dark:hover:border-teal-600",
   ring: "ring-teal-500/20",
   ringDrag: "ring-2 ring-teal-500",
-  numBg: "bg-teal-100 dark:bg-teal-950/70 text-teal-700 dark:text-teal-400",
+  numBg: "bg-teal-100 dark:bg-teal-950/70",
+  numText: "text-teal-700 dark:text-teal-400",
   expandActive: "bg-teal-600 text-white",
   expandInactive: "bg-muted text-muted-foreground",
   innerBg: "bg-teal-50/40 dark:bg-teal-950/20",
@@ -95,6 +97,12 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
       setError(result.error);
     }
   };
+
+  const handleEditSubject = useCallback((subjectId: string, title: string, description: string) => {
+    setSubjects(prev => prev.map((s) =>
+      s.id === subjectId ? { ...s, title, description } : s
+    ));
+  }, []);
 
   const handleDeleteSubject = async (subjectId: string) => {
     const formData = new FormData();
@@ -265,6 +273,15 @@ export function InlineSubjectManager({ courseId, semesterId, initialSubjects }: 
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            <SubjectEditDialog
+                              subjectId={subject.id}
+                              courseId={courseId}
+                              semesterId={semesterId}
+                              initialTitle={subject.title}
+                              initialDescription={subject.description}
+                              colorClasses={{ numBg: SUB_COLOR.numBg, numText: SUB_COLOR.numText }}
+                              onSuccess={handleEditSubject}
+                            />
                           </div>
 
                           {/* Expandable Lessons Section */}

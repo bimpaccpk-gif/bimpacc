@@ -244,7 +244,6 @@ export async function updateSemester(
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/semesters`);
   return { error: "", success: "Semester updated." };
 }
 
@@ -400,7 +399,6 @@ export async function updateSubject(
     return { error: error.message, success: "" };
   }
 
-  revalidatePath(`/admin/courses/${courseId}/subjects`);
   return { error: "", success: "Subject updated." };
 }
 
@@ -621,15 +619,6 @@ export async function updateLesson(
     return { error: error.message, success: "" };
   }
 
-  // Determine revalidate path based on hierarchy type
-  let revalidateUrl: string;
-  if (subjectId) {
-    revalidateUrl = `/admin/courses/${courseId}/subjects/${subjectId}/lessons`;
-  } else {
-    revalidateUrl = `/admin/courses/${courseId}/lessons`;
-  }
-
-  revalidatePath(revalidateUrl);
   return { error: "", success: "Lesson updated." };
 }
 
