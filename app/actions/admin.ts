@@ -436,6 +436,7 @@ export async function getUserDetail(
         hardware_fingerprint: user.hardware_fingerprint,
         device_locked_at: user.device_locked_at,
         device_components: user.device_components,
+        is_locked: user.is_locked ?? false,
       },
       enrollments,
       auditLog,
@@ -525,6 +526,7 @@ export async function resetDeviceFingerprint(
       hardware_fingerprint: null,
       device_components: null,
       device_locked_at: null,
+      is_locked: false,
     } as never)
     .eq("id", userId);
 

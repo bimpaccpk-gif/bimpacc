@@ -5,6 +5,7 @@ import { OnboardingModal } from "@/components/student/onboarding-modal";
 import { ApprovalPendingModal } from "@/components/student/approval-modal";
 import { FingerprintHeartbeat } from "@/components/fingerprint-heartbeat";
 import { getUserNotifications } from "@/app/actions/notifications";
+import { ScreenProtection } from "@/components/student/screen-protection";
 
 export default async function DashboardLayout({
   children,
@@ -40,6 +41,7 @@ export default async function DashboardLayout({
       {needsOnboarding && <OnboardingModal user={user} selectedCourse={selectedCourse} />}
       {needsApproval && <ApprovalPendingModal user={user} />}
       <FingerprintHeartbeat role={user.role} />
+      {isStudent && <ScreenProtection role={user.role} />}
     </>
   );
 }

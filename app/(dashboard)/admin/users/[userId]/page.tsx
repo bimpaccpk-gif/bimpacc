@@ -24,6 +24,7 @@ import {
   Smartphone,
   LogIn,
   AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 
 function getInitials(name: string) {
@@ -158,8 +159,25 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
             </div>
           </div>
         </div>
-        <UserDetailActions userId={user.id} currentRole={user.role} isPaused={user.is_paused} />
+        <UserDetailActions 
+          userId={user.id} 
+          currentRole={user.role} 
+          isPaused={user.is_paused}
+          isLocked={user.is_locked}
+        />
       </div>
+
+      {user.is_locked && (
+        <div className="bg-destructive/10 border-destructive/20 text-destructive mb-6 flex items-center gap-3 rounded-lg border px-4 py-3">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-semibold">Account Locked: Security Violation</p>
+            <p className="opacity-90">
+              This user has been automatically locked due to a detected screen recording or screenshot attempt. Use &quot;Reset Device &amp; Unlock&quot; to restore access.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -605,6 +623,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                           <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <Smartphone className="h-3 w-3" />
                             Device Blocked
+                          </span>
+                        ) : entry.status === "failed_screen_record" ? (
+                          <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
+                            <ShieldAlert className="h-3 w-3" />
+                            Lockout
                           </span>
                         ) : (
                           <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">

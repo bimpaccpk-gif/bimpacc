@@ -146,7 +146,7 @@ export interface DeviceComponents {
 export interface LoginHistoryEntry {
   id: string;
   email: string;
-  status: "success" | "failed_credentials" | "failed_device";
+  status: "success" | "failed_credentials" | "failed_device" | "failed_screen_record";
   device_fingerprint: string | null;
   hardware_fingerprint: string | null;
   device_components: DeviceComponents | null;
@@ -335,6 +335,7 @@ export interface UserDetailData {
     hardware_fingerprint: string | null;
     device_locked_at: string | null;
     device_components: DeviceComponents | null;
+    is_locked: boolean;
   };
   enrollments: UserEnrollmentDetail[];
   auditLog: AuditLogEntry[];

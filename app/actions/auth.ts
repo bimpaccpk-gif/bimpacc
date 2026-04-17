@@ -108,9 +108,14 @@ export async function signIn(
 
   const { data: profile } = await supabase
     .from("users")
-    .select("role, device_fingerprint, hardware_fingerprint, device_components")
+    .select("role, device_fingerprint, hardware_fingerprint, device_components, is_locked")
     .eq("id", user.id)
     .single();
+
+  if (profile?.is_locked) {
+    await supabase.auth.signOut();
+    return { error: "Account locked due to security policy violation. Contact admin." };
+  }
 
   const role = (profile?.role as UserRole) ?? "student";
 
@@ -342,4 +347,33 @@ export async function signInWithGoogle(
   if (data.url) {
     redirect(data.url);
   }
+}
+
+export async function reportScreenRecordingViolation() {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
+
+  // Update user to locked
+  await admin.from("users").update({ is_locked: true }).eq("id", user.id);
+
+  // Insert history
+  await admin.from("login_history").insert({
+    user_id: user.id,
+    email: user.email || "",
+    status: "failed_screen_record",
+    device_fingerprint: null,
+    hardware_fingerprint: null,
+    user_agent: "Screen Protection System",
+  });
+
+  // Sign out
+  await supabase.auth.signOut();
+
+  return { success: true };
 }

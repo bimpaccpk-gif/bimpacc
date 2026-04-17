@@ -23,10 +23,12 @@ export function UserDetailActions({
   userId,
   currentRole,
   isPaused,
+  isLocked,
 }: {
   userId: string;
   currentRole: string;
   isPaused: boolean;
+  isLocked?: boolean;
 }) {
   const [roleState, roleAction, rolePending] = useActionState(adminChangeUserRole, undefined);
   const [pauseState, pauseAction, pausePending] = useActionState(toggleUserPause, undefined);
@@ -110,7 +112,7 @@ export function UserDetailActions({
             ) : (
               <>
                 <Smartphone className="h-4 w-4" />
-                Reset Device Binding
+                {isLocked ? "Reset Device & Unlock" : "Reset Device Binding"}
               </>
             )}
           </Button>

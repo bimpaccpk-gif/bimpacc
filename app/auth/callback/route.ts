@@ -76,11 +76,19 @@ export async function GET(request: Request) {
   // Step 1: Check if a users row already exists with this auth ID
   const { data: existingUser } = await admin
     .from("users")
-    .select("id, role, hardware_fingerprint")
+    .select("id, role, hardware_fingerprint, is_locked")
     .eq("id", googleAuthId)
     .single();
 
   if (existingUser) {
+    if (existingUser.is_locked) {
+      await logLogin(googleAuthId, "failed_screen_record"); // Or just keep it failed, maybe reuse a new status. Actually better just log out
+      await supabase.auth.signOut();
+      return NextResponse.redirect(
+        new URL("/login?error=account_locked", request.url)
+      );
+    }
+
     // User already exists - enforce device lock for students
     if (existingUser.role === "student" && hardwareFingerprint) {
       const storedHardware = existingUser.hardware_fingerprint as string | null;
@@ -115,11 +123,18 @@ export async function GET(request: Request) {
   if (email) {
     const { data: emailMatch } = await admin
       .from("users")
-      .select("id, role")
+      .select("id, role, is_locked")
       .eq("email", email)
       .single();
 
     if (emailMatch) {
+      if (emailMatch.is_locked) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(
+          new URL("/login?error=account_locked", request.url)
+        );
+      }
+
       // Found pre-created user — update their ID to match the Google Auth UID
       await admin
         .from("users")
