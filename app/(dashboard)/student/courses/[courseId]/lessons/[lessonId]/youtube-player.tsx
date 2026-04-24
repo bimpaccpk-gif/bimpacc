@@ -114,6 +114,14 @@ export function YouTubeVideoPlayer({
 
   const controlsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const suppressNativeMediaMenu = useCallback(
+    (event: { preventDefault: () => void; stopPropagation: () => void }) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    []
+  );
+
   // ── Load YouTube IFrame API ──────────────────────────
 
   useEffect(() => {
@@ -338,6 +346,20 @@ export function YouTubeVideoPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    const iframe = playerDivRef.current?.querySelector("iframe");
+    if (!(iframe instanceof HTMLIFrameElement)) return;
+
+    // Force all mobile interaction through our shield layer so long-press
+    // cannot reach the embed and reveal the source URL.
+    iframe.tabIndex = -1;
+    iframe.draggable = false;
+    iframe.style.pointerEvents = "none";
+    iframe.style.userSelect = "none";
+    iframe.style.webkitUserSelect = "none";
+    iframe.style.webkitTouchCallout = "none";
+  }, [isPlayerReady, videoId]);
+
   // ── Auto-hide controls ─────────────────────────────
 
   const handleMouseMove = useCallback(() => {
@@ -427,6 +449,11 @@ export function YouTubeVideoPlayer({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onContextMenu={(e) => e.preventDefault()}
+        style={{
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
       >
         {/* 16:9 aspect-ratio wrapper */}
         <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
@@ -437,18 +464,30 @@ export function YouTubeVideoPlayer({
           <div
             className="absolute inset-0 z-10 cursor-pointer"
             onContextMenu={(e) => e.preventDefault()}
+            onDragStart={suppressNativeMediaMenu}
             onClick={() => {
               if (!showControls || !isPlaying) {
                 togglePlay();
               }
               handleMouseMove();
             }}
+            onTouchStart={(e) => {
+              suppressNativeMediaMenu(e);
+              handleTouchStart();
+            }}
+            onTouchMove={suppressNativeMediaMenu}
             onTouchEnd={(e) => {
-              e.preventDefault();
+              suppressNativeMediaMenu(e);
               if (!showControls || !isPlaying) {
                 togglePlay();
               }
               handleMouseMove();
+            }}
+            style={{
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+              userSelect: "none",
+              touchAction: "manipulation",
             }}
           />
 
