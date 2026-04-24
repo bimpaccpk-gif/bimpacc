@@ -149,6 +149,23 @@ export function YouTubeVideoPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
+  // ── Harden the iframe after YT API mounts it ────────
+  const hardenIframe = useCallback(() => {
+    if (!playerDivRef.current) return;
+    const iframe = playerDivRef.current.parentElement?.querySelector("iframe");
+    if (!iframe) return;
+    // Block all direct interaction so long-press can never reach the iframe
+    iframe.style.pointerEvents = "none";
+    iframe.style.setProperty("-webkit-touch-callout", "none");
+    iframe.style.setProperty("user-select", "none");
+    iframe.style.setProperty("-webkit-user-select", "none");
+    // Strip the src-visible URL from link previews
+    iframe.setAttribute("referrerpolicy", "no-referrer");
+    // Prevent dragging the iframe (which can reveal URLs)
+    iframe.setAttribute("draggable", "false");
+    iframe.addEventListener("dragstart", (e) => e.preventDefault());
+  }, []);
+
   const initPlayer = useCallback(() => {
     if (!playerDivRef.current || !window.YT || !window.YT.Player) return;
 
@@ -184,6 +201,7 @@ export function YouTubeVideoPlayer({
           setPlaybackRate(player.getPlaybackRate());
           setAvailableRates(player.getAvailablePlaybackRates());
           setIsPlayerReady(true);
+          hardenIframe();
           onReady?.();
           startProgressTracker();
         },
@@ -203,6 +221,16 @@ export function YouTubeVideoPlayer({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
+
+  // ── MutationObserver: guard overlay + re-harden iframe ──
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new MutationObserver(() => {
+      hardenIframe();
+    });
+    observer.observe(containerRef.current, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [hardenIframe]);
 
   const startProgressTracker = useCallback(() => {
     if (progressInterval.current) clearInterval(progressInterval.current);
@@ -444,25 +472,23 @@ export function YouTubeVideoPlayer({
       <div
         ref={containerRef}
         className="group relative flex min-w-0 flex-1 flex-col select-none"
+        style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", touchAction: "manipulation" } as React.CSSProperties}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onContextMenu={(e) => e.preventDefault()}
-        style={{
-          WebkitTouchCallout: "none",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-        }}
+        onDragStart={(e) => e.preventDefault()}
       >
         {/* 16:9 aspect-ratio wrapper */}
         <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
           {/* YouTube player mount point */}
           <div ref={playerDivRef} className="absolute inset-0 h-full w-full" />
 
-          {/* Transparent overlay to block direct iframe interaction */}
+          {/* Transparent overlay to block direct iframe interaction & long-press */}
           <div
             className="absolute inset-0 z-10 cursor-pointer"
+            style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", touchAction: "manipulation" } as React.CSSProperties}
             onContextMenu={(e) => e.preventDefault()}
             onDragStart={suppressNativeMediaMenu}
             onClick={() => {
@@ -473,6 +499,7 @@ export function YouTubeVideoPlayer({
             }}
             onTouchStart={(e) => {
               suppressNativeMediaMenu(e);
+              e.preventDefault();
               handleTouchStart();
             }}
             onTouchMove={suppressNativeMediaMenu}
@@ -482,12 +509,6 @@ export function YouTubeVideoPlayer({
                 togglePlay();
               }
               handleMouseMove();
-            }}
-            style={{
-              WebkitTouchCallout: "none",
-              WebkitUserSelect: "none",
-              userSelect: "none",
-              touchAction: "manipulation",
             }}
           />
 
@@ -527,9 +548,10 @@ export function YouTubeVideoPlayer({
           {/* ─── Controls Overlay ─────────────────────────── */}
           <div
             className={cn(
-              "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300",
+              "absolute inset-x-0 bottom-0 z-20 transition-opacity duration-500",
               showControls ? "opacity-100" : "pointer-events-none opacity-0"
             )}
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)" }}
           >
             {/* Timeline Scrubber */}
             <div
@@ -571,26 +593,26 @@ export function YouTubeVideoPlayer({
               )}
 
               {/* Track */}
-              <div className="bg-primary-foreground/20 relative h-1 overflow-hidden rounded-full transition-all group-hover/timeline:h-1.5 sm:h-1.5 sm:group-hover/timeline:h-2.5">
-                {/* Progress bar */}
+              <div className="bg-white/20 relative h-1 overflow-hidden rounded-full transition-all group-hover/timeline:h-1.5 sm:h-1.5 sm:group-hover/timeline:h-2.5">
+                {/* Progress bar with glow */}
                 <div
-                  className="bg-primary absolute inset-y-0 left-0 rounded-full transition-none"
-                  style={{ width: `${progressPercent}%` }}
+                  className="absolute inset-y-0 left-0 rounded-full transition-none"
+                  style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary)) 80%, hsl(var(--primary) / 0.7))", boxShadow: "0 0 8px hsl(var(--primary) / 0.5), 0 0 2px hsl(var(--primary) / 0.8)" }}
                 />
                 {/* Scrubber thumb */}
                 <div
-                  className="bg-primary absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 shadow-md transition-opacity group-hover/timeline:opacity-100 sm:h-4 sm:w-4"
-                  style={{ left: `${progressPercent}%` }}
+                  className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white opacity-0 shadow-lg transition-opacity group-hover/timeline:opacity-100 sm:h-4 sm:w-4"
+                  style={{ left: `${progressPercent}%`, boxShadow: "0 0 6px hsl(var(--primary) / 0.6)" }}
                 />
               </div>
             </div>
 
             {/* Bottom control bar */}
-            <div className="flex items-center gap-0.5 px-2 pt-0.5 pb-2 sm:gap-1 sm:px-3 sm:pt-1 sm:pb-3">
+            <div className="flex items-center gap-0.5 px-2 pt-0.5 pb-2 text-white sm:gap-1 sm:px-3 sm:pt-1 sm:pb-3">
               {/* Play / Pause */}
               <button
                 onClick={togglePlay}
-                className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full p-1.5 transition-colors sm:p-2"
+                className="text-white hover:bg-white/10 rounded-full p-1.5 transition-colors sm:p-2"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
@@ -603,7 +625,7 @@ export function YouTubeVideoPlayer({
               {/* Skip Back / Forward — hidden on very small screens */}
               <button
                 onClick={skipBackward}
-                className="text-primary-foreground hover:bg-primary-foreground/10 hidden rounded-full p-1.5 transition-colors sm:p-2 md:flex"
+                className="text-white hover:bg-white/10 hidden rounded-full p-1.5 transition-colors sm:p-2 md:flex"
                 aria-label="Skip back 10 seconds"
               >
                 <SkipBack className="h-4 w-4" />
@@ -620,7 +642,7 @@ export function YouTubeVideoPlayer({
               <div className="group/vol flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={toggleMute}
-                  className="text-primary-foreground hover:bg-primary-foreground/10 rounded-full p-1.5 transition-colors sm:p-2"
+                  className="text-white hover:bg-white/10 rounded-full p-1.5 transition-colors sm:p-2"
                   aria-label={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted || volume === 0 ? (
@@ -643,7 +665,7 @@ export function YouTubeVideoPlayer({
               </div>
 
               {/* Time display */}
-              <span className="px-1 font-mono text-[10px] whitespace-nowrap text-foreground sm:px-2 sm:text-xs">
+              <span className="px-1 font-mono text-[10px] whitespace-nowrap text-white/90 sm:px-2 sm:text-xs" style={{ fontVariantNumeric: "tabular-nums" }}>
                 {formatTime(currentTime)} / {formatTime(duration)}
               </span>
 
@@ -651,14 +673,14 @@ export function YouTubeVideoPlayer({
               <div className="flex-1" />
 
               {/* Playback speed — hidden on small screens */}
-              <div className="group/speed relative hidden md:block">
+              <div className="group/speed relative">
                 <button
-                  className="rounded px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-foreground/10"
+                  className="rounded px-2 py-1 text-xs font-medium text-white/90 transition-colors hover:bg-white/10"
                   aria-label="Playback speed"
                 >
                   {playbackRate}x
                 </button>
-                <div className="invisible absolute right-0 bottom-full z-30 mb-2 min-w-[80px] rounded-lg bg-background/95 p-1 opacity-0 shadow-xl transition-all group-hover/speed:visible group-hover/speed:opacity-100">
+                <div className="invisible absolute right-0 bottom-full z-30 mb-2 min-w-[80px] rounded-lg bg-black/90 backdrop-blur-sm p-1 opacity-0 shadow-xl transition-all group-hover/speed:visible group-hover/speed:opacity-100">
                   {availableRates.map((rate) => (
                     <button
                       key={rate}
@@ -680,8 +702,8 @@ export function YouTubeVideoPlayer({
               <button
                 onClick={() => setShowInfoSidebar((v) => !v)}
                 className={cn(
-                  "rounded-full p-1.5 text-foreground transition-colors hover:bg-foreground/10 sm:p-2",
-                  showInfoSidebar && "bg-foreground/10"
+                  "rounded-full p-1.5 text-white/90 transition-colors hover:bg-white/10 sm:p-2",
+                  showInfoSidebar && "bg-white/20"
                 )}
                 aria-label="Toggle video info"
               >
@@ -691,7 +713,7 @@ export function YouTubeVideoPlayer({
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="rounded-full p-1.5 text-foreground transition-colors hover:bg-foreground/10 sm:p-2"
+                className="rounded-full p-1.5 text-white/90 transition-colors hover:bg-white/10 sm:p-2"
                 aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? (

@@ -113,6 +113,12 @@ export function ScreenProtection({ role }: ScreenProtectionProps) {
           -moz-user-select: none !important;
           -ms-user-select: none !important;
           user-select: none !important;
+          -webkit-touch-callout: none !important;
+          touch-action: manipulation;
+        }
+        iframe {
+          pointer-events: none !important;
+          -webkit-touch-callout: none !important;
         }
         @media print {
           html, body {
