@@ -38,8 +38,6 @@ export default function LoginPage() {
     };
   }, []);
 
-  const isVerifying = !fingerprint || !hardwareFingerprint;
-
   return (
     <div className="flex w-full flex-col space-y-8">
       {/* Header */}
@@ -78,18 +76,6 @@ export default function LoginPage() {
       <div className="animate-in fade-in slide-in-from-bottom-6 fill-mode-both delay-100 duration-700">
         <GoogleSignInButton />
       </div>
-
-      {/* Device Verification Loading */}
-      {isVerifying && (
-        <div className="animate-in fade-in slide-in-from-top-2 fill-mode-both delay-200 duration-700">
-          <Alert className="border-info/20 bg-info/5 text-info">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription className="text-sm font-medium">
-              Verifying your device...
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
 
       {/* Only show email/password login and sign up in local development */}
       {process.env.NODE_ENV === "development" && (
@@ -195,17 +181,12 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="from-primary to-primary/80 text-primary-foreground shadow-primary/25 hover:from-primary/90 hover:to-primary/70 h-11 w-full rounded-xl bg-gradient-to-r text-base font-semibold shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 sm:h-12"
-              disabled={pending || isVerifying}
+              disabled={pending}
             >
               {pending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
                   Signing in...
-                </>
-              ) : isVerifying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin sm:h-5 sm:w-5" />
-                  Verifying device...
                 </>
               ) : (
                 <>
@@ -215,7 +196,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
         </>
       )}
 

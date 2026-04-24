@@ -21,23 +21,6 @@ interface EnrollmentWithUser {
   course_id?: string;
 }
 
-interface AttendanceRow {
-  session_date: string;
-  status: string;
-  watch_time_minutes: number | null;
-  session_duration_minutes: number | null;
-  enrollments: {
-    course_id: string;
-    courses: { id: string; title: string };
-  };
-}
-
-interface RecordWithEnrollment {
-  id: string;
-  enrollment_id: string;
-  enrollments: { course_id: string };
-}
-
 async function verifyAdminOrInstructor(): Promise<AdminOrInstructor> {
   const { userId } = await verifySession();
   const supabase = await createClient();

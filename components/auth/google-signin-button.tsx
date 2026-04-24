@@ -27,9 +27,6 @@ export function GoogleSignInButton({ className }: { className?: string }) {
   }, []);
 
   const handleSignIn = async () => {
-    if (!fingerprint || !hardwareFingerprint) {
-      return;
-    }
     setPending(true);
     await signInWithGoogle(fingerprint, hardwareFingerprint, deviceComponents);
   };
@@ -38,7 +35,7 @@ export function GoogleSignInButton({ className }: { className?: string }) {
     <button
       type="button"
       onClick={handleSignIn}
-      disabled={pending || !fingerprint || !hardwareFingerprint}
+      disabled={pending}
       className={className || "flex w-full items-center justify-center gap-3 rounded-xl border-2 border-input bg-background px-4 py-2.5 text-sm font-medium transition-all hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:h-11"}
     >
       {pending ? (

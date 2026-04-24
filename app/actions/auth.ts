@@ -2,11 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import {
-  computeSimilarityScore,
-  SIMILARITY_THRESHOLD,
-  isFingerprintFresh,
-} from "@/lib/fingerprint-utils";
+import { isFingerprintFresh } from "@/lib/fingerprint-utils";
 import { rateLimit } from "@/lib/rate-limit";
 import type { UserRole, DeviceComponents } from "@/types";
 
@@ -28,43 +24,30 @@ export async function signIn(
     return { error: `Too many login attempts. Please try again in ${mins} minute(s).` };
   }
 
-  const deviceFingerprint = formData.get("device_fingerprint") as string | null;
-  const hardwareFingerprint = formData.get("hardware_fingerprint") as string | null;
+  const rawDeviceFingerprint = formData.get("device_fingerprint") as string | null;
+  const rawHardwareFingerprint = formData.get("hardware_fingerprint") as string | null;
   const componentsJson = formData.get("device_components") as string | null;
   const generatedAtStr = formData.get("generated_at") as string | null;
 
-  if (!email || !password) {
-    return { error: "Email and password are required." };
-  }
-
-  if (!deviceFingerprint || !hardwareFingerprint) {
-    return {
-      error: "Device verification failed. Please refresh the page and try again.",
-    };
-  }
-
-  // Parse device components
+  let deviceFingerprint: string | null = null;
+  let hardwareFingerprint: string | null = null;
   let components: DeviceComponents | null = null;
-  try {
-    if (componentsJson) {
-      components = JSON.parse(componentsJson);
+
+  // Fingerprint capture is best-effort while device-lock enforcement is disabled.
+  if (rawDeviceFingerprint && rawHardwareFingerprint && generatedAtStr) {
+    const generatedAt = parseInt(generatedAtStr, 10);
+    if (!isNaN(generatedAt) && isFingerprintFresh(generatedAt)) {
+      deviceFingerprint = rawDeviceFingerprint;
+      hardwareFingerprint = rawHardwareFingerprint;
+
+      try {
+        if (componentsJson) {
+          components = JSON.parse(componentsJson);
+        }
+      } catch {
+        // Components are optional for backwards compatibility
+      }
     }
-  } catch {
-    // Components are optional for backwards compatibility
-  }
-
-  // Anti-replay: validate fingerprint freshness (required)
-  if (!generatedAtStr) {
-    return {
-      error: "Device verification expired. Please refresh the page and try again.",
-    };
-  }
-
-  const generatedAt = parseInt(generatedAtStr, 10);
-  if (isNaN(generatedAt) || !isFingerprintFresh(generatedAt)) {
-    return {
-      error: "Device verification expired. Please refresh the page and try again.",
-    };
   }
 
   const supabase = await createClient();
@@ -119,108 +102,15 @@ export async function signIn(
 
   const role = (profile?.role as UserRole) ?? "student";
 
-  // Device lock enforcement — students only
-  if (role === "student") {
-    const storedHardwareFingerprint = profile?.hardware_fingerprint as string | null;
-    const storedDeviceFingerprint = profile?.device_fingerprint as string | null;
-    const storedComponents = profile?.device_components as DeviceComponents | null;
-
-    console.log("[Device Auth] Comparing fingerprints:", {
-      stored: storedHardwareFingerprint,
-      current: hardwareFingerprint,
-      exactMatch: storedHardwareFingerprint === hardwareFingerprint,
-    });
-
-    if (!storedHardwareFingerprint) {
-      // First login — bind this device (store fingerprints + components)
-      console.log("[Device Auth] First login, binding device:", hardwareFingerprint);
-      await supabase
-        .from("users")
-        .update({
-          device_fingerprint: deviceFingerprint,
-          hardware_fingerprint: hardwareFingerprint,
-          device_components: components,
-          device_locked_at: new Date().toISOString(),
-        } as never)
-        .eq("id", user.id);
-    } else if (storedHardwareFingerprint !== hardwareFingerprint) {
-      // Hash mismatch — try fuzzy matching on individual components
-      let similarityScore = 0;
-      let allowed = false;
-
-      if (storedComponents && components) {
-        // Log every signal being compared for debugging
-        console.log("[Device Auth] Component comparison:", {
-          platform: { stored: storedComponents.platform, current: components.platform, match: storedComponents.platform === components.platform },
-          screen: { stored: storedComponents.screenResolution, current: components.screenResolution, match: storedComponents.screenResolution === components.screenResolution },
-          colorDepth: { stored: storedComponents.colorDepth, current: components.colorDepth, match: storedComponents.colorDepth === components.colorDepth },
-          pixelRatio: { stored: storedComponents.devicePixelRatio, current: components.devicePixelRatio, match: storedComponents.devicePixelRatio === components.devicePixelRatio },
-          cores: { stored: storedComponents.hardwareConcurrency, current: components.hardwareConcurrency, match: storedComponents.hardwareConcurrency === components.hardwareConcurrency },
-          touch: { stored: storedComponents.maxTouchPoints, current: components.maxTouchPoints, match: storedComponents.maxTouchPoints === components.maxTouchPoints },
-          gpuNormalized: { stored: storedComponents.webglRenderer, current: components.webglRenderer },
-          gpuRaw: { stored: storedComponents.webglRendererRaw, current: components.webglRendererRaw },
-        });
-
-        similarityScore = computeSimilarityScore(storedComponents, components);
-        console.log("[Device Auth] Fuzzy match score:", {
-          score: similarityScore,
-          threshold: SIMILARITY_THRESHOLD,
-          pass: similarityScore >= SIMILARITY_THRESHOLD,
-        });
-
-        if (similarityScore >= SIMILARITY_THRESHOLD) {
-          // Same device, minor change (OS update, driver update, etc.)
-          // Update stored fingerprints to the latest values
-          allowed = true;
-          console.log(
-            "[Device Auth] Fuzzy match passed — updating stored fingerprints"
-          );
-          await supabase
-            .from("users")
-            .update({
-              device_fingerprint: deviceFingerprint,
-              hardware_fingerprint: hardwareFingerprint,
-              device_components: components,
-            } as never)
-            .eq("id", user.id);
-        }
-      }
-
-      if (!allowed) {
-        // Device mismatch — block login
-        console.log("[Device Auth] Device mismatch — blocking login", {
-          similarityScore,
-        });
-        await supabase.auth.signOut();
-        await admin.from("login_history").insert({
-          user_id: user.id,
-          email,
-          status: "failed_device",
-          device_fingerprint: deviceFingerprint,
-          hardware_fingerprint: hardwareFingerprint,
-          device_components: components,
-          user_agent: formData.get("user_agent") as string | null,
-        });
-        return {
-          error:
-            "This account is locked to a different device. Please use your registered device or contact admin.",
-        };
-      }
-    }
-    // If hardware matches but device fingerprint differs → same device, different browser
-    // Update the device_fingerprint for audit trail
-    else if (storedDeviceFingerprint !== deviceFingerprint) {
-      console.log(
-        "[Device Auth] Same device, different browser — updating device fingerprint"
-      );
-      await supabase
-        .from("users")
-        .update({
-          device_fingerprint: deviceFingerprint,
-          device_components: components,
-        } as never)
-        .eq("id", user.id);
-    }
+  if (role === "student" && deviceFingerprint && hardwareFingerprint) {
+    await supabase
+      .from("users")
+      .update({
+        device_fingerprint: deviceFingerprint,
+        hardware_fingerprint: hardwareFingerprint,
+        device_components: components,
+      } as never)
+      .eq("id", user.id);
   }
 
   // Log successful login
@@ -322,21 +212,28 @@ export async function signOut() {
 }
 
 export async function signInWithGoogle(
-  deviceFingerprint: string,
-  hardwareFingerprint: string,
-  deviceComponents: string | null
+  deviceFingerprint?: string | null,
+  hardwareFingerprint?: string | null,
+  deviceComponents?: string | null
 ) {
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const redirectUrl = new URL("/auth/callback", origin);
 
-  // Store fingerprints in a temporary cookie that the callback can read
-  // Since we can't use cookies directly here, we'll pass them as URL params
-  // The callback will extract them from the URL
+  if (deviceFingerprint) {
+    redirectUrl.searchParams.set("df", deviceFingerprint);
+  }
+  if (hardwareFingerprint) {
+    redirectUrl.searchParams.set("hf", hardwareFingerprint);
+  }
+  if (deviceComponents) {
+    redirectUrl.searchParams.set("dc", deviceComponents);
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback?df=${encodeURIComponent(deviceFingerprint)}&hf=${encodeURIComponent(hardwareFingerprint)}&dc=${encodeURIComponent(deviceComponents || "")}`,
+      redirectTo: redirectUrl.toString(),
     },
   });
 
@@ -352,9 +249,11 @@ export async function signInWithGoogle(
 export async function reportScreenRecordingViolation() {
   const supabase = await createClient();
   const admin = createAdminClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   if (!user) {
     return { error: "Unauthorized" };
   }
