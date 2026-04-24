@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OpenRouter } from "@openrouter/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { streamOpenRouterText, type AIChatMessage } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -24,18 +24,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = (await req.json()) as { messages?: AIChatMessage[] };
   const { messages } = body;
 
   if (!messages?.length) {
     return NextResponse.json({ error: "Messages required" }, { status: 400 });
   }
 
-  const openrouter = new OpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
-  });
-
-  const systemMessage = {
+  const systemMessage: AIChatMessage = {
     role: "system",
     content: `You are an AI assistant for an LMS (Learning Management System) admin dashboard. You can help admins query and understand their platform data.
 
@@ -53,23 +49,12 @@ Be concise, professional, and helpful. If you don't know something, suggest wher
   };
 
   try {
-    const stream = await openrouter.chat.send({
-      chatRequest: {
-        model: process.env.OPENROUTER_MODEL || "openrouter/free",
-        messages: [systemMessage, ...messages] as any,
-        stream: true,
-      },
-    });
-
     const textEncoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of stream as any) {
-            const content = chunk.choices?.[0]?.delta?.content;
-            if (content) {
-              controller.enqueue(textEncoder.encode(content));
-            }
+          for await (const chunk of streamOpenRouterText([systemMessage, ...messages])) {
+            controller.enqueue(textEncoder.encode(chunk));
           }
         } catch (err) {
           console.error("Stream error:", err);
@@ -86,9 +71,9 @@ Be concise, professional, and helpful. If you don't know something, suggest wher
         Connection: "keep-alive",
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message ?? "Failed to stream response" },
+      { error: err instanceof Error ? err.message : "Failed to stream response" },
       { status: 500 }
     );
   }

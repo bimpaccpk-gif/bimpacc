@@ -356,8 +356,8 @@ export function YouTubeVideoPlayer({
     iframe.draggable = false;
     iframe.style.pointerEvents = "none";
     iframe.style.userSelect = "none";
-    iframe.style.webkitUserSelect = "none";
-    iframe.style.webkitTouchCallout = "none";
+    iframe.style.setProperty("-webkit-user-select", "none");
+    iframe.style.setProperty("-webkit-touch-callout", "none");
   }, [isPlayerReady, videoId]);
 
   // ── Auto-hide controls ─────────────────────────────
