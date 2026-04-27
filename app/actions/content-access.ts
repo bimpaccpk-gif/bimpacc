@@ -13,6 +13,8 @@ import type {
   LessonAccessNode,
 } from "@/types";
 
+type ContentTargetType = "course" | "semester" | "subject" | "lesson";
+
 // ─── Set per-student content access override ─────────────
 
 export async function setStudentContentAccess(
@@ -303,10 +305,138 @@ export async function getCourseAccessForStudent(
   return { data: tree, error: "" };
 }
 
+// ─── Get selectable access targets in a course ──────────
+
+export async function getCourseAccessTargets(
+  courseId: string
+): Promise<{
+  data: {
+    semesters: Array<{ id: string; title: string }>;
+    subjects: Array<{ id: string; title: string; subtitle: string }>;
+    lessons: Array<{ id: string; title: string; subtitle: string }>;
+  };
+  error: string;
+}> {
+  const session = await verifySession();
+  const supabase = await createClient();
+
+  const { data: caller } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", session.userId)
+    .single();
+
+  if ((caller as any)?.role !== "admin") {
+    return { data: { semesters: [], subjects: [], lessons: [] }, error: "Unauthorized." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: course } = await admin
+    .from("courses")
+    .select("hierarchy_type")
+    .eq("id", courseId)
+    .single();
+
+  const hierarchyType = (course as any)?.hierarchy_type as number | undefined;
+  const semesters: Array<{ id: string; title: string }> = [];
+  const subjects: Array<{ id: string; title: string; subtitle: string }> = [];
+  const lessons: Array<{ id: string; title: string; subtitle: string }> = [];
+
+  if (hierarchyType === 1) {
+    const { data: semRows } = await admin
+      .from("semesters")
+      .select("id, title")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+
+    for (const sem of (semRows as any[]) ?? []) {
+      semesters.push({ id: sem.id, title: sem.title });
+
+      const { data: subjects } = await admin
+        .from("subjects")
+        .select("id, title")
+        .eq("semester_id", sem.id)
+        .order("order_index", { ascending: true });
+
+      for (const subj of (subjects as any[]) ?? []) {
+        subjects.push({
+          id: subj.id,
+          title: subj.title,
+          subtitle: sem.title,
+        });
+
+        const { data: lessonRows } = await admin
+          .from("lessons")
+          .select("id, title")
+          .eq("subject_id", subj.id)
+          .order("order_index", { ascending: true });
+
+        for (const lesson of (lessonRows as any[]) ?? []) {
+          lessons.push({
+            id: lesson.id,
+            title: lesson.title,
+            subtitle: `${sem.title} / ${subj.title}`,
+          });
+        }
+      }
+    }
+  } else if (hierarchyType === 2) {
+    const { data: subjects } = await admin
+      .from("subjects")
+      .select("id, title")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+
+    for (const subj of (subjects as any[]) ?? []) {
+      subjects.push({
+        id: subj.id,
+        title: subj.title,
+        subtitle: "Direct subject",
+      });
+
+      const { data: lessonRows } = await admin
+        .from("lessons")
+        .select("id, title")
+        .eq("subject_id", subj.id)
+        .order("order_index", { ascending: true });
+
+      for (const lesson of (lessonRows as any[]) ?? []) {
+        lessons.push({
+          id: lesson.id,
+          title: lesson.title,
+          subtitle: subj.title,
+        });
+      }
+    }
+  } else {
+    const { data: lessonRows } = await admin
+      .from("lessons")
+      .select("id, title")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true });
+
+    for (const lesson of (lessonRows as any[]) ?? []) {
+      lessons.push({
+        id: lesson.id,
+        title: lesson.title,
+        subtitle: "Direct lesson",
+      });
+    }
+  }
+
+  return {
+    data: { semesters, subjects, lessons },
+    error: "",
+  };
+}
+
 // ─── Get all enrolled students with their access status for a course ──
 
 export async function getCourseStudentAccessList(
-  courseId: string
+  courseId: string,
+  contentType: ContentTargetType = "course",
+  contentId?: string
 ): Promise<{
   data: Array<{
     userId: string;
@@ -319,6 +449,8 @@ export async function getCourseStudentAccessList(
   }>;
   error: string;
 }> {
+  const targetId = contentId ?? courseId;
+
   const session = await verifySession();
   const supabase = await createClient();
 
@@ -350,22 +482,26 @@ export async function getCourseStudentAccessList(
       .from("student_content_access")
       .select("*")
       .in("user_id", userIds)
-      .eq("content_type", "course")
-      .eq("content_id", courseId);
+      .eq("content_type", contentType)
+      .eq("content_id", targetId);
 
     for (const o of (overrides as StudentContentAccess[]) ?? []) {
       overridesMap.set(o.user_id, o);
     }
   }
 
-  // Get course global pause status
-  const { data: course } = await admin
-    .from("courses")
-    .select("is_paused")
-    .eq("id", courseId)
-    .single();
+  // Get target global pause status
+  const table =
+    contentType === "course"
+      ? "courses"
+      : contentType === "semester"
+        ? "semesters"
+        : contentType === "subject"
+          ? "subjects"
+          : "lessons";
+  const { data: target } = await admin.from(table).select("is_paused").eq("id", targetId).single();
 
-  const globalPaused = (course as any)?.is_paused ?? false;
+  const globalPaused = (target as any)?.is_paused ?? false;
 
   const result = ((enrollments as any[]) ?? []).map((e: any) => {
     const user = Array.isArray(e.users) ? e.users[0] : e.users;

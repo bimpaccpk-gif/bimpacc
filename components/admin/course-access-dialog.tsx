@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { HierarchyType } from "@/types";
 import {
   getCourseStudentAccessList,
+  getCourseAccessTargets,
   setStudentContentAccess,
   removeStudentContentAccess,
   bulkPauseForStudents,
@@ -64,6 +65,8 @@ interface CourseAccessDialogProps {
   hierarchyType?: HierarchyType;
 }
 
+type AccessTargetType = "course" | "semester" | "subject" | "lesson";
+
 export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }: CourseAccessDialogProps) {
   const [open, setOpen] = useState(false);
   const [students, setStudents] = useState<
@@ -83,45 +86,121 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [targetType, setTargetType] = useState<AccessTargetType>("course");
+  const [selectedSemesterId, setSelectedSemesterId] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [selectedLessonId, setSelectedLessonId] = useState("");
+  const [targets, setTargets] = useState<{
+    semesters: Array<{ id: string; title: string }>;
+    subjects: Array<{ id: string; title: string; subtitle: string }>;
+    lessons: Array<{ id: string; title: string; subtitle: string }>;
+  }>({ semesters: [], subjects: [], lessons: [] });
+
+  const selectedTarget =
+    targetType === "course"
+      ? { type: "course" as const, id: courseId, label: "course" }
+      : targetType === "semester"
+        ? {
+            type: "semester" as const,
+            id: selectedSemesterId,
+            label: "semester",
+          }
+        : targetType === "subject"
+          ? {
+              type: "subject" as const,
+              id: selectedSubjectId,
+              label: "subject",
+            }
+        : {
+            type: "lesson" as const,
+            id: selectedLessonId,
+            label: "lesson",
+          };
 
   const fetchStudents = useCallback(async () => {
+    if (selectedTarget.type !== "course" && !selectedTarget.id) {
+      setStudents([]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const result = await getCourseStudentAccessList(courseId);
-      console.log("getCourseStudentAccessList result:", result);
+      const result = await getCourseStudentAccessList(
+        courseId,
+        selectedTarget.type,
+        selectedTarget.id
+      );
       if (result.error) {
         setError(result.error);
         setStudents([]);
       } else {
         setStudents(result.data);
-        console.log(`Loaded ${result.data.length} students`);
       }
-    } catch (err: any) {
-      console.error("fetchStudents exception:", err);
-      setError(err.message ?? "Failed to load students");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load students");
       setStudents([]);
     } finally {
       setLoading(false);
+    }
+  }, [courseId, selectedTarget.id, selectedTarget.type]);
+
+  const fetchTargets = useCallback(async () => {
+    const result = await getCourseAccessTargets(courseId);
+    if (!result.error) {
+      setTargets(result.data);
+      setSelectedSemesterId((current) =>
+        current || result.data.semesters[0]?.id || ""
+      );
+      setSelectedSubjectId((current) => current || result.data.subjects[0]?.id || "");
+      setSelectedLessonId((current) => current || result.data.lessons[0]?.id || "");
     }
   }, [courseId]);
 
   useEffect(() => {
     if (open) {
+      fetchTargets();
+    }
+  }, [open, fetchTargets]);
+
+  useEffect(() => {
+    if (open) {
       fetchStudents();
     }
-  }, [open, fetchStudents]);
+  }, [open, selectedTarget.id, selectedTarget.type, fetchStudents]);
 
-  const handleToggle = async (userId: string, currentlyPaused: boolean) => {
+  const handleToggle = async (userId: string, currentlyPaused: boolean, overrideId: string | null) => {
+    if (!selectedTarget.id) return;
+
     setPendingIds((prev) => new Set(prev).add(userId));
     try {
       if (currentlyPaused) {
-        await removeStudentContentAccess(userId, "course", courseId);
+        if (overrideId) {
+          await removeStudentContentAccess(userId, selectedTarget.type, selectedTarget.id);
+        } else {
+          await setStudentContentAccess(
+            userId,
+            selectedTarget.type,
+            selectedTarget.id,
+            false,
+            `Resumed ${selectedTarget.label} by admin`
+          );
+        }
       } else {
-        await setStudentContentAccess(userId, "course", courseId, true, "Paused by admin");
+        await setStudentContentAccess(
+          userId,
+          selectedTarget.type,
+          selectedTarget.id,
+          true,
+          `Paused ${selectedTarget.label} by admin`
+        );
       }
       await fetchStudents();
-      setMessage(currentlyPaused ? "Student access resumed." : "Student access paused.");
+      setMessage(
+        currentlyPaused
+          ? `Student ${selectedTarget.label} access resumed.`
+          : `Student ${selectedTarget.label} access paused.`
+      );
       setTimeout(() => setMessage(""), 2000);
     } catch (err) {
       console.error("Toggle error:", err);
@@ -135,10 +214,17 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
   };
 
   const handleBulkPause = async (isPaused: boolean) => {
+    if (!selectedTarget.id) return;
+
     setBulkLoading(true);
     try {
       const studentIds = students.map((s) => s.userId);
-      const result = await bulkPauseForStudents("course", courseId, isPaused, studentIds);
+      const result = await bulkPauseForStudents(
+        selectedTarget.type,
+        selectedTarget.id,
+        isPaused,
+        studentIds
+      );
       setMessage(result.success || result.error);
       await fetchStudents();
       setTimeout(() => setMessage(""), 3000);
@@ -175,8 +261,94 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
             <Shield className={`h-5 w-5 ${colors.dialogIcon}`} />
             Student Access
           </DialogTitle>
-          <DialogDescription>Manage student access for {courseTitle}</DialogDescription>
+          <DialogDescription>
+            Manage access by target for {courseTitle}
+          </DialogDescription>
         </DialogHeader>
+
+        {/* Target selection */}
+        <div className="grid shrink-0 gap-2 rounded-md border p-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+              Target Type
+            </p>
+            <select
+              value={targetType}
+              onChange={(e) => setTargetType(e.target.value as AccessTargetType)}
+              className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none"
+            >
+              <option value="course">Course</option>
+              <option value="semester" disabled={targets.semesters.length === 0}>
+                Semester
+              </option>
+              <option value="subject" disabled={targets.subjects.length === 0}>
+                Subject
+              </option>
+              <option value="lesson" disabled={targets.lessons.length === 0}>
+                Lesson
+              </option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+              Target Item
+            </p>
+            {targetType === "course" && (
+              <div className="bg-muted text-foreground flex h-8 items-center rounded-md px-2 text-xs font-medium">
+                Entire course
+              </div>
+            )}
+
+            {targetType === "semester" && (
+              <select
+                value={selectedSemesterId}
+                onChange={(e) => setSelectedSemesterId(e.target.value)}
+                disabled={targets.semesters.length === 0}
+                className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none disabled:opacity-60"
+              >
+                {targets.semesters.length === 0 && <option value="">No semesters available</option>}
+                {targets.semesters.map((semester) => (
+                  <option key={semester.id} value={semester.id}>
+                    {semester.title}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {targetType === "lesson" && (
+              <select
+                value={selectedLessonId}
+                onChange={(e) => setSelectedLessonId(e.target.value)}
+                disabled={targets.lessons.length === 0}
+                className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none disabled:opacity-60"
+              >
+                {targets.lessons.length === 0 && <option value="">No lessons available</option>}
+                {targets.lessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title} ({lesson.subtitle})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {targetType === "subject" && (
+              <select
+                value={selectedSubjectId}
+                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                disabled={targets.subjects.length === 0}
+                className="border-input bg-background focus-visible:ring-ring h-8 w-full rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:outline-none disabled:opacity-60"
+              >
+                {targets.subjects.length === 0 && <option value="">No subjects available</option>}
+                {targets.subjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.title} ({subject.subtitle})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
 
         {/* Bulk actions and stats */}
         {students.length > 0 && (
@@ -201,28 +373,28 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
                 size="sm"
                 className="border-destructive/20 text-destructive hover:bg-destructive/10 dark:border-destructive/30 h-7 gap-1 text-[10px]"
                 onClick={() => handleBulkPause(true)}
-                disabled={bulkLoading || students.length === 0}
+                disabled={bulkLoading || students.length === 0 || !selectedTarget.id}
               >
                 {bulkLoading ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <Pause className="h-3 w-3" />
                 )}
-                Pause All
+                Pause All Students
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className="border-success/30 text-success hover:bg-success/10 hover:text-success dark:border-success/20 h-7 gap-1 text-[10px]"
                 onClick={() => handleBulkPause(false)}
-                disabled={bulkLoading || students.length === 0}
+                disabled={bulkLoading || students.length === 0 || !selectedTarget.id}
               >
                 {bulkLoading ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <Play className="h-3 w-3" />
                 )}
-                Resume All
+                Resume All Students
               </Button>
             </div>
           </div>
@@ -339,7 +511,9 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
                           ? "bg-success/10 text-success hover:bg-success/20"
                           : "bg-destructive/10 text-destructive hover:bg-destructive/20"
                       }`}
-                      onClick={() => handleToggle(student.userId, student.isPaused)}
+                      onClick={() =>
+                        handleToggle(student.userId, student.isPaused, student.overrideId)
+                      }
                       disabled={pendingIds.has(student.userId)}
                     >
                       {pendingIds.has(student.userId) ? (
@@ -361,9 +535,8 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
         {students.length > 0 && (
           <div className="shrink-0 border-t pt-2">
             <p className="text-muted-foreground px-1 text-[10px]">
-              <span className="font-semibold">Active</span> = student can access course.{" "}
-              <span className="font-semibold">Paused</span> = access blocked for this student only.
-              Click toggle to change.
+              <span className="font-semibold">Active</span> = student can access selected target. {" "}
+              <span className="font-semibold">Paused</span> = target access blocked for this student.
             </p>
           </div>
         )}
