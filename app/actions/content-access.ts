@@ -340,7 +340,7 @@ export async function getCourseAccessTargets(
 
   const hierarchyType = (course as any)?.hierarchy_type as number | undefined;
   const semesters: Array<{ id: string; title: string }> = [];
-  const subjects: Array<{ id: string; title: string; subtitle: string }> = [];
+  const subjectTargets: Array<{ id: string; title: string; subtitle: string }> = [];
   const lessons: Array<{ id: string; title: string; subtitle: string }> = [];
 
   if (hierarchyType === 1) {
@@ -353,14 +353,14 @@ export async function getCourseAccessTargets(
     for (const sem of (semRows as any[]) ?? []) {
       semesters.push({ id: sem.id, title: sem.title });
 
-      const { data: subjects } = await admin
+      const { data: subjectRows } = await admin
         .from("subjects")
         .select("id, title")
         .eq("semester_id", sem.id)
         .order("order_index", { ascending: true });
 
-      for (const subj of (subjects as any[]) ?? []) {
-        subjects.push({
+      for (const subj of (subjectRows as any[]) ?? []) {
+        subjectTargets.push({
           id: subj.id,
           title: subj.title,
           subtitle: sem.title,
@@ -382,14 +382,14 @@ export async function getCourseAccessTargets(
       }
     }
   } else if (hierarchyType === 2) {
-    const { data: subjects } = await admin
+    const { data: subjectRows } = await admin
       .from("subjects")
       .select("id, title")
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const subj of (subjects as any[]) ?? []) {
-      subjects.push({
+    for (const subj of (subjectRows as any[]) ?? []) {
+      subjectTargets.push({
         id: subj.id,
         title: subj.title,
         subtitle: "Direct subject",
@@ -426,7 +426,7 @@ export async function getCourseAccessTargets(
   }
 
   return {
-    data: { semesters, subjects, lessons },
+    data: { semesters, subjects: subjectTargets, lessons },
     error: "",
   };
 }
