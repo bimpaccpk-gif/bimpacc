@@ -178,7 +178,7 @@ export function SpecificTargetAccessDialog({
       >
         <Shield className="h-4 w-4" />
       </button>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Shield className={`h-5 w-5 text-info`} />
