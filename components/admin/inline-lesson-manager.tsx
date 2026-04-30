@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 import { LessonEditDialog } from "./lesson-edit-dialog";
+import { SpecificTargetAccessDialog } from "./specific-target-access-dialog";
 
 // Lesson = hierarchy level 3 → Amber
 const LESSON_COLOR = {
@@ -237,6 +238,12 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
                                 )}
                               </div>
                             </div>
+                            <SpecificTargetAccessDialog
+                              courseId={courseId}
+                              targetType="lesson"
+                              targetId={lesson.id}
+                              targetTitle={lesson.title}
+                            />
                             <Button
                               variant="ghost"
                               size="icon"

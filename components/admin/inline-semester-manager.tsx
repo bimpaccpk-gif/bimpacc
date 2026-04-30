@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Loader2, CalendarRange, ChevronDown, ChevronRight, GripVertical } from "lucide-react";
 import { InlineSubjectManager } from "./inline-subject-manager";
 import { SemesterEditDialog } from "./semester-edit-dialog";
+import { SpecificTargetAccessDialog } from "./specific-target-access-dialog";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
@@ -254,6 +255,12 @@ export function InlineSemesterManager({ courseId, initialSemesters }: InlineSeme
                                 )}
                               </div>
                             </button>
+                            <SpecificTargetAccessDialog
+                              courseId={courseId}
+                              targetType="semester"
+                              targetId={semester.id}
+                              targetTitle={semester.title}
+                            />
                             <Button
                               variant="ghost"
                               size="icon"

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { InlineSemesterManager } from "@/components/admin/inline-semester-manager";
 import { InlineSubjectManager } from "@/components/admin/inline-subject-manager";
 import { InlineLessonManager } from "@/components/admin/inline-lesson-manager";
+import { CourseAccessDialog } from "@/components/admin/course-access-dialog";
 import { HierarchyType } from "@/types";
 import { Layers, BookOpen, ArrowRight, CalendarRange } from "lucide-react";
 
@@ -78,7 +79,7 @@ export function ManageContentDialog({
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors.iconBg}`}>
               <Icon className={`h-5 w-5 ${colors.iconText}`} />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <DialogTitle className={`text-xl ${colors.headerText}`}>{courseTitle}</DialogTitle>
               <DialogDescription>
                 {isSemesters
@@ -87,6 +88,9 @@ export function ManageContentDialog({
                     ? "Add, reorder and manage subjects & lessons"
                     : "Add, reorder and manage lessons"}
               </DialogDescription>
+            </div>
+            <div className="shrink-0 flex items-center">
+               <CourseAccessDialog courseId={courseId} courseTitle={courseTitle} hierarchyType={hierarchyType} />
             </div>
           </div>
         </DialogHeader>

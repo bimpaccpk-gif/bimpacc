@@ -406,40 +406,56 @@ export function CourseContent({
           <div className="space-y-4">
             {filteredSemesters.map((semester, si) => (
               <details key={semester.id} className="group border-border overflow-hidden rounded-xl border">
-                <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.semester.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.semester.numBg} ${colors.semester.numText}`}>
-                    {si + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-foreground font-semibold">
-                      {semester.title}
-                    </h3>
-                    {semester.description && (
-                      <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-                        {semester.description}
+                {semester.isPaused && !search ? (
+                  <div className="bg-muted/20 border-warning/30 flex items-center gap-3 px-5 py-4">
+                    <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                      <Pause className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-muted-foreground font-semibold">{semester.title}</h4>
+                      <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
+                        This semester is currently paused
                       </p>
-                    )}
+                    </div>
                   </div>
-                  <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.semester.subjectCountBg} ${colors.semester.subjectCountText}`}>
-                    {semester.subjects.length} subject{semester.subjects.length !== 1 ? "s" : ""}
-                    ({semester.subjects.reduce((s, sub) => s + sub.lessons.length, 0)} lessons)
-                  </span>
-                  <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className={`space-y-3 p-4 ${colors.semester.accordionBg}`}>
-                  {semester.subjects.map((subject, subI) => (
-                    <SubjectAccordion
-                      key={subject.id}
-                      subject={subject}
-                      index={subI}
-                      courseId={courseId}
-                      completedIds={completedIds}
-                      highlight={search || undefined}
-                      colors={colors.subject}
-                      lessonColors={colors.lesson}
-                    />
-                  ))}
-                </div>
+                ) : (
+                  <>
+                    <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.semester.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.semester.numBg} ${colors.semester.numText}`}>
+                        {si + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-foreground font-semibold">
+                          {semester.title}
+                        </h3>
+                        {semester.description && (
+                          <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
+                            {semester.description}
+                          </p>
+                        )}
+                      </div>
+                      <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.semester.subjectCountBg} ${colors.semester.subjectCountText}`}>
+                        {semester.subjects.length} subject{semester.subjects.length !== 1 ? "s" : ""}
+                        ({semester.subjects.reduce((s, sub) => s + sub.lessons.length, 0)} lessons)
+                      </span>
+                      <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className={`space-y-3 p-4 ${colors.semester.accordionBg}`}>
+                      {semester.subjects.map((subject, subI) => (
+                        <SubjectAccordion
+                          key={subject.id}
+                          subject={subject}
+                          index={subI}
+                          courseId={courseId}
+                          completedIds={completedIds}
+                          highlight={search || undefined}
+                          colors={colors.subject}
+                          lessonColors={colors.lesson}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </details>
             ))}
           </div>

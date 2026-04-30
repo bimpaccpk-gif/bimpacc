@@ -185,14 +185,14 @@ export const enrollStudentSchema = z.object({
 
 export const setStudentContentAccessSchema = z.object({
   userId: z.string().uuid("Invalid user ID"),
-  contentType: z.enum(["course", "subject", "lesson"]),
+  contentType: z.enum(["course", "semester", "subject", "lesson"]),
   contentId: z.string().uuid("Invalid content ID"),
   isPaused: z.coerce.boolean(),
   reason: z.string().max(500).optional().default(""),
 });
 
 export const bulkPauseForStudentsSchema = z.object({
-  contentType: z.enum(["course", "subject", "lesson"]),
+  contentType: z.enum(["course", "semester", "subject", "lesson"]),
   contentId: z.string().uuid("Invalid content ID"),
   isPaused: z.coerce.boolean(),
   studentIds: z.array(z.string().uuid()).min(1, "At least one student is required"),

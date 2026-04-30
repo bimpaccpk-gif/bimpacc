@@ -191,7 +191,7 @@ export const resolveContentAccess = cache(
       return { isPaused: true, blockedAt: "account" };
     }
 
-    // 2. Fetch all overrides for this user in one query
+    // 2. Fetch ALL overrides for this user in one query
     const { data: overrides } = await admin
       .from("student_content_access")
       .select("*")
@@ -206,7 +206,7 @@ export const resolveContentAccess = cache(
     const courseOverride = overrideMap.get(`course:${courseId}`);
     const { data: course } = await admin
       .from("courses")
-      .select("is_paused")
+      .select("is_paused, hierarchy_type")
       .eq("id", courseId)
       .single();
 
@@ -216,34 +216,155 @@ export const resolveContentAccess = cache(
       return { isPaused: true, blockedAt: "course" };
     }
 
-    // 4. If a lesson is specified, check subject and lesson levels
+    // 4. If a lesson is specified, check the full hierarchy
     if (lessonId) {
+      // Get the lesson first
       const { data: lesson } = await admin
         .from("lessons")
         .select("is_paused, subject_id")
         .eq("id", lessonId)
         .single();
 
-      if (lesson?.subject_id) {
-        const subjectOverride = overrideMap.get(`subject:${lesson.subject_id}`);
-        const { data: subject } = await admin
-          .from("subjects")
-          .select("is_paused")
-          .eq("id", lesson.subject_id)
-          .single();
-
-        const subjectPaused =
-          subjectOverride !== undefined ? subjectOverride : ((subject as any)?.is_paused ?? false);
-        if (subjectPaused) {
-          return { isPaused: true, blockedAt: "subject" };
-        }
+      if (!lesson) {
+        return { isPaused: false, blockedAt: null };
       }
 
+      // Check lesson-level override first (most specific)
       const lessonOverride = overrideMap.get(`lesson:${lessonId}`);
       const lessonPaused =
         lessonOverride !== undefined ? lessonOverride : ((lesson as any)?.is_paused ?? false);
       if (lessonPaused) {
         return { isPaused: true, blockedAt: "lesson" };
+      }
+
+      // Now check subject level - works for both hierarchy type 1 and 2
+      if (lesson.subject_id) {
+        // Get the subject to check its hierarchy
+        const { data: subject } = await admin
+          .from("subjects")
+          .select("is_paused, semester_id, course_id")
+          .eq("id", lesson.subject_id)
+          .single();
+
+        if (subject) {
+          // Check subject-level override
+          const subjectOverride = overrideMap.get(`subject:${lesson.subject_id}`);
+          const subjectPaused =
+            subjectOverride !== undefined
+              ? subjectOverride
+              : ((subject as any)?.is_paused ?? false);
+          if (subjectPaused) {
+            return { isPaused: true, blockedAt: "subject" };
+          }
+
+          // For hierarchy type 1, check semester level
+          if ((subject as any)?.semester_id) {
+            const semesterOverride = overrideMap.get(`semester:${(subject as any).semester_id}`);
+            const { data: semester } = await admin
+              .from("semesters")
+              .select("is_paused")
+              .eq("id", (subject as any).semester_id)
+              .single();
+
+            const semesterPaused =
+              semesterOverride !== undefined
+                ? semesterOverride
+                : ((semester as any)?.is_paused ?? false);
+            if (semesterPaused) {
+              return { isPaused: true, blockedAt: "semester" };
+            }
+          }
+        }
+      } else {
+        // Hierarchy type 3: Direct lesson under course (no subject)
+        // Lesson was already checked above at lesson level
+        // No subject/semester to check
+      }
+    }
+
+    return { isPaused: false, blockedAt: null };
+  }
+);
+
+/**
+ * Check if a subject is paused for a specific student (for subject detail pages)
+ */
+export const resolveSubjectAccess = cache(
+  async (
+    userId: string,
+    courseId: string,
+    subjectId: string
+  ): Promise<{ isPaused: boolean; blockedAt: string | null }> => {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    // 1. Check account-level pause (highest priority)
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("is_paused")
+      .eq("id", userId)
+      .single();
+
+    if ((userRow as any)?.is_paused) {
+      return { isPaused: true, blockedAt: "account" };
+    }
+
+    // 2. Fetch ALL overrides for this user in one query
+    const { data: overrides } = await admin
+      .from("student_content_access")
+      .select("*")
+      .eq("user_id", userId);
+
+    const overrideMap = new Map<string, boolean>();
+    for (const o of (overrides as any[]) ?? []) {
+      overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
+    }
+
+    // 3. Check course-level (override first, then global)
+    const courseOverride = overrideMap.get(`course:${courseId}`);
+    const { data: course } = await admin
+      .from("courses")
+      .select("is_paused, hierarchy_type")
+      .eq("id", courseId)
+      .single();
+
+    const coursePaused =
+      courseOverride !== undefined ? courseOverride : ((course as any)?.is_paused ?? false);
+    if (coursePaused) {
+      return { isPaused: true, blockedAt: "course" };
+    }
+
+    // 4. Check subject-level override
+    const subjectOverride = overrideMap.get(`subject:${subjectId}`);
+    const { data: subject } = await admin
+      .from("subjects")
+      .select("is_paused, semester_id")
+      .eq("id", subjectId)
+      .single();
+
+    const subjectPaused =
+      subjectOverride !== undefined
+        ? subjectOverride
+        : ((subject as any)?.is_paused ?? false);
+    if (subjectPaused) {
+      return { isPaused: true, blockedAt: "subject" };
+    }
+
+    // 5. For hierarchy type 1, check semester level
+    if ((subject as any)?.semester_id) {
+      const semesterOverride = overrideMap.get(`semester:${(subject as any).semester_id}`);
+      const { data: semester } = await admin
+        .from("semesters")
+        .select("is_paused")
+        .eq("id", (subject as any).semester_id)
+        .single();
+
+      const semesterPaused =
+        semesterOverride !== undefined
+          ? semesterOverride
+          : ((semester as any)?.is_paused ?? false);
+      if (semesterPaused) {
+        return { isPaused: true, blockedAt: "semester" };
       }
     }
 
@@ -261,7 +382,7 @@ export const verifyContentNotPaused = cache(
     const result = await resolveContentAccess(session.userId, courseId, lessonId);
 
     if (result.isPaused) {
-      if (result.blockedAt === "course") {
+      if (result.blockedAt === "course" || result.blockedAt === "account") {
         redirect("/student/courses");
       }
       redirect(`/student/courses/${courseId}`);

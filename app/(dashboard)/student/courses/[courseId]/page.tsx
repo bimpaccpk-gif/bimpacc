@@ -221,6 +221,12 @@ async function getSubjectsWithLessons(
 
   if (!subjects || subjects.length === 0) return [];
 
+  const subjectPauseState = new Map<string, boolean>();
+  (subjects as any[]).forEach((s) => {
+    const override = overrideMap.get(`subject:${s.id}`);
+    subjectPauseState.set(s.id, override !== undefined ? override : (s.is_paused ?? false));
+  });
+
   const subjectIds = subjects.map((s) => s.id);
   const { data: lessons } = await admin
     .from("lessons")
@@ -234,6 +240,7 @@ async function getSubjectsWithLessons(
   (lessons ?? []).forEach((l: any) => {
     const list = lessonsBySubject.get(l.subject_id) ?? [];
     const lessonOverride = overrideMap.get(`lesson:${l.id}`);
+    const parentPaused = l.subject_id ? (subjectPauseState.get(l.subject_id) ?? false) : false;
     list.push({
       id: l.id,
       title: l.title,
@@ -242,19 +249,18 @@ async function getSubjectsWithLessons(
       content: l.content,
       order_index: l.order_index,
       duration_minutes: l.duration_minutes,
-      isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
+      isPaused: lessonOverride !== undefined ? lessonOverride : (parentPaused || (l.is_paused ?? false)),
     });
     lessonsBySubject.set(l.subject_id, list);
   });
 
   return (subjects as any[]).map((s) => {
-    const subjectOverride = overrideMap.get(`subject:${s.id}`);
     return {
       id: s.id,
       title: s.title,
       description: s.description,
       order_index: s.order_index,
-      isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
+      isPaused: subjectPauseState.get(s.id) ?? false,
       lessons: lessonsBySubject.get(s.id) ?? [],
     };
   });
@@ -280,11 +286,18 @@ async function getSemestersWithSubjectsWithLessons(
   // Fetch semesters for this course
   const { data: semesters } = await admin
     .from("semesters")
-    .select("id, title, description, order_index")
+    .select("id, title, description, order_index, is_paused")
     .eq("course_id", courseId)
     .order("order_index", { ascending: true });
 
   if (!semesters || semesters.length === 0) return [];
+
+  // Calculate semester pause states
+  const semesterPauseState = new Map<string, boolean>();
+  semesters.forEach((s: any) => {
+    const override = overrideMap.get(`semester:${s.id}`);
+    semesterPauseState.set(s.id, override !== undefined ? override : (s.is_paused ?? false));
+  });
 
   // Fetch subjects from both possible shapes:
   // 1) semester-linked subjects (new type-1 structure)
@@ -311,6 +324,14 @@ async function getSemestersWithSubjectsWithLessons(
 
   const subjects = [...semesterSubjects, ...(legacySubjects ?? [])];
 
+  // Calculate subject pause states
+  const subjectPauseState = new Map<string, boolean>();
+  (subjects ?? []).forEach((s: any) => {
+    const override = overrideMap.get(`subject:${s.id}`);
+    const parentPaused = s.semester_id ? (semesterPauseState.get(s.semester_id) ?? false) : false;
+    subjectPauseState.set(s.id, override !== undefined ? override : (parentPaused || (s.is_paused ?? false)));
+  });
+
   // Fetch lessons for these subjects
   const subjectIds = (subjects ?? []).map((s: any) => s.id);
   let lessonsBySubject = new Map<string, LessonRow[]>();
@@ -326,6 +347,7 @@ async function getSemestersWithSubjectsWithLessons(
     (lessons ?? []).forEach((l: any) => {
       const list = lessonsBySubject.get(l.subject_id) ?? [];
       const lessonOverride = overrideMap.get(`lesson:${l.id}`);
+      const parentPaused = l.subject_id ? (subjectPauseState.get(l.subject_id) ?? false) : false;
       list.push({
         id: l.id,
         title: l.title,
@@ -334,7 +356,7 @@ async function getSemestersWithSubjectsWithLessons(
         content: l.content,
         order_index: l.order_index,
         duration_minutes: l.duration_minutes,
-        isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
+        isPaused: lessonOverride !== undefined ? lessonOverride : (parentPaused || (l.is_paused ?? false)),
       });
       lessonsBySubject.set(l.subject_id, list);
     });
@@ -343,13 +365,12 @@ async function getSemestersWithSubjectsWithLessons(
   const subjectsBySemester = new Map<string, SubjectWithLessons[]>();
   const unassignedSubjects: SubjectWithLessons[] = [];
   (subjects ?? []).forEach((s: any) => {
-    const subjectOverride = overrideMap.get(`subject:${s.id}`);
     const subjectNode = {
       id: s.id,
       title: s.title,
       description: s.description,
       order_index: s.order_index,
-      isPaused: subjectOverride !== undefined ? subjectOverride : (s.is_paused ?? false),
+      isPaused: subjectPauseState.get(s.id) ?? false,
       lessons: lessonsBySubject.get(s.id) ?? [],
     };
 
@@ -363,12 +384,11 @@ async function getSemestersWithSubjectsWithLessons(
   });
 
   const semesterNodes: SemesterWithSubjectsWithLessons[] = semesters.map((s: any) => {
-    const semesterOverride = overrideMap.get(`semester:${s.id}`);
     return {
       id: s.id,
       title: s.title,
       description: s.description,
-      isPaused: semesterOverride !== undefined ? semesterOverride : false,
+      isPaused: semesterPauseState.get(s.id) ?? false,
       subjects: subjectsBySemester.get(s.id) ?? [],
     };
   });

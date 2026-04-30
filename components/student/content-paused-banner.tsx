@@ -3,7 +3,7 @@ import { PauseCircle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ContentPausedBannerProps {
-  blockedAt: "account" | "course" | "subject" | "lesson";
+  blockedAt: "account" | "course" | "semester" | "subject" | "lesson";
   courseId?: string;
 }
 
@@ -17,6 +17,11 @@ const messages: Record<string, { title: string; description: string }> = {
     title: "Course Paused",
     description:
       "This course has been temporarily paused by your instructor. Please check back later.",
+  },
+  semester: {
+    title: "Semester Paused",
+    description:
+      "This semester has been temporarily paused by your instructor. Please check back later.",
   },
   subject: {
     title: "Subject Paused",

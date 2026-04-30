@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git log:*)",
+      "Bash(python3 -c \" import json with open\\('/Users/askihsanafridi/.claude/projects/-Users-askihsanafridi-Desktop-bimpacc-lms/fcab7c4f-ef49-4732-b52a-5aa030c9e87d.jsonl', 'r'\\) as f: for i, line in enumerate\\(f\\): try: data = json.loads\\(line\\) if 'plan' in str\\(json.dumps\\(data\\)\\).lower\\(\\) or 'gentle-squid' in str\\(json.dumps\\(data\\)\\).lower\\(\\) or 'neon-comet' in str\\(json.dumps\\(data\\)\\).lower\\(\\): print\\(f'Line {i}: found plan reference'\\) msg = json.dumps\\(data, ensure_ascii=False\\) print\\(msg[:500]\\) except: pass \")",
+      "Bash(xxd /Users/askihsanafridi/Desktop/bimpacc-lms/components/layout/dashboard-shell.tsx)",
+      "Bash(npx next:*)",
+      "Bash(git reset:*)",
+      "Bash(npm install:*)",
+      "Bash(npx supabase:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

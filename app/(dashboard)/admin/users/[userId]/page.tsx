@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { UserDetailActions } from "@/components/admin/user-detail-actions";
+import { AccessControlPanel } from "@/components/admin/access-control/access-control-panel";
 import {
   ArrowLeft,
   Mail,
@@ -499,11 +500,16 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                 </tbody>
               </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+)}
+            </CardContent>
+          </Card>
 
-      {/* Activity Log */}
+          {/* Content Access Control (Students only) */}
+          {user.role === "student" && (
+            <AccessControlPanel userId={user.id} />
+          )}
+
+          {/* Activity Log */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
