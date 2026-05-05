@@ -1,25 +1,7 @@
 /**
- * In-memory rate limiter for server actions.
- * Uses a sliding window count per key (IP or email).
- * Max attempts reset after the window duration.
+ * Distributed rate limiter for server actions.
+ * Uses Upstash Redis via REST API to track attempts across Vercel instances.
  */
-
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const store = new Map<string, RateLimitEntry>();
-
-// Clean up expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (entry.resetAt <= now) {
-      store.delete(key);
-    }
-  }
-}, 5 * 60 * 1000).unref();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -28,48 +10,101 @@ export interface RateLimitResult {
 }
 
 /**
+ * Execute a command against Upstash Redis REST API.
+ */
+async function redisCommand(command: string, ...args: any[]) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    // Fallback to allow if Redis is not configured (e.g. local dev without env vars)
+    console.warn("Upstash Redis credentials missing. Rate limiting bypassed.");
+    return null;
+  }
+
+  const res = await fetch(`${url}/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([command, ...args]),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Redis error: ${await res.text()}`);
+  }
+  
+  const data = await res.json();
+  if (data.error) throw new Error(`Redis error: ${data.error}`);
+  return data.result;
+}
+
+/**
  * Check if a request is allowed under the rate limit.
  * @param key - Unique identifier (e.g., email, IP)
  * @param maxAttempts - Maximum allowed requests in the window
  * @param windowMs - Window duration in milliseconds
  */
-export function rateLimit(
+export async function rateLimit(
   key: string,
   maxAttempts: number = 10,
   windowMs: number = 15 * 60 * 1000
-): RateLimitResult {
-  const now = Date.now();
-  const entry = store.get(key);
+): Promise<RateLimitResult> {
+  try {
+    const count = await redisCommand("INCR", key);
+    
+    // If fallback was triggered (no env vars), just allow
+    if (count === null) {
+      return { allowed: true, remaining: maxAttempts };
+    }
 
-  if (!entry || entry.resetAt <= now) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: maxAttempts - 1 };
+    if (count === 1) {
+      await redisCommand("PEXPIRE", key, windowMs);
+    }
+
+    if (count > maxAttempts) {
+      const ttl = await redisCommand("PTTL", key);
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterMs: ttl > 0 ? ttl : windowMs,
+      };
+    }
+
+    return { allowed: true, remaining: maxAttempts - count };
+  } catch (error) {
+    console.error("[RateLimit] Error:", error);
+    // Fail open if Redis is down
+    return { allowed: true, remaining: 1 };
   }
-
-  if (entry.count >= maxAttempts) {
-    return {
-      allowed: false,
-      remaining: 0,
-      retryAfterMs: entry.resetAt - now,
-    };
-  }
-
-  entry.count++;
-  return { allowed: true, remaining: maxAttempts - entry.count };
 }
 
 /**
  * Reset rate limit for a key (e.g., after successful login).
  */
-export function rateLimitReset(key: string): void {
-  store.delete(key);
+export async function rateLimitReset(key: string): Promise<void> {
+  try {
+    await redisCommand("DEL", key);
+  } catch (error) {
+    console.error("[RateLimit] Error resetting:", error);
+  }
 }
 
 /**
  * Get remaining attempts for a key.
  */
-export function rateLimitRemaining(key: string, maxAttempts: number = 10): number {
-  const entry = store.get(key);
-  if (!entry || entry.resetAt <= Date.now()) return maxAttempts;
-  return Math.max(0, maxAttempts - entry.count);
+export async function rateLimitRemaining(key: string, maxAttempts: number = 10): Promise<number> {
+  try {
+    const countStr = await redisCommand("GET", key);
+    if (countStr === null) return maxAttempts;
+    
+    const count = parseInt(countStr);
+    if (isNaN(count)) return maxAttempts;
+    
+    return Math.max(0, maxAttempts - count);
+  } catch (error) {
+    return maxAttempts;
+  }
 }

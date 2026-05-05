@@ -12,6 +12,7 @@ import { ContentPausedBanner } from "@/components/student/content-paused-banner"
 import { getQuizForLesson, getBestQuizAttempt } from "@/app/actions/quiz";
 import { getLessonComments } from "@/app/actions/lesson-comments";
 import { createClient as createStorageClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
 
 // ─── YouTube video ID extractor ───────────────────────────
 
@@ -279,7 +280,14 @@ export default async function LessonPlayerPage({
   const { courseId, lessonId } = await params;
   const user = await getCurrentUser();
   const fullProfile = await getFullUserProfile();
-  const course = await getCourseInfo(courseId);
+  
+  const getCachedCourseInfo = unstable_cache(
+    async (cid: string) => getCourseInfo(cid),
+    [`course-info-${courseId}`],
+    { revalidate: 3600 }
+  );
+  
+  const course = await getCachedCourseInfo(courseId);
 
   if (!course) {
     redirect("/student/courses");
@@ -299,7 +307,14 @@ export default async function LessonPlayerPage({
     );
   }
 
-  const { current, allLessons, completedIds } = await getLessonWithSiblings(
+  const getCachedLessonWithSiblings = unstable_cache(
+    async (cid: string, lid: string, hType: number, uid: string) => 
+      getLessonWithSiblings(cid, lid, hType, uid),
+    [`lesson-siblings-${courseId}-${lessonId}-${user.id}`],
+    { revalidate: 300 }
+  );
+
+  const { current, allLessons, completedIds } = await getCachedLessonWithSiblings(
     courseId,
     lessonId,
     course.hierarchy_type,

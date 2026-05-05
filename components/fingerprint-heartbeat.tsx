@@ -5,8 +5,6 @@ import { generateDeviceFingerprints } from "@/lib/device-fingerprint";
 import { verifySessionDevice } from "@/lib/fingerprint-verify";
 import { signOut } from "@/app/actions/auth";
 
-/** Re-verify device fingerprint every 5 minutes */
-const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Invisible client component that periodically re-verifies
@@ -17,7 +15,6 @@ const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
  * Only active for student accounts.
  */
 export function FingerprintHeartbeat({ role }: { role: string }) {
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isVerifyingRef = useRef(false);
 
   const verify = useCallback(async () => {
@@ -56,9 +53,6 @@ export function FingerprintHeartbeat({ role }: { role: string }) {
     // Initial verification after a short delay (let the page settle)
     const initialTimeout = setTimeout(verify, 10_000);
 
-    // Periodic checks
-    timerRef.current = setInterval(verify, HEARTBEAT_INTERVAL_MS);
-
     // Also verify on tab focus (catches session transfer scenarios)
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -69,7 +63,6 @@ export function FingerprintHeartbeat({ role }: { role: string }) {
 
     return () => {
       clearTimeout(initialTimeout);
-      if (timerRef.current) clearInterval(timerRef.current);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [role, verify]);

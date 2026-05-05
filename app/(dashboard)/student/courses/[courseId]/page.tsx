@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import {
   BookOpen,
@@ -617,7 +618,14 @@ export default async function CourseDetailPage({
 }) {
   const { courseId } = await params;
   const user = await getCurrentUser();
-  const course = await getCourseDetail(courseId);
+  
+  const getCachedCourseDetail = unstable_cache(
+    async (cid: string) => getCourseDetail(cid),
+    [`course-detail-${courseId}`],
+    { revalidate: 3600 }
+  );
+  
+  const course = await getCachedCourseDetail(courseId);
 
   if (!course) {
     redirect("/student/courses");
@@ -632,15 +640,33 @@ export default async function CourseDetailPage({
   let subjects: SubjectWithLessons[] = [];
   let directLessons: LessonRow[] = [];
 
+  const getCachedSemesters = unstable_cache(
+    async (cid: string, uid: string) => getSemestersWithSubjectsWithLessons(cid, uid),
+    [`semesters-${courseId}-${user.id}`],
+    { revalidate: 300 }
+  );
+
+  const getCachedSubjects = unstable_cache(
+    async (cid: string, uid: string) => getSubjectsWithLessons(cid, uid),
+    [`subjects-${courseId}-${user.id}`],
+    { revalidate: 300 }
+  );
+
+  const getCachedDirectLessons = unstable_cache(
+    async (cid: string, uid: string) => getDirectLessons(cid, uid),
+    [`direct-lessons-${courseId}-${user.id}`],
+    { revalidate: 300 }
+  );
+
   if (course.hierarchy_type === 1) {
     // Course → Semester → Subject → Lesson
-    semesters = await getSemestersWithSubjectsWithLessons(course.id, user.id);
+    semesters = await getCachedSemesters(course.id, user.id);
   } else if (course.hierarchy_type === 2) {
     // Course → Subject → Lesson
-    subjects = await getSubjectsWithLessons(course.id, user.id);
+    subjects = await getCachedSubjects(course.id, user.id);
   } else {
     // Type 3: Course → Lesson
-    directLessons = await getDirectLessons(course.id, user.id);
+    directLessons = await getCachedDirectLessons(course.id, user.id);
   }
 
   // Fetch completed lesson IDs

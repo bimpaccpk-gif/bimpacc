@@ -18,7 +18,7 @@ export async function signIn(
   }
 
   // Rate limit per email (5 attempts per 15 minutes)
-  const limit = rateLimit(`signin:${email.toLowerCase()}`, 5, 15 * 60 * 1000);
+  const limit = await rateLimit(`signin:${email.toLowerCase()}`, 5, 15 * 60 * 1000);
   if (!limit.allowed) {
     const mins = Math.ceil(limit.retryAfterMs! / 60000);
     return { error: `Too many login attempts. Please try again in ${mins} minute(s).` };
@@ -142,7 +142,7 @@ export async function signUp(
   }
 
   // Rate limit registrations per IP/email (2 per 30 minutes)
-  const limit = rateLimit(`signup:${email.toLowerCase()}`, 2, 30 * 60 * 1000);
+  const limit = await rateLimit(`signup:${email.toLowerCase()}`, 2, 30 * 60 * 1000);
   if (!limit.allowed) {
     return { error: "Too many registration attempts. Please try again later." };
   }
