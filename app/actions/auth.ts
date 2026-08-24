@@ -124,6 +124,16 @@ export async function signIn(
     user_agent: formData.get("user_agent") as string | null,
   });
 
+  if (role === "admin") {
+    const { data: capability } = await supabase
+      .from("super_admins")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (capability) redirect("/super-admin");
+  }
+
   redirect(`/${role}`);
 }
 

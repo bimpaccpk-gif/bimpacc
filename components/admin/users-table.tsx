@@ -49,6 +49,7 @@ interface UserRow {
   onboarding_completed: boolean;
   onboarding_bypassed: boolean;
   is_approved: boolean;
+  is_super_admin: boolean;
   created_at: string;
 }
 
@@ -123,24 +124,16 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
     undefined
   );
 
-  const [deleteState, deleteAction, deletePending] = useActionState(
-    bulkDeleteUsers,
-    undefined
-  );
+  const [deleteState, deleteAction, deletePending] = useActionState(bulkDeleteUsers, undefined);
 
-  const [enrollState, enrollAction, enrollPending] = useActionState(
-    bulkEnrollStudents,
-    undefined
-  );
+  const [enrollState, enrollAction, enrollPending] = useActionState(bulkEnrollStudents, undefined);
 
   useEffect(() => {
     if (approveState?.success) {
       // Remove approved users from selection and update their status
       setSelectedIds([]);
       setUsers((prev) =>
-        prev.map((u) =>
-          selectedIds.includes(u.id) ? { ...u, is_approved: true } : u
-        )
+        prev.map((u) => (selectedIds.includes(u.id) ? { ...u, is_approved: true } : u))
       );
     } else if (approveState?.error) {
       alert(approveState.error);
@@ -174,12 +167,15 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       // Search filter
-      const matchesSearch = searchQuery === "" ||
+      const matchesSearch =
+        searchQuery === "" ||
         user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Role filter
-      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesRole =
+        roleFilter === "all" ||
+        (roleFilter === "super_admin" ? user.is_super_admin : user.role === roleFilter);
 
       // Approval filter
       let matchesApproval = true;
@@ -204,25 +200,25 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
   }, [users, searchQuery, roleFilter, approvalFilter, onboardingFilter]);
 
   const pendingStudents = useMemo(
-    () =>
-      users.filter(
-        (u) => u.role === "student" && u.onboarding_completed && !u.is_approved
-      ),
+    () => users.filter((u) => u.role === "student" && u.onboarding_completed && !u.is_approved),
     [users]
   );
 
   const pendingIds = useMemo(() => pendingStudents.map((u) => u.id), [pendingStudents]);
 
-  const filteredUserIds = useMemo(() => filteredUsers.map((u) => u.id), [filteredUsers]);
+  const filteredUserIds = useMemo(
+    () => filteredUsers.filter((user) => !user.is_super_admin).map((user) => user.id),
+    [filteredUsers]
+  );
 
-  const allFilteredSelected = filteredUserIds.length > 0 && filteredUserIds.every((id) => selectedIds.includes(id));
+  const allFilteredSelected =
+    filteredUserIds.length > 0 && filteredUserIds.every((id) => selectedIds.includes(id));
 
-  const allPendingSelected = pendingIds.length > 0 && pendingIds.every((id) => selectedIds.includes(id));
+  const allPendingSelected =
+    pendingIds.length > 0 && pendingIds.every((id) => selectedIds.includes(id));
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds((prev) =>
-      prev.length > 0 ? [] : [...pendingIds]
-    );
+    setSelectedIds((prev) => (prev.length > 0 ? [] : [...pendingIds]));
   }, [pendingIds]);
 
   const toggleSelectAllFiltered = useCallback(() => {
@@ -283,9 +279,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
             )}
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">
-                  {selectedIds.length} selected
-                </span>
+                <span className="text-muted-foreground text-sm">{selectedIds.length} selected</span>
                 <Button
                   variant="outline"
                   size="sm"
@@ -301,7 +295,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                   size="sm"
                   onClick={() => setDeleteDialogOpen(true)}
                   disabled={selectedIds.length === 0}
-                  className="h-8 gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 gap-1.5"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete Selected
@@ -314,7 +308,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                 <button
                   type="submit"
                   disabled={selectedIds.length === 0 || approvePending}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-success px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-success/90"
+                  className="bg-success hover:bg-success/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50"
                 >
                   {approvePending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -332,7 +326,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
         {/* Search and Filters */}
         <div className="mb-4 space-y-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               type="text"
               placeholder="Search by name or email..."
@@ -343,23 +337,24 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Filter className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground text-sm font-medium">Filters:</span>
             </div>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:border-ring focus:ring-ring rounded-md border px-3 py-1.5 text-sm shadow-sm focus:ring-2 focus:outline-none"
             >
               <option value="all">All Roles</option>
               <option value="student">Students</option>
               <option value="instructor">Instructors</option>
               <option value="admin">Admins</option>
+              <option value="super_admin">Super Admins</option>
             </select>
             <select
               value={approvalFilter}
               onChange={(e) => setApprovalFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:border-ring focus:ring-ring rounded-md border px-3 py-1.5 text-sm shadow-sm focus:ring-2 focus:outline-none"
             >
               <option value="all">All Approval Status</option>
               <option value="approved">Approved</option>
@@ -368,14 +363,17 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
             <select
               value={onboardingFilter}
               onChange={(e) => setOnboardingFilter(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:border-ring focus:ring-ring rounded-md border px-3 py-1.5 text-sm shadow-sm focus:ring-2 focus:outline-none"
             >
               <option value="all">All Onboarding Status</option>
               <option value="completed">Onboarding Completed</option>
               <option value="bypassed">Onboarding Bypassed</option>
               <option value="pending">Onboarding Pending</option>
             </select>
-            {(searchQuery || roleFilter !== "all" || approvalFilter !== "all" || onboardingFilter !== "all") && (
+            {(searchQuery ||
+              roleFilter !== "all" ||
+              approvalFilter !== "all" ||
+              onboardingFilter !== "all") && (
               <button
                 onClick={() => {
                   setSearchQuery("");
@@ -383,7 +381,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                   setApprovalFilter("all");
                   setOnboardingFilter("all");
                 }}
-                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+                className="text-muted-foreground hover:bg-muted rounded-md px-3 py-1.5 text-sm"
               >
                 Clear All
               </button>
@@ -392,24 +390,25 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
         </div>
 
         {/* Results count */}
-        {(searchQuery || roleFilter !== "all" || approvalFilter !== "all" || onboardingFilter !== "all") && (
-          <div className="mb-3 text-sm text-muted-foreground">
+        {(searchQuery ||
+          roleFilter !== "all" ||
+          approvalFilter !== "all" ||
+          onboardingFilter !== "all") && (
+          <div className="text-muted-foreground mb-3 text-sm">
             Showing {filteredUsers.length} of {users.length} users
           </div>
         )}
 
         {filteredUsers.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center text-sm">
-            {users.length === 0
-              ? "No users found."
-              : "No users match your current filters."}
+            {users.length === 0 ? "No users found." : "No users match your current filters."}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="pr-4 pb-3 w-12">
+                  <th className="w-12 pr-4 pb-3">
                     <Checkbox
                       id="select-all-filtered"
                       checked={allFilteredSelected}
@@ -433,6 +432,12 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                         id={`select-${user.id}`}
                         checked={selectedIds.includes(user.id)}
                         onCheckedChange={() => toggleSelectOne(user.id)}
+                        disabled={user.is_super_admin}
+                        aria-label={
+                          user.is_super_admin
+                            ? `${user.full_name} is protected from bulk actions`
+                            : `Select ${user.full_name}`
+                        }
                       />
                     </td>
                     <td className="py-3 pr-4">
@@ -466,9 +471,9 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                               />
                               <span className="text-muted-foreground text-xs">
                                 {user.is_approved ? (
-                                  <span className="font-bold text-success">Approved</span>
+                                  <span className="text-success font-bold">Approved</span>
                                 ) : (
-                                  <span className="font-bold text-primary">Under Review</span>
+                                  <span className="text-primary font-bold">Under Review</span>
                                 )}
                               </span>
                               <StudentApplicationDialog
@@ -479,7 +484,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             </div>
                           ) : user.onboarding_bypassed ? (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center rounded-md bg-info/10 px-2 py-1 text-xs font-semibold text-info">
+                              <span className="bg-info/10 text-info flex items-center rounded-md px-2 py-1 text-xs font-semibold">
                                 <ShieldCheck className="mr-1 h-3 w-3" />
                                 Onboarding Bypassed
                               </span>
@@ -491,7 +496,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="flex items-center rounded-md bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
+                              <span className="bg-warning/10 text-warning flex items-center rounded-md px-2 py-1 text-xs font-semibold">
                                 <Clock className="mr-1 h-3 w-3" />
                                 Pending Setup
                               </span>
@@ -504,7 +509,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                           )}
                         </div>
                       ) : (
-                        <span className="flex w-fit items-center rounded-md bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                        <span className="bg-success/10 text-success flex w-fit items-center rounded-md px-2 py-1 text-xs font-semibold">
                           <ShieldCheck className="mr-1 h-3 w-3" />
                           Auto-Approved
                         </span>
@@ -532,11 +537,18 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                       )}
                     </td>
                     <td className="py-3 pr-4">
-                      <RoleSelect
-                        userId={user.id}
-                        currentRole={user.role as UserRole}
-                        currentUserId={currentUserId}
-                      />
+                      {user.is_super_admin ? (
+                        <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold">
+                          <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                          Super Admin
+                        </span>
+                      ) : (
+                        <RoleSelect
+                          userId={user.id}
+                          currentRole={user.role as UserRole}
+                          currentUserId={currentUserId}
+                        />
+                      )}
                     </td>
                     <td className="text-muted-foreground py-3 pr-4">
                       {formatDate(user.created_at)}
@@ -556,11 +568,13 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
                             }}
                           />
                         )}
-                        <DeleteUserButton
-                          userId={user.id}
-                          userName={user.full_name}
-                          onDeleteSuccess={() => handleDeleteSuccess(user.id)}
-                        />
+                        {!user.is_super_admin && (
+                          <DeleteUserButton
+                            userId={user.id}
+                            userName={user.full_name}
+                            onDeleteSuccess={() => handleDeleteSuccess(user.id)}
+                          />
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -575,7 +589,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
+            <DialogTitle className="text-destructive flex items-center gap-2">
               <Trash2 className="h-5 w-5" />
               Delete Selected Users
             </DialogTitle>
@@ -586,14 +600,14 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
           </DialogHeader>
 
           {deleteState?.error && (
-            <div className="flex items-start gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            <div className="bg-destructive/15 text-destructive flex items-start gap-2 rounded-md p-3 text-sm">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{deleteState.error}</span>
             </div>
           )}
 
           {deleteState?.success && !deleteState.error && (
-            <div className="flex items-center gap-2 rounded-md bg-success/15 p-3 text-sm text-success">
+            <div className="bg-success/15 text-success flex items-center gap-2 rounded-md p-3 text-sm">
               <CheckCircle2 className="h-4 w-4" />
               <span>{deleteState.success}</span>
             </div>
@@ -609,11 +623,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={deletePending}
-            >
+            <Button type="submit" variant="destructive" disabled={deletePending}>
               {deletePending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -639,17 +649,18 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
               Bulk Enroll Students
             </DialogTitle>
             <DialogDescription>
-              Enroll <span className="text-foreground font-semibold">{selectedIds.length} student(s)</span> into a
-              published course.
+              Enroll{" "}
+              <span className="text-foreground font-semibold">{selectedIds.length} student(s)</span>{" "}
+              into a published course.
             </DialogDescription>
           </DialogHeader>
 
           {enrollState?.success && !enrollState.error ? (
             <div className="flex flex-col items-center justify-center space-y-3 py-6 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
-                <CheckCircle2 className="h-6 w-6 text-success" />
+              <div className="bg-success/10 flex h-12 w-12 items-center justify-center rounded-full">
+                <CheckCircle2 className="text-success h-6 w-6" />
               </div>
-              <p className="text-sm font-medium text-success">{enrollState.success}</p>
+              <p className="text-success text-sm font-medium">{enrollState.success}</p>
             </div>
           ) : (
             <form action={enrollAction} className="space-y-4 py-4">
@@ -683,7 +694,7 @@ export function UsersTable({ initialUsers, courses, enrollments, currentUserId }
               </div>
 
               {enrollState?.error && (
-                <div className="flex items-start gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                <div className="bg-destructive/15 text-destructive flex items-start gap-2 rounded-md p-3 text-sm">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{enrollState.error}</span>
                 </div>

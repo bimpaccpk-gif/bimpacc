@@ -124,7 +124,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                         : "bg-info/10 text-info"
                   }`}
                 >
-                  {user.role}
+                  {user.is_super_admin ? "super admin" : user.role}
                 </span>
                 {user.is_approved && (
                   <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
@@ -160,11 +160,12 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
             </div>
           </div>
         </div>
-        <UserDetailActions 
-          userId={user.id} 
-          currentRole={user.role} 
+        <UserDetailActions
+          userId={user.id}
+          currentRole={user.role}
           isPaused={user.is_paused}
           isLocked={user.is_locked}
+          isSuperAdmin={user.is_super_admin}
         />
       </div>
 
@@ -174,7 +175,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
           <div className="text-sm">
             <p className="font-semibold">Account Locked: Security Violation</p>
             <p className="opacity-90">
-              This user has been automatically locked due to a detected screen recording or screenshot attempt. Use &quot;Reset Device &amp; Unlock&quot; to restore access.
+              This user has been automatically locked due to a detected screen recording or
+              screenshot attempt. Use &quot;Reset Device &amp; Unlock&quot; to restore access.
             </p>
           </div>
         </div>
@@ -282,11 +284,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                   <>
                     <Separator />
                     <p className="text-sm font-medium">Device Hardware Profile</p>
-                    <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                      <InfoRow
-                        label="Platform"
-                        value={user.device_components.platform}
-                      />
+                    <div className="bg-muted/50 space-y-2 rounded-lg p-3">
+                      <InfoRow label="Platform" value={user.device_components.platform} />
                       <InfoRow
                         label="GPU (normalized)"
                         value={user.device_components.webglRenderer}
@@ -296,10 +295,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                         value={user.device_components.webglRendererRaw}
                         mono
                       />
-                      <InfoRow
-                        label="GPU Vendor"
-                        value={user.device_components.webglVendor}
-                      />
+                      <InfoRow label="GPU Vendor" value={user.device_components.webglVendor} />
                       <InfoRow
                         label="Screen"
                         value={`${user.device_components.screenResolution} @ ${user.device_components.devicePixelRatio}x, ${user.device_components.colorDepth}-bit`}
@@ -314,7 +310,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                       />
                       <InfoRow
                         label="Device Memory"
-                        value={user.device_components.deviceMemory ? `${user.device_components.deviceMemory} GB` : "N/A (unsupported)"}
+                        value={
+                          user.device_components.deviceMemory
+                            ? `${user.device_components.deviceMemory} GB`
+                            : "N/A (unsupported)"
+                        }
                       />
                       <InfoRow
                         label="Touch Points"
@@ -500,16 +500,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                 </tbody>
               </table>
             </div>
-)}
-            </CardContent>
-          </Card>
-
-          {/* Content Access Control (Students only) */}
-          {user.role === "student" && (
-            <AccessControlPanel userId={user.id} />
           )}
+        </CardContent>
+      </Card>
 
-          {/* Activity Log */}
+      {/* Content Access Control (Students only) */}
+      {user.role === "student" && <AccessControlPanel userId={user.id} />}
+
+      {/* Activity Log */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -524,7 +522,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
             </p>
           ) : (
             <div className="space-y-0">
-              {auditLog.map((entry, idx) => (
+              {auditLog.map((entry) => (
                 <div
                   key={entry.id}
                   className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 [&:not(:last-child)]:border-b"
@@ -607,12 +605,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                   <tr className="border-b">
                     <th className="text-muted-foreground pr-4 pb-3 font-medium">Status</th>
                     <th className="text-muted-foreground pr-4 pb-3 font-medium">Date & Time</th>
-                    <th className="text-muted-foreground pr-4 pb-3 font-medium">
-                      Hardware FP
-                    </th>
-                    <th className="text-muted-foreground pr-4 pb-3 font-medium">
-                      Device Info
-                    </th>
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">Hardware FP</th>
+                    <th className="text-muted-foreground pr-4 pb-3 font-medium">Device Info</th>
                     <th className="text-muted-foreground pb-3 font-medium">User Agent</th>
                   </tr>
                 </thead>
@@ -657,11 +651,16 @@ export default async function UserDetailPage({ params }: { params: Promise<{ use
                       <td className="py-3 pr-4">
                         {entry.device_components ? (
                           <div className="space-y-0.5">
-                            <p className="text-xs font-medium truncate max-w-[180px]">
-                              {entry.device_components.webglRenderer ?? entry.device_components.platform}
+                            <p className="max-w-[180px] truncate text-xs font-medium">
+                              {entry.device_components.webglRenderer ??
+                                entry.device_components.platform}
                             </p>
                             <p className="text-muted-foreground text-xs">
-                              {entry.device_components.screenResolution} · {entry.device_components.hardwareConcurrency ?? "?"}c · {entry.device_components.deviceMemory ? `${entry.device_components.deviceMemory}GB` : "?"}
+                              {entry.device_components.screenResolution} ·{" "}
+                              {entry.device_components.hardwareConcurrency ?? "?"}c ·{" "}
+                              {entry.device_components.deviceMemory
+                                ? `${entry.device_components.deviceMemory}GB`
+                                : "?"}
                             </p>
                           </div>
                         ) : (

@@ -19,16 +19,12 @@ export async function GET(request: Request) {
   const userAgent = headersList.get("user-agent") || null;
 
   if (!code) {
-    return NextResponse.redirect(
-      new URL("/login?error=google_auth_failed", request.url)
-    );
+    return NextResponse.redirect(new URL("/login?error=google_auth_failed", request.url));
   }
 
   const { error: authError } = await supabase.auth.exchangeCodeForSession(code);
   if (authError) {
-    return NextResponse.redirect(
-      new URL("/login?error=google_auth_failed", request.url)
-    );
+    return NextResponse.redirect(new URL("/login?error=google_auth_failed", request.url));
   }
 
   // Get the newly authenticated user
@@ -37,9 +33,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getSession();
 
   if (!session?.user) {
-    return NextResponse.redirect(
-      new URL("/login?error=google_auth_failed", request.url)
-    );
+    return NextResponse.redirect(new URL("/login?error=google_auth_failed", request.url));
   }
 
   const admin = createAdminClient();
@@ -50,6 +44,18 @@ export async function GET(request: Request) {
     session.user.user_metadata?.name ||
     (email?.split("@")[0] ?? "Google User");
   const avatarUrl = session.user.user_metadata?.avatar_url ?? null;
+
+  const getDashboardPath = async (userId: string, role: string) => {
+    if (role !== "admin") return `/${role}`;
+
+    const { data: capability } = await admin
+      .from("super_admins")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    return capability ? "/super-admin" : "/admin";
+  };
 
   // Parse device components
   let deviceComponents: DeviceComponents | null = null;
@@ -85,9 +91,7 @@ export async function GET(request: Request) {
     if (existingUser.is_locked) {
       await logLogin(googleAuthId, "failed_screen_record"); // Or just keep it failed, maybe reuse a new status. Actually better just log out
       await supabase.auth.signOut();
-      return NextResponse.redirect(
-        new URL("/login?error=account_locked", request.url)
-      );
+      return NextResponse.redirect(new URL("/login?error=account_locked", request.url));
     }
 
     // Fingerprint capture remains best-effort for audit/login history.
@@ -104,7 +108,9 @@ export async function GET(request: Request) {
 
     // Log successful Google login
     await logLogin(googleAuthId, "success");
-    return NextResponse.redirect(new URL(`/${existingUser.role}`, request.url));
+    return NextResponse.redirect(
+      new URL(await getDashboardPath(googleAuthId, existingUser.role), request.url)
+    );
   }
 
   // Step 2: If not found by ID, check if there's a pre-created user with matching email
@@ -118,9 +124,7 @@ export async function GET(request: Request) {
     if (emailMatch) {
       if (emailMatch.is_locked) {
         await supabase.auth.signOut();
-        return NextResponse.redirect(
-          new URL("/login?error=account_locked", request.url)
-        );
+        return NextResponse.redirect(new URL("/login?error=account_locked", request.url));
       }
 
       // Found pre-created user — update their ID to match the Google Auth UID
@@ -137,7 +141,9 @@ export async function GET(request: Request) {
 
       // Log successful Google login for pre-created user
       await logLogin(googleAuthId, "success");
-      return NextResponse.redirect(new URL(`/${emailMatch.role}`, request.url));
+      return NextResponse.redirect(
+        new URL(await getDashboardPath(googleAuthId, emailMatch.role), request.url)
+      );
     }
   }
 

@@ -19,6 +19,15 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
     if (profile) {
       const role = (profile.role as UserRole) ?? "student";
+      if (role === "admin") {
+        const { data: capability } = await supabase
+          .from("super_admins")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (capability) redirect("/super-admin");
+      }
       redirect(`/${role}`);
     }
   }

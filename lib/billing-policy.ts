@@ -1,5 +1,5 @@
 export const SERVICE_BILLING_SETTINGS_COLUMNS =
-  "id, enforcement_enabled, payment_status, amount_due, currency, billing_interval, service_period_start, service_period_end, payment_due_at, grace_period_ends_at, bank_name, account_title, account_number, iban, payment_reference, payment_instructions, support_email, support_phone, notice_title, notice_message, updated_at";
+  "id, enforcement_enabled, payment_status, amount_due, currency, billing_interval, service_period_start, service_period_end, payment_due_at, grace_period_ends_at, bank_name, account_title, account_number, iban, payment_reference, payment_instructions, support_email, support_phone, notice_title, notice_message, updated_by, updated_at";
 
 export type ServicePaymentStatus = "pending" | "paid" | "waived";
 
@@ -24,6 +24,7 @@ export interface ServiceBillingSettings {
   support_phone: string | null;
   notice_title: string;
   notice_message: string;
+  updated_by: string | null;
   updated_at: string;
 }
 

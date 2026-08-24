@@ -6,10 +6,13 @@ import {
   Clock3,
   Landmark,
   ShieldCheck,
+  Settings,
 } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getServiceBillingSettings } from "@/lib/billing";
 import { isAdminDashboardRestricted } from "@/lib/billing-policy";
 import { getCurrentUser } from "@/lib/dal";
@@ -119,24 +122,38 @@ export default async function ServiceBillingPage() {
             Transparent maintenance agreement, payment schedule, and payment instructions.
           </p>
         </div>
-        <span
-          className={cn(
-            "inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold",
-            isRestricted
-              ? "bg-destructive/10 text-destructive"
-              : isPaid
-                ? "bg-success/10 text-success"
-                : "bg-warning/15 text-warning-foreground"
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold",
+              isRestricted
+                ? "bg-destructive/10 text-destructive"
+                : isPaid
+                  ? "bg-success/10 text-success"
+                  : "bg-warning/15 text-warning-foreground"
+            )}
+          >
+            {statusLabel}
+          </span>
+          {user.is_super_admin && (
+            <Link
+              href="/super-admin"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Settings aria-hidden="true" />
+              Manage billing
+            </Link>
           )}
-        >
-          {statusLabel}
-        </span>
+        </div>
       </header>
 
       <Card className={cn(isRestricted && "ring-destructive/30")}>
         <CardContent className="flex items-start gap-3 py-2">
           {isRestricted ? (
-            <AlertTriangle className="text-destructive mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <AlertTriangle
+              className="text-destructive mt-0.5 h-5 w-5 shrink-0"
+              aria-hidden="true"
+            />
           ) : isPaid ? (
             <CheckCircle2 className="text-success mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           ) : (
@@ -144,13 +161,13 @@ export default async function ServiceBillingPage() {
           )}
           <div>
             <p className="font-semibold">{settings.notice_title}</p>
-            <p className="text-muted-foreground mt-1 whitespace-pre-line text-sm">
+            <p className="text-muted-foreground mt-1 text-sm whitespace-pre-line">
               {settings.notice_message}
             </p>
             {isRestricted && (
               <p className="text-destructive mt-3 text-sm font-medium">
-                Student and instructor learning remains available. The administrative dashboard
-                will reopen after payment is confirmed in Supabase.
+                Student and instructor learning remains available. The administrative dashboard will
+                reopen after payment is confirmed in Supabase.
               </p>
             )}
           </div>
@@ -213,7 +230,7 @@ export default async function ServiceBillingPage() {
                   <Banknote className="h-4 w-4" aria-hidden="true" />
                   Additional instructions
                 </p>
-                <p className="text-muted-foreground mt-2 whitespace-pre-line text-sm">
+                <p className="text-muted-foreground mt-2 text-sm whitespace-pre-line">
                   {settings.payment_instructions}
                 </p>
               </div>
@@ -236,8 +253,10 @@ export default async function ServiceBillingPage() {
             <span className="font-medium">{settings.support_phone || "Not specified"}</span>
           </p>
           <p className="text-muted-foreground border-t pt-3">
-            This information is read-only in the LMS. Authorized project owners maintain it through
-            the Supabase Dashboard. Last updated {formatDate(settings.updated_at)}.
+            {user.is_super_admin
+              ? "You can update these details from the protected Super Admin Dashboard."
+              : "Only a designated super administrator can update these details."}{" "}
+            Last updated {formatDate(settings.updated_at)}.
           </p>
         </CardContent>
       </Card>

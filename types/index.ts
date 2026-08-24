@@ -306,6 +306,7 @@ export interface UserDetailData {
     email: string;
     full_name: string;
     role: UserRole;
+    is_super_admin: boolean;
     avatar_url: string | null;
     is_paused: boolean;
     is_approved: boolean;

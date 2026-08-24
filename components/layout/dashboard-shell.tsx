@@ -12,11 +12,14 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, role, user, notifications }: DashboardShellProps) {
   return (
-    <div className="min-h-screen bg-surface-sunken">
-      <DashboardNavbar role={role} user={user} notifications={notifications ?? []} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {children}
-      </main>
+    <div className="bg-surface-sunken min-h-screen">
+      <DashboardNavbar
+        role={role}
+        user={user}
+        isSuperAdmin={user.is_super_admin}
+        notifications={notifications ?? []}
+      />
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }

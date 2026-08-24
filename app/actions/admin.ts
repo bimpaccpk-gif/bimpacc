@@ -268,6 +268,12 @@ export async function getUserDetail(
     return { data: null, error: userError?.message ?? "User not found." };
   }
 
+  const { data: superAdmin } = await supabase
+    .from("super_admins")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
   // Generate signed URLs for documents
   const [cnic_url, degree_url, fee_receipt_url, avatar_file_url] = await Promise.all([
     getSignedUrl(supabase, user.cnic_file_path),
@@ -386,7 +392,9 @@ export async function getUserDetail(
   // Fetch login history
   const { data: loginHistoryData } = await admin
     .from("login_history")
-    .select("id, email, status, device_fingerprint, hardware_fingerprint, device_components, user_agent, created_at")
+    .select(
+      "id, email, status, device_fingerprint, hardware_fingerprint, device_components, user_agent, created_at"
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -410,6 +418,7 @@ export async function getUserDetail(
         email: user.email,
         full_name: user.full_name,
         role: user.role,
+        is_super_admin: Boolean(superAdmin),
         avatar_url: user.avatar_url,
         is_paused: user.is_paused ?? false,
         is_approved: user.is_approved,

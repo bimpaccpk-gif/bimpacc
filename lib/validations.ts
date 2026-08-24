@@ -150,7 +150,12 @@ export const onboardingSchema = z.object({
 
 export const updateStudentProfileSchema = z.object({
   userId: z.string().uuid("Invalid user ID"),
-  full_name: z.string().min(2, "Full name must be at least 2 characters").max(100).trim().optional(),
+  full_name: z
+    .string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100)
+    .trim()
+    .optional(),
   email: z.string().email("Invalid email address").optional(),
   father_name: z.string().max(100).trim().optional().or(z.literal("")),
   cnic_number: z.string().max(20).trim().optional().or(z.literal("")),
@@ -217,6 +222,124 @@ export const markAttendanceSchema = z.object({
 export const deleteAttendanceSchema = z.object({
   recordId: z.string().uuid("Invalid record ID"),
 });
+
+// ─── Service Billing ──────────────────────────────────────
+
+const nullableText = (maximum: number) =>
+  z
+    .string()
+    .trim()
+    .max(maximum, `Must be ${maximum} characters or fewer`)
+    .transform((value) => value || null);
+
+const nullableDate = z
+  .string()
+  .trim()
+  .refine((value) => {
+    if (value === "") return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+  }, "Invalid date")
+  .transform((value) => value || null);
+
+const nullableDateTime = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      value === "" ||
+      (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) &&
+        Number.isFinite(Date.parse(`${value}:00+05:00`))),
+    "Invalid date and time"
+  )
+  .transform((value) => value || null);
+
+const nullableAmount = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? null : value),
+  z.coerce
+    .number()
+    .finite("Amount must be a valid number")
+    .nonnegative("Amount cannot be negative")
+    .nullable()
+);
+
+export const serviceBillingSettingsSchema = z
+  .object({
+    enforcementEnabled: z.boolean(),
+    paymentStatus: z.enum(["pending", "paid", "waived"]),
+    amountDue: nullableAmount,
+    currency: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{3}$/, "Currency must be a three-letter code such as PKR"),
+    billingInterval: z.enum(["monthly", "quarterly", "yearly", "custom"]),
+    servicePeriodStart: nullableDate,
+    servicePeriodEnd: nullableDate,
+    paymentDueAt: nullableDateTime,
+    gracePeriodEndsAt: nullableDateTime,
+    bankName: nullableText(150),
+    accountTitle: nullableText(150),
+    accountNumber: nullableText(100),
+    iban: nullableText(100),
+    paymentReference: nullableText(150),
+    paymentInstructions: nullableText(2000),
+    supportEmail: z
+      .string()
+      .trim()
+      .max(320)
+      .refine(
+        (value) => value === "" || z.string().email().safeParse(value).success,
+        "Invalid support email"
+      )
+      .transform((value) => value || null),
+    supportPhone: nullableText(50),
+    noticeTitle: z.string().trim().min(1, "Notice title is required").max(200),
+    noticeMessage: z.string().trim().min(1, "Notice message is required").max(3000),
+    confirmEnforcement: z.boolean(),
+  })
+  .superRefine((data, context) => {
+    if (
+      data.servicePeriodStart &&
+      data.servicePeriodEnd &&
+      data.servicePeriodEnd < data.servicePeriodStart
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["servicePeriodEnd"],
+        message: "Service period end must be on or after its start date",
+      });
+    }
+
+    if (data.paymentDueAt && data.gracePeriodEndsAt && data.gracePeriodEndsAt < data.paymentDueAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["gracePeriodEndsAt"],
+        message: "Grace period must end on or after the payment due time",
+      });
+    }
+
+    if (data.enforcementEnabled && data.paymentStatus === "pending") {
+      if (!data.paymentDueAt || !data.gracePeriodEndsAt) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["gracePeriodEndsAt"],
+          message: "A due time and grace-period end are required before enforcement can be enabled",
+        });
+      }
+
+      if (!data.confirmEnforcement) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["confirmEnforcement"],
+          message:
+            "Confirm that the disclosed grace period may limit normal admin dashboard access",
+        });
+      }
+    }
+  });
 
 // ─── Helper ────────────────────────────────────────────────
 

@@ -11,8 +11,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(user.role === "instructor" ? "/instructor" : "/student");
   }
 
-  const billingSettings = await getServiceBillingSettings();
+  if (user.is_super_admin) {
+    return children;
+  }
 
+  const billingSettings = await getServiceBillingSettings();
   if (isAdminDashboardRestricted(billingSettings)) {
     redirect("/billing");
   }

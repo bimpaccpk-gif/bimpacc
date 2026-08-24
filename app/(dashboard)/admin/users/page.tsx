@@ -14,6 +14,7 @@ interface UserRow {
   onboarding_completed: boolean;
   onboarding_bypassed: boolean;
   is_approved: boolean;
+  is_super_admin: boolean;
   created_at: string;
 }
 
@@ -37,19 +38,26 @@ interface EnrollmentRow {
 async function getAllUsers(): Promise<UserRow[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("users")
-    .select(
-      "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, created_at"
-    )
-    .order("created_at", { ascending: false });
+  const [{ data, error }, { data: superAdmins }] = await Promise.all([
+    supabase
+      .from("users")
+      .select(
+        "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, created_at"
+      )
+      .order("created_at", { ascending: false }),
+    supabase.from("super_admins").select("user_id"),
+  ]);
 
   if (error) {
     console.error("Error fetching users:", error);
     return [];
   }
 
-  return data ?? [];
+  const superAdminIds = new Set((superAdmins ?? []).map((row) => row.user_id));
+  return (data ?? []).map((user) => ({
+    ...user,
+    is_super_admin: superAdminIds.has(user.id),
+  }));
 }
 
 async function getAllCourses(): Promise<CourseRow[]> {
@@ -81,7 +89,13 @@ async function getAllEnrollments(): Promise<EnrollmentRow[]> {
       return [];
     }
 
-    return (data ?? []).map((row: any) => ({
+    const rows = (data ?? []) as Array<{
+      user_id: string;
+      course_id: string;
+      courses: EnrollmentRow["courses"] | EnrollmentRow["courses"][];
+    }>;
+
+    return rows.map((row) => ({
       user_id: row.user_id,
       course_id: row.course_id,
       courses: Array.isArray(row.courses) ? (row.courses[0] ?? null) : row.courses,

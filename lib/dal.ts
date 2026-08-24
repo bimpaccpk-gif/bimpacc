@@ -16,6 +16,7 @@ export interface SessionUser {
   is_approved: boolean;
   is_paused: boolean;
   selected_course_id: string | null;
+  is_super_admin: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -59,19 +60,25 @@ export const getCurrentUser = cache(async (): Promise<SessionUser> => {
 
   const supabase = await createClient();
 
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select(
-      "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, is_paused, selected_course_id, created_at, updated_at"
-    )
-    .eq("id", session.userId)
-    .single();
+  const [{ data: profile, error }, { data: superAdmin }] = await Promise.all([
+    supabase
+      .from("users")
+      .select(
+        "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, is_paused, selected_course_id, created_at, updated_at"
+      )
+      .eq("id", session.userId)
+      .single(),
+    supabase.from("super_admins").select("user_id").eq("user_id", session.userId).maybeSingle(),
+  ]);
 
   if (error || !profile) {
     redirect("/login");
   }
 
-  return profile as SessionUser;
+  return {
+    ...profile,
+    is_super_admin: profile.role === "admin" && Boolean(superAdmin),
+  } as SessionUser;
 });
 
 export const getFullUserProfile = cache(async (): Promise<FullUserProfile> => {
@@ -79,17 +86,19 @@ export const getFullUserProfile = cache(async (): Promise<FullUserProfile> => {
 
   const supabase = await createClient();
 
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", session.userId)
-    .single();
+  const [{ data: profile, error }, { data: superAdmin }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", session.userId).single(),
+    supabase.from("super_admins").select("user_id").eq("user_id", session.userId).maybeSingle(),
+  ]);
 
   if (error || !profile) {
     redirect("/login");
   }
 
-  return profile as FullUserProfile;
+  return {
+    ...profile,
+    is_super_admin: profile.role === "admin" && Boolean(superAdmin),
+  } as FullUserProfile;
 });
 
 /**
@@ -152,6 +161,17 @@ export const verifyAdmin = cache(async (): Promise<{ userId: string; role: UserR
   }
 
   return { userId: session.userId, role: profile.role as UserRole };
+});
+
+/** Verify the current user has the explicit super-admin capability. */
+export const verifySuperAdmin = cache(async (): Promise<{ userId: string; role: "admin" }> => {
+  const user = await getCurrentUser();
+
+  if (user.role !== "admin" || !user.is_super_admin) {
+    throw new Error("Unauthorized. Super admin access required.");
+  }
+
+  return { userId: user.id, role: "admin" };
 });
 
 /**
@@ -343,9 +363,7 @@ export const resolveSubjectAccess = cache(
       .single();
 
     const subjectPaused =
-      subjectOverride !== undefined
-        ? subjectOverride
-        : ((subject as any)?.is_paused ?? false);
+      subjectOverride !== undefined ? subjectOverride : ((subject as any)?.is_paused ?? false);
     if (subjectPaused) {
       return { isPaused: true, blockedAt: "subject" };
     }
@@ -360,9 +378,7 @@ export const resolveSubjectAccess = cache(
         .single();
 
       const semesterPaused =
-        semesterOverride !== undefined
-          ? semesterOverride
-          : ((semester as any)?.is_paused ?? false);
+        semesterOverride !== undefined ? semesterOverride : ((semester as any)?.is_paused ?? false);
       if (semesterPaused) {
         return { isPaused: true, blockedAt: "semester" };
       }

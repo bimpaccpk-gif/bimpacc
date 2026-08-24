@@ -6,7 +6,14 @@ import {
   type ServiceBillingSettings,
 } from "@/lib/billing-policy";
 
-const protectedRoutes = ["/admin", "/instructor", "/student", "/courses", "/billing"];
+const protectedRoutes = [
+  "/super-admin",
+  "/admin",
+  "/instructor",
+  "/student",
+  "/courses",
+  "/billing",
+];
 const authRoutes = ["/login", "/register"];
 
 const DASHBOARD_MAP: Record<string, string> = {
@@ -52,9 +59,7 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   // Unauthenticated users on protected routes → login
@@ -70,12 +75,14 @@ export async function proxy(request: NextRequest) {
   //   - all protected routes (to check account pause)
   const needsRoleCheck =
     (isAuthRoute && !!user) ||
+    pathname.startsWith("/super-admin") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/instructor") ||
     (isProtectedRoute && !!user);
 
   let role: string | null = null;
   let isPaused = false;
+  let isSuperAdmin = false;
 
   if (needsRoleCheck) {
     const { data: profile } = await supabase
@@ -87,6 +94,15 @@ export async function proxy(request: NextRequest) {
     role = profile?.role ?? null;
     isPaused = profile?.is_paused ?? false;
 
+    if (role === "admin") {
+      const { data: capability } = await supabase
+        .from("super_admins")
+        .select("user_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      isSuperAdmin = Boolean(capability);
+    }
+
     // Account pause/ban check — redirect paused users away from protected routes
     if (isPaused && !isAuthRoute) {
       return NextResponse.redirect(new URL("/login?error=account_paused", request.url));
@@ -95,8 +111,15 @@ export async function proxy(request: NextRequest) {
 
   // Authenticated users on auth routes → their role-specific dashboard
   if (isAuthRoute && user) {
-    const dashboard = DASHBOARD_MAP[role ?? ""] ?? "/student";
+    const dashboard = isSuperAdmin ? "/super-admin" : (DASHBOARD_MAP[role ?? ""] ?? "/student");
     return NextResponse.redirect(new URL(dashboard, request.url));
+  }
+
+  // Optimistic route check; the super-admin layout and billing RLS repeat this
+  // authorization at the data boundary.
+  if (pathname.startsWith("/super-admin") && !isSuperAdmin) {
+    const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
+    return NextResponse.redirect(new URL(fallback, request.url));
   }
 
   // /admin routes → admin only
@@ -108,7 +131,7 @@ export async function proxy(request: NextRequest) {
   // Transparent service-billing gate. This is deliberately fail-open: the
   // admin dashboard is restricted only when a valid, explicitly enabled row
   // says the disclosed grace period has ended.
-  if (pathname.startsWith("/admin") && role === "admin") {
+  if (pathname.startsWith("/admin") && role === "admin" && !isSuperAdmin) {
     const { data: billingSettings } = await supabase
       .from("service_billing_settings")
       .select(SERVICE_BILLING_SETTINGS_COLUMNS)
@@ -121,11 +144,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // /instructor routes → admin or instructor
-  if (
-    pathname.startsWith("/instructor") &&
-    role !== "admin" &&
-    role !== "instructor"
-  ) {
+  if (pathname.startsWith("/instructor") && role !== "admin" && role !== "instructor") {
     const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
     return NextResponse.redirect(new URL(fallback, request.url));
   }
@@ -134,7 +153,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

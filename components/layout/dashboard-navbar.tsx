@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { APP_NAME, DASHBOARD_SIDEBAR_LINKS } from "@/lib/constants";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -32,19 +31,23 @@ interface NavbarUser {
 interface DashboardNavbarProps {
   role: UserRole;
   user: NavbarUser;
+  isSuperAdmin: boolean;
   notifications: Notification[];
 }
 
-export function DashboardNavbar({ role, user, notifications }: DashboardNavbarProps) {
+export function DashboardNavbar({ role, user, isSuperAdmin, notifications }: DashboardNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const links = useMemo(
-    () => DASHBOARD_SIDEBAR_LINKS[role] || DASHBOARD_SIDEBAR_LINKS.student,
-    [role]
+    () =>
+      isSuperAdmin
+        ? DASHBOARD_SIDEBAR_LINKS.superAdmin
+        : DASHBOARD_SIDEBAR_LINKS[role] || DASHBOARD_SIDEBAR_LINKS.student,
+    [isSuperAdmin, role]
   );
 
-  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+  const roleLabel = isSuperAdmin ? "Super Admin" : role.charAt(0).toUpperCase() + role.slice(1);
   const initials = user.full_name
     ? user.full_name
         .split(" ")
@@ -52,20 +55,18 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : user.email[0]?.toUpperCase() ?? "U";
-
-  const normalizedNotifications = notifications;
+    : (user.email[0]?.toUpperCase() ?? "U");
 
   return (
-    <nav className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <nav className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-30 w-full border-b backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left: Logo + Nav Links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
+            <div className="bg-primary text-primary-foreground flex h-8 w-8 items-center justify-center rounded-lg font-bold">
               B
             </div>
-            <span className="hidden text-lg font-semibold text-foreground sm:block">
+            <span className="text-foreground hidden text-lg font-semibold sm:block">
               {APP_NAME}
             </span>
           </Link>
@@ -98,19 +99,20 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
           <NotificationBell notifications={notifications} />
 
           <DropdownMenu>
-            <DropdownMenuTrigger aria-label="User menu" className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted outline-none">
+            <DropdownMenuTrigger
+              aria-label="User menu"
+              className="hover:bg-muted flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors outline-none"
+            >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-sm font-medium">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden flex-col items-start text-left sm:flex">
-                <span className="text-sm font-medium">
-                  {user.full_name || "User"}
-                </span>
-                <span className="text-xs text-muted-foreground">{roleLabel}</span>
+                <span className="text-sm font-medium">{user.full_name || "User"}</span>
+                <span className="text-muted-foreground text-xs">{roleLabel}</span>
               </span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuGroup>
@@ -122,10 +124,7 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
                 Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => signOut()}
-              >
+              <DropdownMenuItem variant="destructive" onClick={() => signOut()}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -138,13 +137,13 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
           <ThemeToggle />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted"
+            className="hover:bg-muted inline-flex h-9 w-9 items-center justify-center rounded-lg"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? (
-              <X className="h-5 w-5 text-foreground/80" />
+              <X className="text-foreground/80 h-5 w-5" />
             ) : (
-              <Menu className="h-5 w-5 text-foreground/80" />
+              <Menu className="text-foreground/80 h-5 w-5" />
             )}
           </button>
         </div>
@@ -152,7 +151,7 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="border-t bg-background px-4 py-3 lg:hidden">
+        <div className="bg-background border-t px-4 py-3 lg:hidden">
           <div className="flex flex-col gap-1">
             {links.map((link) => {
               const isActive = pathname === link.href;
@@ -172,17 +171,17 @@ export function DashboardNavbar({ role, user, notifications }: DashboardNavbarPr
                 </Link>
               );
             })}
-            <hr className="my-2 border-border" />
+            <hr className="border-border my-2" />
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg px-3 py-2.5 text-sm font-medium"
             >
               Back to Site
             </Link>
             <button
               onClick={() => signOut()}
-              className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-destructive hover:bg-destructive/10"
+              className="text-destructive hover:bg-destructive/10 rounded-lg px-3 py-2.5 text-left text-sm font-medium"
             >
               Sign Out
             </button>
