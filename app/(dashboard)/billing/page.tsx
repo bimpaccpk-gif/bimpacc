@@ -253,10 +253,8 @@ export default async function ServiceBillingPage() {
             <span className="font-medium">{settings.support_phone || "Not specified"}</span>
           </p>
           <p className="text-muted-foreground border-t pt-3">
-            {user.is_super_admin
-              ? "You can update these details from the protected Super Admin Dashboard."
-              : "Only a designated super administrator can update these details."}{" "}
-            Last updated {formatDate(settings.updated_at)}.
+            These details are read-only on this page. Last updated {formatDate(settings.updated_at)}
+            .
           </p>
         </CardContent>
       </Card>
