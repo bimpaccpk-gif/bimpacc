@@ -6,6 +6,7 @@ export const DASHBOARD_SIDEBAR_LINKS = {
     { href: "/admin", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/admin/courses", label: "Courses", icon: "BookOpen" },
     { href: "/admin/users", label: "Users", icon: "Users" },
+    { href: "/billing", label: "Service Billing", icon: "ReceiptText" },
   ],
   instructor: [
     { href: "/instructor", label: "Dashboard", icon: "LayoutDashboard" },

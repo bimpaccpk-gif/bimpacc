@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  SERVICE_BILLING_SETTINGS_COLUMNS,
+  isAdminDashboardRestricted,
+  type ServiceBillingSettings,
+} from "@/lib/billing-policy";
 
-const protectedRoutes = ["/admin", "/instructor", "/student", "/courses"];
+const protectedRoutes = ["/admin", "/instructor", "/student", "/courses", "/billing"];
 const authRoutes = ["/login", "/register"];
 
 const DASHBOARD_MAP: Record<string, string> = {
@@ -98,6 +103,21 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/admin") && role !== "admin") {
     const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
     return NextResponse.redirect(new URL(fallback, request.url));
+  }
+
+  // Transparent service-billing gate. This is deliberately fail-open: the
+  // admin dashboard is restricted only when a valid, explicitly enabled row
+  // says the disclosed grace period has ended.
+  if (pathname.startsWith("/admin") && role === "admin") {
+    const { data: billingSettings } = await supabase
+      .from("service_billing_settings")
+      .select(SERVICE_BILLING_SETTINGS_COLUMNS)
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (isAdminDashboardRestricted(billingSettings as ServiceBillingSettings | null)) {
+      return NextResponse.redirect(new URL("/billing", request.url));
+    }
   }
 
   // /instructor routes → admin or instructor

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 interface VideoWatermarkProps {
   fullName: string;
@@ -10,48 +10,78 @@ interface VideoWatermarkProps {
 
 export function VideoWatermark({ fullName, email, cnicNumber }: VideoWatermarkProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef({ x: 50, y: 50 });
-  const velRef = useRef({ vx: 0.6, vy: 0.4 });
-  const rafRef = useRef<number>(0);
+  const posRef = useRef({ x: 0, y: 0 });
+  const velRef = useRef({ vx: 0, vy: 0 });
 
-  const animate = useCallback(() => {
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const parent = container.parentElement;
     if (!parent) return;
 
-    const pw = parent.clientWidth;
-    const ph = parent.clientHeight;
-    const cw = container.offsetWidth;
-    const ch = container.offsetHeight;
+    const initialParentWidth = parent.clientWidth;
+    const initialParentHeight = parent.clientHeight;
+    const initialContainerWidth = container.offsetWidth;
+    const initialContainerHeight = container.offsetHeight;
+    const maxInitialX = Math.max(0, initialParentWidth - initialContainerWidth);
+    const maxInitialY = Math.max(0, initialParentHeight - initialContainerHeight);
+    const direction = Math.random() * Math.PI * 2;
+    const speed = 0.5 + Math.random() * 0.4;
 
-    let { x, y } = posRef.current;
-    let { vx, vy } = velRef.current;
+    posRef.current = {
+      x: Math.random() * maxInitialX,
+      y: Math.random() * maxInitialY,
+    };
+    velRef.current = {
+      vx: Math.cos(direction) * speed,
+      vy: Math.sin(direction) * speed,
+    };
 
-    x += vx;
-    y += vy;
+    container.style.transform = `translate(${posRef.current.x}px, ${posRef.current.y}px)`;
+    container.style.opacity = "1";
 
-    if (x <= 0 || x + cw >= pw) {
-      vx = -vx;
-      x = Math.max(0, Math.min(x, pw - cw));
+    let animationFrame = 0;
+
+    function animate() {
+      const currentContainer = containerRef.current;
+      if (!currentContainer) return;
+
+      const currentParent = currentContainer.parentElement;
+      if (!currentParent) return;
+
+      // Read layout first, then update styles once to avoid layout thrashing.
+      const pw = currentParent.clientWidth;
+      const ph = currentParent.clientHeight;
+      const cw = currentContainer.offsetWidth;
+      const ch = currentContainer.offsetHeight;
+
+      let { x, y } = posRef.current;
+      let { vx, vy } = velRef.current;
+
+      x += vx;
+      y += vy;
+
+      if (x <= 0 || x + cw >= pw) {
+        vx = -vx;
+        x = Math.max(0, Math.min(x, pw - cw));
+      }
+      if (y <= 0 || y + ch >= ph) {
+        vy = -vy;
+        y = Math.max(0, Math.min(y, ph - ch));
+      }
+
+      posRef.current = { x, y };
+      velRef.current = { vx, vy };
+
+      currentContainer.style.transform = `translate(${x}px, ${y}px)`;
+      animationFrame = requestAnimationFrame(animate);
     }
-    if (y <= 0 || y + ch >= ph) {
-      vy = -vy;
-      y = Math.max(0, Math.min(y, ph - ch));
-    }
 
-    posRef.current = { x, y };
-    velRef.current = { vx, vy };
+    animationFrame = requestAnimationFrame(animate);
 
-    container.style.transform = `translate(${x}px, ${y}px)`;
-    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
   }, []);
-
-  useEffect(() => {
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [animate]);
 
   const cnicDisplay = cnicNumber ? `CNIC: ${cnicNumber}` : "";
 
@@ -59,7 +89,7 @@ export function VideoWatermark({ fullName, email, cnicNumber }: VideoWatermarkPr
     <div
       ref={containerRef}
       className="pointer-events-none absolute top-0 left-0 z-30 select-none whitespace-nowrap"
-      style={{ willChange: "transform" }}
+      style={{ opacity: 0, willChange: "transform" }}
     >
       <div
         className="flex flex-col gap-0.5 rounded-md px-3 py-1.5 text-[11px] font-semibold text-red-500 sm:text-xs"
