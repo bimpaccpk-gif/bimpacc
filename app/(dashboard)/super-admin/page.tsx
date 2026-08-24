@@ -1,11 +1,9 @@
-import { Banknote, CalendarClock, History, ShieldCheck } from "lucide-react";
+import { History, Settings2, ShieldCheck } from "lucide-react";
 
 import { AdminAccessControl } from "@/components/super-admin/admin-access-control";
 import { BillingSettingsForm } from "@/components/super-admin/billing-settings-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServiceBillingAuditLog, getServiceBillingSettings } from "@/lib/billing";
 import { getAdminDashboardAccessState } from "@/lib/billing-policy";
-import { getCurrentUser } from "@/lib/dal";
 
 const AUDIT_IGNORED_FIELDS = new Set(["id", "updated_at", "updated_by"]);
 
@@ -51,8 +49,7 @@ function changedFieldLabels(
 }
 
 export default async function SuperAdminDashboardPage() {
-  const [user, settings, auditLog] = await Promise.all([
-    getCurrentUser(),
+  const [settings, auditLog] = await Promise.all([
     getServiceBillingSettings(),
     getServiceBillingAuditLog(),
   ]);
@@ -66,51 +63,9 @@ export default async function SuperAdminDashboardPage() {
           <h1 className="text-2xl font-bold">Super Admin Dashboard</h1>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Protected billing controls for {user.full_name || user.email}. Super-admin assignments
-          remain managed in Supabase, while billing details are controlled here.
+          Control normal admin access and service billing.
         </p>
       </header>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">Capability</CardTitle>
-            <ShieldCheck className="text-primary h-5 w-5" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold">Super admin active</p>
-            <p className="text-muted-foreground mt-1 text-xs">Verified on the server and by RLS</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">Payment</CardTitle>
-            <Banknote className="text-primary h-5 w-5" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold capitalize">
-              {settings?.payment_status ?? "Unknown"}
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Enforcement {settings?.enforcement_enabled ? "enabled" : "disabled"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Grace period
-            </CardTitle>
-            <CalendarClock className="text-primary h-5 w-5" aria-hidden="true" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-semibold">
-              {formatDateTime(settings?.grace_period_ends_at ?? null)}
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">All billing times are shown in PKT</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {settings && (
         <AdminAccessControl
@@ -121,11 +76,13 @@ export default async function SuperAdminDashboardPage() {
         />
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <details className="border-border bg-card rounded-xl border shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-5 font-semibold sm:p-6">
+          <Settings2 className="text-primary h-5 w-5" aria-hidden="true" />
+          Billing and bank details
+          <span className="text-muted-foreground ml-auto text-xs font-normal">Click to open</span>
+        </summary>
+        <div className="border-border border-t p-5 sm:p-6">
           {settings ? (
             <BillingSettingsForm
               settings={settings}
@@ -141,17 +98,18 @@ export default async function SuperAdminDashboardPage() {
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" aria-hidden="true" />
-            Billing audit history
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <details className="border-border bg-card rounded-xl border shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-5 font-semibold sm:p-6">
+          <History className="text-primary h-5 w-5" aria-hidden="true" />
+          Activity history
+          <span className="text-muted-foreground ml-auto text-xs font-normal">
+            {auditLog.length} updates
+          </span>
+        </summary>
+        <div className="border-border border-t p-5 sm:p-6">
           {auditLog.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               No billing updates have been recorded yet.
@@ -178,8 +136,8 @@ export default async function SuperAdminDashboardPage() {
               })}
             </ol>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </details>
     </div>
   );
 }

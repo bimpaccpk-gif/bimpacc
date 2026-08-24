@@ -3,7 +3,6 @@
 import { useActionState, useEffect } from "react";
 import {
   AlertCircle,
-  CalendarClock,
   CheckCircle2,
   CircleDollarSign,
   Loader2,
@@ -13,9 +12,8 @@ import {
 import { useRouter } from "next/navigation";
 
 import { setAdminDashboardAccess, type BillingActionState } from "@/app/actions/billing";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AdminDashboardAccessState, ServicePaymentStatus } from "@/lib/billing-policy";
 import { cn } from "@/lib/utils";
 
@@ -28,22 +26,23 @@ interface AdminAccessControlProps {
 
 const initialState: BillingActionState = { error: "", success: "" };
 
-const ACCESS_COPY: Record<AdminDashboardAccessState, { label: string; description: string }> = {
+const STATUS = {
   locked: {
-    label: "Normal admin access is locked",
-    description:
-      "Normal administrators are redirected to the billing summary. Student and instructor learning remains available.",
+    label: "LOCKED",
+    description: "Normal admins cannot open their dashboards.",
+    className: "border-destructive/30 bg-destructive/5 text-destructive",
   },
   scheduled: {
-    label: "Admin lock is scheduled",
-    description:
-      "Normal administrators can still work until the disclosed grace period ends. Access will then be restricted automatically.",
+    label: "LOCK SCHEDULED",
+    description: "Admin access is open until the grace period ends.",
+    className: "border-warning/30 bg-warning/5 text-warning",
   },
   unlocked: {
-    label: "Normal admin access is unlocked",
-    description: "Normal administrators can open and use their dashboards.",
+    label: "UNLOCKED",
+    description: "Normal admins can use their dashboards.",
+    className: "border-success/30 bg-success/5 text-success",
   },
-};
+} as const;
 
 export function AdminAccessControl({
   accessState,
@@ -53,120 +52,116 @@ export function AdminAccessControl({
 }: AdminAccessControlProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(setAdminDashboardAccess, initialState);
-  const copy = ACCESS_COPY[accessState];
+  const status = STATUS[accessState];
 
   useEffect(() => {
     if (state.success) router.refresh();
   }, [router, state.success]);
 
   return (
-    <Card
-      className={cn(
-        accessState === "locked" && "border-destructive/40",
-        accessState === "scheduled" && "border-warning/40"
-      )}
-    >
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          {accessState === "locked" ? (
-            <LockKeyhole className="text-destructive h-5 w-5" aria-hidden="true" />
-          ) : accessState === "scheduled" ? (
-            <CalendarClock className="text-warning h-5 w-5" aria-hidden="true" />
-          ) : (
-            <LockOpen className="text-success h-5 w-5" aria-hidden="true" />
-          )}
-          Admin dashboard access
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <section className="border-border bg-card rounded-xl border p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-semibold">{copy.label}</p>
-          <p className="text-muted-foreground mt-1 text-sm">{copy.description}</p>
-          <p className="text-muted-foreground mt-2 text-xs">
-            Payment: <span className="text-foreground capitalize">{paymentStatus}</span>
-            {enforcementEnabled && <> · Grace period ends: {gracePeriodEndsLabel}</>}
+          <p className="text-muted-foreground text-sm font-medium">Admin dashboard</p>
+          <div
+            className={cn(
+              "mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-bold",
+              status.className
+            )}
+          >
+            {accessState === "locked" ? (
+              <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <LockOpen className="h-4 w-4" aria-hidden="true" />
+            )}
+            {status.label}
+          </div>
+          <p className="text-muted-foreground mt-2 text-sm">{status.description}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Billing lock date: {gracePeriodEndsLabel}
           </p>
         </div>
 
-        {state.error && (
-          <Alert variant="destructive" aria-live="polite">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Access was not changed</AlertTitle>
-            <AlertDescription>{state.error}</AlertDescription>
-          </Alert>
-        )}
+        <div className="bg-muted/50 rounded-lg px-4 py-3 text-sm">
+          Payment: <span className="font-semibold capitalize">{paymentStatus}</span>
+        </div>
+      </div>
 
-        {state.success && (
-          <Alert className="border-success/30 bg-success/5 text-success" aria-live="polite">
-            <CheckCircle2 aria-hidden="true" />
-            <AlertTitle>Admin access updated</AlertTitle>
-            <AlertDescription className="text-success/90">{state.success}</AlertDescription>
-          </Alert>
-        )}
+      {state.error && (
+        <Alert variant="destructive" className="mt-5" aria-live="polite">
+          <AlertCircle aria-hidden="true" />
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      )}
 
-        <form action={formAction} className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Button
-              type="submit"
-              name="accessMode"
-              value="mark_paid_unlock"
-              disabled={pending || (paymentStatus === "paid" && !enforcementEnabled)}
-              className="gap-2"
-            >
-              {pending ? (
-                <Loader2 className="animate-spin" aria-hidden="true" />
-              ) : (
-                <CircleDollarSign aria-hidden="true" />
-              )}
-              Mark paid and unlock
-            </Button>
-            <Button
-              type="submit"
-              name="accessMode"
-              value="unlock"
-              variant="outline"
-              disabled={pending || !enforcementEnabled}
-              className="gap-2"
-            >
-              <LockOpen aria-hidden="true" />
-              Unlock without marking paid
-            </Button>
-            <Button
-              type="submit"
-              name="accessMode"
-              value="enforce"
-              variant="destructive"
-              disabled={pending || enforcementEnabled}
-              className="gap-2"
-            >
-              <LockKeyhole aria-hidden="true" />
-              Enable billing enforcement
-            </Button>
-          </div>
+      {state.success && (
+        <Alert className="border-success/30 bg-success/5 text-success mt-5" aria-live="polite">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertDescription className="text-success/90">{state.success}</AlertDescription>
+        </Alert>
+      )}
 
-          <label className="text-muted-foreground flex items-start gap-3 text-xs leading-relaxed">
+      <form action={formAction} className="border-border mt-6 space-y-4 border-t pt-5">
+        <p className="text-sm font-semibold">Choose one action</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button
+            type="submit"
+            name="accessMode"
+            value="mark_paid_unlock"
+            disabled={pending || (paymentStatus === "paid" && !enforcementEnabled)}
+            size="lg"
+            className="gap-2"
+          >
+            {pending ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <CircleDollarSign aria-hidden="true" />
+            )}
+            Paid — Unlock Admin
+          </Button>
+
+          <Button
+            type="submit"
+            name="accessMode"
+            value="enforce"
+            variant="destructive"
+            size="lg"
+            disabled={pending || enforcementEnabled}
+            className="gap-2"
+          >
+            <LockKeyhole aria-hidden="true" />
+            Enable Billing Lock
+          </Button>
+        </div>
+
+        {!enforcementEnabled && (
+          <label className="text-muted-foreground flex items-start gap-3 text-xs">
             <input
               type="checkbox"
               name="confirmAccessEnforcement"
               className="accent-primary mt-0.5 h-4 w-4 shrink-0"
             />
-            <span>
-              I confirm that enabling enforcement may lock normal administrators when payment is
-              pending and the disclosed grace deadline has passed. Super-admin, student, and
-              instructor access remains available.
-            </span>
+            <span>I confirm the billing lock date shown in Billing Details below.</span>
           </label>
-        </form>
+        )}
+      </form>
 
-        <div className="bg-muted/50 rounded-lg p-4 text-sm">
-          <p className="font-semibold">When the owner pays</p>
-          <p className="text-muted-foreground mt-1">
-            Select <span className="text-foreground font-medium">Mark paid and unlock</span>. This
-            records the payment as paid, disables enforcement, restores normal admin access
-            immediately, and writes the change to the billing audit history.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+      {enforcementEnabled && (
+        <details className="mt-5 text-sm">
+          <summary className="text-muted-foreground cursor-pointer">Temporary unlock</summary>
+          <form action={formAction} className="mt-3">
+            <Button
+              type="submit"
+              name="accessMode"
+              value="unlock"
+              variant="outline"
+              disabled={pending}
+            >
+              Unlock without marking paid
+            </Button>
+          </form>
+        </details>
+      )}
+    </section>
   );
 }

@@ -128,7 +128,7 @@ export async function setAdminDashboardAccess(
   const supabase = await createClient();
   const { data: settings, error: readError } = await supabase
     .from("service_billing_settings")
-    .select("id, payment_status, payment_due_at, grace_period_ends_at")
+    .select("id, payment_due_at, grace_period_ends_at")
     .eq("id", 1)
     .single();
 
@@ -140,7 +140,7 @@ export async function setAdminDashboardAccess(
   const { accessMode, confirmAccessEnforcement } = validation.data;
   let update: {
     enforcement_enabled: boolean;
-    payment_status?: "paid";
+    payment_status?: "paid" | "pending";
     updated_by: string;
   };
   let success: string;
@@ -163,13 +163,6 @@ export async function setAdminDashboardAccess(
       };
     }
 
-    if (settings.payment_status !== "pending") {
-      return {
-        error: "Set payment status to Pending and save the billing form before enforcement.",
-        success: "",
-      };
-    }
-
     const paymentDueAt = settings.payment_due_at ? Date.parse(settings.payment_due_at) : Number.NaN;
     const graceEndsAt = settings.grace_period_ends_at
       ? Date.parse(settings.grace_period_ends_at)
@@ -186,7 +179,11 @@ export async function setAdminDashboardAccess(
       };
     }
 
-    update = { enforcement_enabled: true, updated_by: session.userId };
+    update = {
+      enforcement_enabled: true,
+      payment_status: "pending",
+      updated_by: session.userId,
+    };
     success =
       graceEndsAt <= Date.now()
         ? "Billing enforcement enabled. Normal admin access is now locked."
