@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const WATERMARK_VISIBLE_DURATION_MS = 8_000;
-const WATERMARK_MIN_INTERVAL_MS = 3 * 60 * 1_000;
-const WATERMARK_MAX_INTERVAL_MS = 4 * 60 * 1_000;
+const WATERMARK_MIN_INTERVAL_MS = 2 * 60 * 1_000;
+const WATERMARK_MAX_INTERVAL_MS = 3 * 60 * 1_000;
 
 function getNextWatermarkInterval() {
   return (
