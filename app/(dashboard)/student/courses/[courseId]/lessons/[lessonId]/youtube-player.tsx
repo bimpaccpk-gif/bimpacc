@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoWatermark } from "@/components/ui/video-watermark";
+import { usePeriodicWatermark } from "@/hooks/use-periodic-watermark";
 
 // ─── YouTube IFrame API types ─────────────────────────────
 
@@ -111,6 +112,7 @@ export function YouTubeVideoPlayer({
   const [buffering, setBuffering] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState(0);
+  const isWatermarkVisible = usePeriodicWatermark(isPlaying && !!watermark, videoId);
 
   const controlsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -513,7 +515,7 @@ export function YouTubeVideoPlayer({
           />
 
           {/* Moving watermark with user identity */}
-          {watermark && isPlayerReady && (
+          {watermark && isPlayerReady && isWatermarkVisible && (
             <VideoWatermark
               fullName={watermark.fullName}
               email={watermark.email}
