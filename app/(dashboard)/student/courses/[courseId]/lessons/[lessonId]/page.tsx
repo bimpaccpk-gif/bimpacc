@@ -12,7 +12,6 @@ import { ContentPausedBanner } from "@/components/student/content-paused-banner"
 import { getQuizForLesson, getBestQuizAttempt } from "@/app/actions/quiz";
 import { getLessonComments } from "@/app/actions/lesson-comments";
 import { createClient as createStorageClient } from "@/lib/supabase/server";
-import { unstable_cache } from "next/cache";
 
 // ─── YouTube video ID extractor ───────────────────────────
 
@@ -280,14 +279,8 @@ export default async function LessonPlayerPage({
   const { courseId, lessonId } = await params;
   const user = await getCurrentUser();
   const fullProfile = await getFullUserProfile();
-  
-  const getCachedCourseInfo = unstable_cache(
-    async (cid: string) => getCourseInfo(cid),
-    [`course-info-${courseId}`],
-    { revalidate: 3600 }
-  );
-  
-  const course = await getCachedCourseInfo(courseId);
+
+  const course = await getCourseInfo(courseId);
 
   if (!course) {
     redirect("/student/courses");
@@ -307,14 +300,7 @@ export default async function LessonPlayerPage({
     );
   }
 
-  const getCachedLessonWithSiblings = unstable_cache(
-    async (cid: string, lid: string, hType: number, uid: string) => 
-      getLessonWithSiblings(cid, lid, hType, uid),
-    [`lesson-siblings-${courseId}-${lessonId}-${user.id}`],
-    { revalidate: 300 }
-  );
-
-  const { current, allLessons, completedIds } = await getCachedLessonWithSiblings(
+  const { current, allLessons, completedIds } = await getLessonWithSiblings(
     courseId,
     lessonId,
     course.hierarchy_type,
@@ -356,7 +342,10 @@ export default async function LessonPlayerPage({
     const { data: quizzes } = await admin
       .from("quizzes")
       .select("id, passing_score, lesson_id")
-      .in("lesson_id", allLessons.map((l) => l.id));
+      .in(
+        "lesson_id",
+        allLessons.map((l) => l.id)
+      );
 
     let allQuizzesPassed = true;
     for (const quiz of (quizzes as any[]) ?? []) {
@@ -385,14 +374,12 @@ export default async function LessonPlayerPage({
 
       if (!existingCert.data) {
         const certNumber = `BIMPACC-${courseId.slice(0, 8).toUpperCase()}-${user.id.slice(0, 8).toUpperCase()}`;
-        await admin
-          .from("certificates")
-          .insert({
-            user_id: user.id,
-            course_id: courseId,
-            certificate_number: certNumber,
-            issued_at: new Date().toISOString(),
-          } as never);
+        await admin.from("certificates").insert({
+          user_id: user.id,
+          course_id: courseId,
+          certificate_number: certNumber,
+          issued_at: new Date().toISOString(),
+        } as never);
       }
     }
   }

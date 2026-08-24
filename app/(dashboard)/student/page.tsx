@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import { StudentAttendanceOverview } from "@/components/student/attendance-overview";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { getCurrentUser } from "@/lib/dal";

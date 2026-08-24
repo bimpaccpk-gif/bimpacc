@@ -3,7 +3,6 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
-import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import {
   BookOpen,
@@ -24,38 +23,41 @@ import { CourseContent } from "@/components/student/course-content";
 // Type 1: Semester=Violet, Subject=Blue, Lesson=Amber
 // Type 2: Subject=Teal, Lesson=Amber
 // Type 3: Lesson=Amber
-const hierarchyDetailColors: Record<number, {
-  heroFrom: string;
-  heroVia: string;
-  heroTo: string;
-  badgeBg: string;
-  badgeText: string;
-  // Semester colors (only used in Type 1)
-  semester: {
-    numBg: string;
-    numText: string;
-    accordionBg: string;
-    accordionHoverBg: string;
-    subjectCountBg: string;
-    subjectCountText: string;
-  };
-  // Subject colors
-  subject: {
-    numBg: string;
-    numText: string;
-    accordionBg: string;
-    accordionHoverBg: string;
-    subjectCountBg: string;
-    subjectCountText: string;
-  };
-  // Lesson colors (used at all levels)
-  lesson: {
-    numBg: string;
-    numText: string;
-    lessonIcon: string;
-    lessonButton: string;
-  };
-}> = {
+const hierarchyDetailColors: Record<
+  number,
+  {
+    heroFrom: string;
+    heroVia: string;
+    heroTo: string;
+    badgeBg: string;
+    badgeText: string;
+    // Semester colors (only used in Type 1)
+    semester: {
+      numBg: string;
+      numText: string;
+      accordionBg: string;
+      accordionHoverBg: string;
+      subjectCountBg: string;
+      subjectCountText: string;
+    };
+    // Subject colors
+    subject: {
+      numBg: string;
+      numText: string;
+      accordionBg: string;
+      accordionHoverBg: string;
+      subjectCountBg: string;
+      subjectCountText: string;
+    };
+    // Lesson colors (used at all levels)
+    lesson: {
+      numBg: string;
+      numText: string;
+      lessonIcon: string;
+      lessonButton: string;
+    };
+  }
+> = {
   1: {
     heroFrom: "from-blue-500",
     heroVia: "via-blue-600",
@@ -250,7 +252,8 @@ async function getSubjectsWithLessons(
       content: l.content,
       order_index: l.order_index,
       duration_minutes: l.duration_minutes,
-      isPaused: lessonOverride !== undefined ? lessonOverride : (parentPaused || (l.is_paused ?? false)),
+      isPaused:
+        lessonOverride !== undefined ? lessonOverride : parentPaused || (l.is_paused ?? false),
     });
     lessonsBySubject.set(l.subject_id, list);
   });
@@ -330,7 +333,10 @@ async function getSemestersWithSubjectsWithLessons(
   (subjects ?? []).forEach((s: any) => {
     const override = overrideMap.get(`subject:${s.id}`);
     const parentPaused = s.semester_id ? (semesterPauseState.get(s.semester_id) ?? false) : false;
-    subjectPauseState.set(s.id, override !== undefined ? override : (parentPaused || (s.is_paused ?? false)));
+    subjectPauseState.set(
+      s.id,
+      override !== undefined ? override : parentPaused || (s.is_paused ?? false)
+    );
   });
 
   // Fetch lessons for these subjects
@@ -357,7 +363,8 @@ async function getSemestersWithSubjectsWithLessons(
         content: l.content,
         order_index: l.order_index,
         duration_minutes: l.duration_minutes,
-        isPaused: lessonOverride !== undefined ? lessonOverride : (parentPaused || (l.is_paused ?? false)),
+        isPaused:
+          lessonOverride !== undefined ? lessonOverride : parentPaused || (l.is_paused ?? false),
       });
       lessonsBySubject.set(l.subject_id, list);
     });
@@ -618,14 +625,8 @@ export default async function CourseDetailPage({
 }) {
   const { courseId } = await params;
   const user = await getCurrentUser();
-  
-  const getCachedCourseDetail = unstable_cache(
-    async (cid: string) => getCourseDetail(cid),
-    [`course-detail-${courseId}`],
-    { revalidate: 3600 }
-  );
-  
-  const course = await getCachedCourseDetail(courseId);
+
+  const course = await getCourseDetail(courseId);
 
   if (!course) {
     redirect("/student/courses");
@@ -640,33 +641,15 @@ export default async function CourseDetailPage({
   let subjects: SubjectWithLessons[] = [];
   let directLessons: LessonRow[] = [];
 
-  const getCachedSemesters = unstable_cache(
-    async (cid: string, uid: string) => getSemestersWithSubjectsWithLessons(cid, uid),
-    [`semesters-${courseId}-${user.id}`],
-    { revalidate: 300 }
-  );
-
-  const getCachedSubjects = unstable_cache(
-    async (cid: string, uid: string) => getSubjectsWithLessons(cid, uid),
-    [`subjects-${courseId}-${user.id}`],
-    { revalidate: 300 }
-  );
-
-  const getCachedDirectLessons = unstable_cache(
-    async (cid: string, uid: string) => getDirectLessons(cid, uid),
-    [`direct-lessons-${courseId}-${user.id}`],
-    { revalidate: 300 }
-  );
-
   if (course.hierarchy_type === 1) {
     // Course → Semester → Subject → Lesson
-    semesters = await getCachedSemesters(course.id, user.id);
+    semesters = await getSemestersWithSubjectsWithLessons(course.id, user.id);
   } else if (course.hierarchy_type === 2) {
     // Course → Subject → Lesson
-    subjects = await getCachedSubjects(course.id, user.id);
+    subjects = await getSubjectsWithLessons(course.id, user.id);
   } else {
     // Type 3: Course → Lesson
-    directLessons = await getCachedDirectLessons(course.id, user.id);
+    directLessons = await getDirectLessons(course.id, user.id);
   }
 
   // Fetch completed lesson IDs
@@ -683,7 +666,10 @@ export default async function CourseDetailPage({
 
   // Find first incomplete lesson for "Continue Learning" button
   const allSemesterLessons = semesters.flatMap((sem) => sem.subjects.flatMap((s) => s.lessons));
-  const allLessonsFlat = allSemesterLessons.concat(subjects.flatMap((s) => s.lessons), directLessons);
+  const allLessonsFlat = allSemesterLessons.concat(
+    subjects.flatMap((s) => s.lessons),
+    directLessons
+  );
   const firstIncomplete = allLessonsFlat.find((l) => !completedIds.has(l.id));
   const continueLesson = firstIncomplete ?? allLessonsFlat[0];
 
@@ -701,7 +687,9 @@ export default async function CourseDetailPage({
       {/* Course Header */}
       <div className="border-border overflow-hidden rounded-2xl border">
         {/* Hero */}
-        <div className={`from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br ${c.heroFrom} ${c.heroVia} ${c.heroTo}`}>
+        <div
+          className={`from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br ${c.heroFrom} ${c.heroVia} ${c.heroTo}`}
+        >
           {course.thumbnail_url ? (
             <img
               src={course.thumbnail_url}
@@ -710,13 +698,15 @@ export default async function CourseDetailPage({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <BookOpen className="text-white/40 h-16 w-16" />
+              <BookOpen className="h-16 w-16 text-white/40" />
             </div>
           )}
           <div className="from-background/60 absolute inset-0 bg-gradient-to-t to-transparent" />
           <div className="text-primary-foreground absolute right-0 bottom-0 left-0 p-6">
             <div className="mb-2 flex items-center gap-2">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${c.badgeBg} ${c.badgeText}`}>
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${c.badgeBg} ${c.badgeText}`}
+              >
                 Batch {course.batch}
               </span>
               <span className="bg-success text-primary-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-lg">
