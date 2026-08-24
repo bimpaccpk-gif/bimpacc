@@ -1,92 +1,149 @@
-import { getCurrentUser } from "@/lib/dal";
-import { createClient } from "@/lib/supabase/server";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, CheckCircle, Clock, Award, ArrowRight } from "lucide-react";
-import { StudentAttendanceOverview } from "@/components/student/attendance-overview";
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  GraduationCap,
+} from "lucide-react";
 
-interface DashboardCourse {
-  course_id: string;
+import { StudentAttendanceOverview } from "@/components/student/attendance-overview";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
+import { getCurrentUser } from "@/lib/dal";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+
+interface CourseRecord {
+  id: string;
   title: string;
-  batch: string;
+  batch: string | null;
+  description: string | null;
+  thumbnail_url: string | null;
+  hierarchy_type: number | null;
+  status: string;
+  registration_open: boolean | null;
+  is_paused: boolean | null;
+  order_index: number | null;
+  created_at: string;
+}
+
+interface EnrollmentRecord {
+  course_id: string;
+  progress: number | null;
+  enrolled_at: string;
+}
+
+interface EnrolledCourse extends CourseRecord {
   progress: number;
   enrolled_at: string;
 }
 
-interface AvailableCourse {
-  id: string;
-  title: string;
-  batch: string;
-  description: string;
+function clampProgress(progress: number | null) {
+  return Math.min(100, Math.max(0, progress ?? 0));
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 async function getDashboardData(userId: string) {
   const supabase = await createClient();
+  const admin = createAdminClient();
 
-  // Get enrollments
-  const { data: enrollments } = await supabase
-    .from("enrollments")
-    .select("course_id, progress, enrolled_at")
-    .eq("user_id", userId)
-    .order("enrolled_at", { ascending: false });
-
-  const enrollmentList = enrollments ?? [];
-
-  // Get course details for enrolled courses
-  const enrolledIds = enrollmentList.map((e: any) => e.course_id);
-  let enrolledCourses: DashboardCourse[] = [];
-
-  if (enrolledIds.length > 0) {
-    const { data: courses } = await supabase
+  const [enrollmentResult, courseResult] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("course_id, progress, enrolled_at")
+      .eq("user_id", userId)
+      .order("enrolled_at", { ascending: false }),
+    admin
       .from("courses")
-      .select("id, title, batch")
-      .in("id", enrolledIds);
+      .select(
+        "id, title, batch, description, thumbnail_url, hierarchy_type, status, registration_open, is_paused, order_index, created_at"
+      )
+      .order("order_index", { ascending: true })
+      .order("created_at", { ascending: false }),
+  ]);
 
-    const courseMap = new Map<string, any>();
-    (courses ?? []).forEach((c: any) => courseMap.set(c.id, c));
-
-    enrolledCourses = enrollmentList.map((e: any) => {
-      const c = courseMap.get(e.course_id);
-      return {
-        course_id: e.course_id,
-        title: c?.title ?? "Unknown Course",
-        batch: c?.batch ?? "",
-        progress: e.progress ?? 0,
-        enrolled_at: e.enrolled_at,
-      };
+  if (enrollmentResult.error || courseResult.error) {
+    console.error("Unable to load student course dashboard", {
+      enrollmentError: enrollmentResult.error?.message,
+      courseError: courseResult.error?.message,
     });
+    throw new Error("Unable to load the course dashboard. Please try again.");
   }
 
-  // Get available courses (published, not enrolled)
-  let availableQuery = supabase
-    .from("courses")
-    .select("id, title, batch, description")
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
-    .limit(4);
+  const enrollments = (enrollmentResult.data ?? []) as EnrollmentRecord[];
+  const courses = (courseResult.data ?? []) as CourseRecord[];
+  const courseMap = new Map(courses.map((course) => [course.id, course]));
+  const enrolledIds = new Set(enrollments.map((enrollment) => enrollment.course_id));
 
-  if (enrolledIds.length > 0) {
-    // Filter out enrolled courses - use NOT IN
-    for (const id of enrolledIds) {
-      availableQuery = availableQuery.neq("id", id);
-    }
-  }
+  const enrolledCourses = enrollments.flatMap<EnrolledCourse>((enrollment) => {
+    const course = courseMap.get(enrollment.course_id);
 
-  const { data: availableCourses } = await availableQuery;
+    if (!course) return [];
 
-  const inProgress = enrolledCourses.filter((c) => c.progress > 0 && c.progress < 100).length;
-  const completed = enrolledCourses.filter((c) => c.progress >= 100).length;
+    return [
+      {
+        ...course,
+        progress: clampProgress(enrollment.progress),
+        enrolled_at: enrollment.enrolled_at,
+      },
+    ];
+  });
+
+  const availableCourses = courses.filter(
+    (course) =>
+      course.status === "published" &&
+      course.registration_open === true &&
+      course.is_paused !== true &&
+      !enrolledIds.has(course.id)
+  );
 
   return {
     enrolledCourses,
-    availableCourses: (availableCourses ?? []) as AvailableCourse[],
+    availableCourses,
     stats: {
       enrolled: enrolledCourses.length,
-      inProgress,
-      completed,
+      available: availableCourses.length,
+      inProgress: enrolledCourses.filter((course) => course.progress > 0 && course.progress < 100)
+        .length,
+      completed: enrolledCourses.filter((course) => course.progress >= 100).length,
     },
   };
+}
+
+function CourseCover({ course }: { course: CourseRecord }) {
+  return (
+    <div className="from-primary via-brand-500 to-primary/70 relative aspect-video overflow-hidden bg-gradient-to-br">
+      {course.thumbnail_url ? (
+        <Image
+          src={course.thumbnail_url}
+          alt=""
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center">
+          <BookOpen className="text-primary-foreground/60 h-12 w-12" aria-hidden="true" />
+        </div>
+      )}
+
+      {course.batch && (
+        <span className="bg-background/85 text-foreground absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur-sm">
+          Batch {course.batch}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default async function StudentDashboardPage() {
@@ -96,44 +153,44 @@ export default async function StudentDashboardPage() {
   const statCards = [
     {
       title: "Enrolled Courses",
-      value: stats.enrolled.toString(),
-      icon: BookOpen,
-      bgColor: "bg-brand-50 dark:bg-brand-950",
-      iconColor: "text-brand-600 dark:text-brand-400",
+      value: stats.enrolled,
+      icon: GraduationCap,
+      iconClassName: "text-brand-600 dark:text-brand-400",
+      iconBackground: "bg-brand-50 dark:bg-brand-950",
     },
     {
-      title: "Completed",
-      value: stats.completed.toString(),
-      icon: CheckCircle,
-      bgColor: "bg-success/10",
-      iconColor: "text-success",
+      title: "Available Courses",
+      value: stats.available,
+      icon: BookOpen,
+      iconClassName: "text-info",
+      iconBackground: "bg-info/10",
     },
     {
       title: "In Progress",
-      value: stats.inProgress.toString(),
+      value: stats.inProgress,
       icon: Clock,
-      bgColor: "bg-warning/10",
-      iconColor: "text-warning",
+      iconClassName: "text-warning",
+      iconBackground: "bg-warning/10",
     },
     {
-      title: "Certificates",
-      value: stats.completed.toString(),
-      icon: Award,
-      bgColor: "bg-info/10",
-      iconColor: "text-info",
+      title: "Completed",
+      value: stats.completed,
+      icon: CheckCircle,
+      iconClassName: "text-success",
+      iconBackground: "bg-success/10",
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-8">
+      <header>
         <h1 className="text-foreground text-2xl font-bold">
           Welcome back, {user.full_name?.split(" ")[0] || "Student"}!
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Track your learning progress and continue your courses
+          View your enrolled courses and discover every course currently open for enrollment.
         </p>
-      </div>
+      </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
@@ -145,8 +202,8 @@ export default async function StudentDashboardPage() {
               <CardTitle className="text-muted-foreground text-sm font-medium">
                 {stat.title}
               </CardTitle>
-              <div className={`rounded-lg p-2 ${stat.bgColor}`}>
-                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+              <div className={`rounded-lg p-2 ${stat.iconBackground}`}>
+                <stat.icon className={`h-5 w-5 ${stat.iconClassName}`} aria-hidden="true" />
               </div>
             </CardHeader>
             <CardContent>
@@ -156,117 +213,139 @@ export default async function StudentDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Continue Learning */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Continue Learning</CardTitle>
-            {enrolledCourses.length > 0 && (
-              <Link href="/student/my-courses">
-                <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                  View All <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
-            )}
-          </CardHeader>
-          <CardContent>
-            {enrolledCourses.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <BookOpen className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-foreground mb-2 text-lg font-semibold">Start Your Learning Journey</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Explore our BIM courses and start building industry-relevant skills today.
-                </p>
-                <Link href="/student/courses">
-                  <Button className="gap-2">
-                    Browse Courses
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {enrolledCourses.slice(0, 3).map((course) => (
-                  <Link
-                    key={course.course_id}
-                    href={`/student/courses/${course.course_id}`}
-                    className="block"
-                  >
-                    <div className="hover:bg-muted/50 space-y-2 rounded-lg border p-3 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-foreground font-medium">{course.title}</p>
-                          {course.batch && (
-                            <p className="text-muted-foreground text-xs">Batch {course.batch}</p>
-                          )}
-                        </div>
-                        <span className="text-primary text-sm font-semibold">
-                          {course.progress}%
-                        </span>
-                      </div>
-                      <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
-                        <div
-                          className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r transition-all"
-                          style={{ width: `${course.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <section id="enrolled-courses" className="scroll-mt-24 space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Enrolled Courses</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {enrolledCourses.length === 0
+              ? "You are not enrolled in a course yet."
+              : `${enrolledCourses.length} course${enrolledCourses.length === 1 ? "" : "s"} ready to continue.`}
+          </p>
+        </div>
 
-      {/* Attendance Overview */}
+        {enrolledCourses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-12 text-center">
+            <GraduationCap className="text-muted-foreground/50 h-12 w-12" aria-hidden="true" />
+            <h3 className="mt-4 text-lg font-semibold">Start your learning journey</h3>
+            <p className="text-muted-foreground mt-1 max-w-md text-sm">
+              Browse the courses currently accepting enrollments and contact the team to join.
+            </p>
+            <a href="#available-courses" className={buttonVariants({ className: "mt-4 gap-2" })}>
+              Browse Available Courses
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {enrolledCourses.map((course) => (
+              <Card
+                key={course.id}
+                className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                <CourseCover course={course} />
+                <CardHeader className="pb-2">
+                  <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
+                    {course.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {course.description && (
+                    <p className="text-muted-foreground line-clamp-2 text-sm">
+                      {course.description}
+                    </p>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-semibold">{course.progress}%</span>
+                    </div>
+                    <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
+                      <div
+                        className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r"
+                        style={{ width: `${course.progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                    Enrolled {formatDate(course.enrolled_at)}
+                  </p>
+
+                  <Link
+                    href={`/student/courses/${course.id}`}
+                    className={buttonVariants({ size: "sm", className: "w-full gap-2" })}
+                  >
+                    Continue Learning
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
       <StudentAttendanceOverview />
 
-      <div className="grid gap-6 lg:grid-cols-1">
-        {/* Available Courses */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Available Courses</CardTitle>
-            <Link href="/student/courses">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                Browse All <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {availableCourses.length === 0 ? (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
-                  <CheckCircle className="h-8 w-8 text-success" />
-                </div>
-                <h3 className="text-foreground mb-2 text-lg font-semibold">All Caught Up!</h3>
-                <p className="text-muted-foreground text-sm">
-                  You&apos;re enrolled in all available courses. Check back later for new offerings.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {availableCourses.map((course) => (
-                  <div
-                    key={course.id}
-                    className="bg-muted/30 flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-foreground truncate font-medium">{course.title}</p>
-                      <p className="text-muted-foreground text-xs">Batch {course.batch}</p>
-                    </div>
-                    <span className="text-muted-foreground ml-2 shrink-0 text-xs">
-                      Not Enrolled
+      <section id="available-courses" className="scroll-mt-24 space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold">Available Courses</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Published courses with registration open that are not already in your enrolled list.
+          </p>
+        </div>
+
+        {availableCourses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-12 text-center">
+            <CheckCircle className="text-success/70 h-12 w-12" aria-hidden="true" />
+            <h3 className="mt-4 text-lg font-semibold">No additional courses available</h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              You are enrolled in every course currently accepting registrations.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {availableCourses.map((course) => (
+              <Card
+                key={course.id}
+                className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                <CourseCover course={course} />
+                <CardHeader className="pb-2">
+                  <div className="mb-2">
+                    <span className="bg-success/10 text-success inline-flex rounded-full px-2.5 py-1 text-xs font-semibold">
+                      Available
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
+                    {course.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-muted-foreground line-clamp-3 min-h-15 text-sm">
+                    {course.description || "Contact the BIMPACC team for course details."}
+                  </p>
+
+                  <a
+                    href="https://wa.me/923230191737"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonVariants({
+                      size: "sm",
+                      className: "w-full bg-green-600 hover:bg-green-700",
+                    })}
+                  >
+                    <WhatsAppIcon className="h-4 w-4" />
+                    Contact for Enrollment
+                  </a>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
