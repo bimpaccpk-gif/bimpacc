@@ -1,8 +1,10 @@
 import { Banknote, CalendarClock, History, ShieldCheck } from "lucide-react";
 
+import { AdminAccessControl } from "@/components/super-admin/admin-access-control";
 import { BillingSettingsForm } from "@/components/super-admin/billing-settings-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServiceBillingAuditLog, getServiceBillingSettings } from "@/lib/billing";
+import { getAdminDashboardAccessState } from "@/lib/billing-policy";
 import { getCurrentUser } from "@/lib/dal";
 
 const AUDIT_IGNORED_FIELDS = new Set(["id", "updated_at", "updated_by"]);
@@ -54,6 +56,7 @@ export default async function SuperAdminDashboardPage() {
     getServiceBillingSettings(),
     getServiceBillingAuditLog(),
   ]);
+  const accessState = getAdminDashboardAccessState(settings);
 
   return (
     <div className="space-y-6">
@@ -108,6 +111,15 @@ export default async function SuperAdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {settings && (
+        <AdminAccessControl
+          accessState={accessState}
+          enforcementEnabled={settings.enforcement_enabled}
+          paymentStatus={settings.payment_status}
+          gracePeriodEndsLabel={formatDateTime(settings.grace_period_ends_at)}
+        />
+      )}
 
       <Card>
         <CardHeader>

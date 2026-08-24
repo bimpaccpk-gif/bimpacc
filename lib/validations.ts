@@ -341,6 +341,11 @@ export const serviceBillingSettingsSchema = z
     }
   });
 
+export const adminDashboardAccessSchema = z.object({
+  accessMode: z.enum(["mark_paid_unlock", "unlock", "enforce"]),
+  confirmAccessEnforcement: z.boolean(),
+});
+
 // ─── Helper ────────────────────────────────────────────────
 
 /**

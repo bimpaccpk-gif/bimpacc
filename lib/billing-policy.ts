@@ -2,6 +2,7 @@ export const SERVICE_BILLING_SETTINGS_COLUMNS =
   "id, enforcement_enabled, payment_status, amount_due, currency, billing_interval, service_period_start, service_period_end, payment_due_at, grace_period_ends_at, bank_name, account_title, account_number, iban, payment_reference, payment_instructions, support_email, support_phone, notice_title, notice_message, updated_by, updated_at";
 
 export type ServicePaymentStatus = "pending" | "paid" | "waived";
+export type AdminDashboardAccessState = "locked" | "scheduled" | "unlocked";
 
 export interface ServiceBillingSettings {
   id: number;
@@ -45,4 +46,21 @@ export function isAdminDashboardRestricted(
 
   const graceEndsAt = Date.parse(settings.grace_period_ends_at);
   return Number.isFinite(graceEndsAt) && now >= graceEndsAt;
+}
+
+export function getAdminDashboardAccessState(
+  settings: ServiceBillingSettings | null,
+  now: number = Date.now()
+): AdminDashboardAccessState {
+  if (isAdminDashboardRestricted(settings, now)) return "locked";
+
+  if (settings?.enforcement_enabled && settings.payment_status === "pending") {
+    const graceEndsAt = settings.grace_period_ends_at
+      ? Date.parse(settings.grace_period_ends_at)
+      : Number.NaN;
+
+    if (Number.isFinite(graceEndsAt) && now < graceEndsAt) return "scheduled";
+  }
+
+  return "unlocked";
 }
