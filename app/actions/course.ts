@@ -248,3 +248,65 @@ export async function bulkEnrollStudents(
     return { error: err.message || "An unexpected error occurred.", success: "" };
   }
 }
+
+export interface EnrolledStudent {
+  id: string;
+  full_name: string | null;
+  email: string;
+  enrolled_at: string;
+  progress: number | null;
+  enrolled_by: string | null;
+}
+
+interface EnrollmentWithUser {
+  user_id: string;
+  enrolled_at: string;
+  progress: number | null;
+  enrolled_by: string | null;
+  users:
+    | {
+        id: string;
+        full_name: string | null;
+        email: string;
+      }
+    | Array<{
+        id: string;
+        full_name: string | null;
+        email: string;
+      }>
+    | null;
+}
+
+export async function getEnrolledStudents(
+  courseId: string
+): Promise<{ data: EnrolledStudent[]; error: string | null }> {
+  await verifyAdmin();
+  const admin = createAdminClient();
+
+  const { data: enrollments, error } = await admin
+    .from("enrollments")
+    .select(
+      "user_id, enrolled_at, progress, enrolled_by, users!enrollments_user_id_fkey(id, full_name, email)"
+    )
+    .eq("course_id", courseId)
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    return { data: [], error: error.message };
+  }
+
+  const enrolledStudents = ((enrollments ?? []) as EnrollmentWithUser[]).map((enrollment) => {
+    const user = Array.isArray(enrollment.users) ? enrollment.users[0] : enrollment.users;
+
+    return {
+      id: enrollment.user_id,
+      full_name: user?.full_name ?? null,
+      email: user?.email ?? "",
+      enrolled_at: enrollment.enrolled_at,
+      progress: enrollment.progress,
+      enrolled_by: enrollment.enrolled_by,
+    };
+  });
+
+  return { data: enrolledStudents, error: null };
+}

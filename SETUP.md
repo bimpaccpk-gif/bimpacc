@@ -76,7 +76,7 @@ bimpacc-lms/
 │   │   ├── student/page.tsx       # Student dashboard
 │   │   └── courses/page.tsx       # Course catalog
 │   ├── layout.tsx                 # Root layout (fonts, metadata)
-│   ├── page.tsx                   # Landing page
+│   ├── page.tsx                   # Redirects the home route to login
 │   └── globals.css                # Tailwind + CSS variables
 ├── components/
 │   ├── ui/                        # Reusable UI primitives

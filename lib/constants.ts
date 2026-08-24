@@ -1,8 +1,5 @@
 export const APP_NAME = "BIMPACC LMS";
 export const APP_DESCRIPTION = "A modern learning management system for engineers";
-export const APP_TAGLINE = "Learn Without Limits";
-
-export const NAV_LINKS: { href: string; label: string }[] = [];
 
 export const DASHBOARD_SIDEBAR_LINKS = {
   admin: [
@@ -22,36 +19,3 @@ export const DASHBOARD_SIDEBAR_LINKS = {
     { href: "/student/certificates", label: "Certificates", icon: "Award" },
   ],
 } as const;
-
-export const STATS = [
-  { value: "10K+", label: "Active Students" },
-  { value: "200+", label: "Expert Courses" },
-  { value: "50+", label: "Instructors" },
-  { value: "4.8", label: "Average Rating" },
-] as const;
-
-export const TESTIMONIALS = [
-  {
-    name: "Ahmed Khan",
-    role: "BIM Coordinator",
-    avatar: "AK",
-    content:
-      "BIMPACC LMS transformed my career in BIM. The courses are well-structured and helped me master Revit and Navisworks. Now I'm leading projects at a top construction firm in Karachi.",
-  },
-  {
-    name: "Muhammad Ali",
-    role: "Senior Architect",
-    avatar: "MA",
-    content:
-      "The BIM courses helped me transition from traditional drafting to full 3D modeling. I completed my certification in just four months and doubled my salary.",
-  },
-  {
-    name: "Fatima Rizvi",
-    role: "Construction Manager",
-    avatar: "FR",
-    content:
-      "Learning BIM through BIMPACC gave me the competitive edge I needed. The hands-on projects and industry-relevant curriculum made all the difference in my career.",
-  },
-] as const;
-
-export const FOOTER_LINKS: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [];
