@@ -1,140 +1,331 @@
 import Link from "next/link";
-import { Activity, BookOpen, UserPlus, Users } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/dal";
+import {
+  ArrowRightIcon,
+  BookOpenIcon,
+  ClipboardListIcon,
+  GraduationCapIcon,
+  UsersIcon,
+} from "lucide-react";
 
-export default async function AdminDashboardPage() {
-  await getCurrentUser();
+import {
+  getAdminOverview,
+  type AdminOverviewDelta,
+  type AnalyticsRange,
+} from "@/app/actions/analytics";
+import { PendingApprovalsQueue, type PendingQueueItem } from "@/components/admin/pending-approvals-queue";
+import { AttendanceChart, ATTENDANCE_TARGET } from "@/components/charts/attendance-chart";
+import { CompletionFunnel } from "@/components/charts/completion-funnel";
+import { EnrollmentsChart } from "@/components/charts/enrollments-chart";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatTile, type StatTileDelta } from "@/components/layout/stat-tile";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buttonVariants } from "@/components/ui/button-variants";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatCount, formatPercent } from "@/components/charts/format";
+import { cn } from "@/lib/utils";
 
-  const supabase = await createClient();
+/* ────────────────────────────────────────────────────────────
+   Formatting — pure helpers, pinned locale so server-rendered
+   markup stays stable across hydration.
+   ──────────────────────────────────────────────────────────── */
 
-  const [usersCount, coursesCount, enrollmentsCount, recentUsers] = await Promise.all([
-    supabase.from("users").select("*", { count: "exact", head: true }),
-    supabase.from("courses").select("*", { count: "exact", head: true }).eq("status", "published"),
-    supabase.from("enrollments").select("*", { count: "exact", head: true }),
-    supabase
-      .from("users")
-      .select("id, full_name, email, role, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5),
-  ]);
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
-  const stats = [
-    {
-      title: "Total Users",
-      value: (usersCount.count ?? 0).toLocaleString(),
-      icon: Users,
-      bgColor: "bg-brand-50 dark:bg-brand-950",
-      iconColor: "text-brand-600 dark:text-brand-400",
-    },
-    {
-      title: "Published Courses",
-      value: (coursesCount.count ?? 0).toLocaleString(),
-      icon: BookOpen,
-      bgColor: "bg-success/10",
-      iconColor: "text-success",
-    },
-    {
-      title: "Enrollments",
-      value: (enrollmentsCount.count ?? 0).toLocaleString(),
-      icon: Activity,
-      bgColor: "bg-info/10",
-      iconColor: "text-info",
-    },
-    {
-      title: "Recent Users",
-      value: (recentUsers.data?.length ?? 0).toLocaleString(),
-      icon: UserPlus,
-      bgColor: "bg-warning/10",
-      iconColor: "text-warning",
-    },
-  ];
+/** "2026-08-25T…" -> "Aug 25, 2026" */
+function formatDate(date: string): string {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
 
-  const recentUsersList = recentUsers.data ?? [];
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** "2026-08-25T14:02:11Z" -> "Aug 25, 2026, 2:14 PM" */
+function formatDateTime(date: string): string {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Coarse relative age ("just now", "4h ago") for the approvals queue rows. */
+function relativeTimeLabel(date: string): string {
+  const parsed = new Date(date).getTime();
+  if (Number.isNaN(parsed)) return "";
+
+  const diffMs = Date.now() - parsed;
+  if (!Number.isFinite(diffMs) || diffMs < 60_000) return "just now";
+
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  return formatDate(date);
+}
+
+/** "Ada Lovelace" -> "AL"; falls back to "?" when nothing usable remains. */
+function initialsOf(name: string): string {
+  const computed = name
+    .split(" ")
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return computed || "?";
+}
+
+/* ────────────────────────────────────────────────────────────
+   Range filter
+   ──────────────────────────────────────────────────────────── */
+
+const RANGE_OPTIONS: Array<{
+  value: AnalyticsRange;
+  label: string;
+  /** Phrase used in the page description. */
+  comparison: string;
+}> = [
+  { value: "7d", label: "7 days", comparison: "the last 7 days with the previous 7" },
+  { value: "30d", label: "30 days", comparison: "the last 30 days with the previous 30" },
+  { value: "90d", label: "90 days", comparison: "the last 90 days with the previous 90" },
+  { value: "12m", label: "12 months", comparison: "the last 12 months with the previous 12" },
+];
+
+const RANGE_VALUES: ReadonlyArray<string> = RANGE_OPTIONS.map((option) => option.value);
+
+/* ────────────────────────────────────────────────────────────
+   KPI delta mapping
+   ──────────────────────────────────────────────────────────── */
+
+/**
+ * AdminOverviewDelta -> StatTile delta. "flat" and baseline-less windows carry
+ * `good: null`; those tiles simply omit the delta rather than imply a direction.
+ */
+function toTileDelta(delta: AdminOverviewDelta): StatTileDelta {
+  return {
+    value: delta.label,
+    direction: delta.direction === "down" ? "down" : "up",
+    good: delta.good ?? undefined,
+  };
+}
+
+export default async function AdminOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedParams = await searchParams;
+
+  const rangeParam = firstParam(resolvedParams.range);
+  const range = (RANGE_VALUES as ReadonlyArray<string>).includes(rangeParam ?? "")
+    ? (rangeParam as AnalyticsRange)
+    : "30d";
+
+  // Re-validates the caller's role server-side before every aggregation.
+  const overview = await getAdminOverview(range);
+  const kpis = overview.kpis;
+
+  const rangeOption =
+    RANGE_OPTIONS.find((option) => option.value === overview.range) ?? RANGE_OPTIONS[1];
+
+  /* ── Derived display values ── */
+
+  const enrollments12mTotal = overview.enrollmentsByMonth.reduce((sum, point) => sum + point.value, 0);
+  const hasEnrollments = enrollments12mTotal > 0;
+  const hasAttendance = overview.attendanceRateByMonth.some((point) => point.rate > 0);
+  const hasFunnel = overview.completionFunnel.some((step) => step.value > 0);
+
+  const enrollmentsDeltaSuffix =
+    kpis.enrollmentsDelta.good === null ? "" : ` · ${kpis.enrollmentsDelta.label} vs previous window`;
+  const attendanceDeltaSuffix =
+    kpis.attendanceDelta.good === null ? "" : ` · ${kpis.attendanceDelta.label} vs previous window`;
+
+  const queueItems: Array<PendingQueueItem> = overview.pendingQueue.map((item) => ({
+    ...item,
+    requestedLabel: relativeTimeLabel(item.createdAt),
+  }));
+
+  /* ── Approvals tile: StatTile pins its icon chrome to primary, so retint it
+     from here when there is work waiting (warning tint + ring, per house
+     pattern on the People page). ── */
+  const approvalsTileClassName = cn(
+    "transition-transform duration-200 group-hover:-translate-y-0.5",
+    kpis.pendingApprovals > 0 &&
+      "ring-warning/50 [&_[data-slot=stat-tile-header]>div:last-child]:bg-warning/10 [&_[data-slot=stat-tile-header]>div:last-child>svg]:text-warning"
+  );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-foreground text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Overview of your learning management system
-        </p>
-      </div>
+      <PageHeader
+        title="Overview"
+        description={`Comparing ${rangeOption.comparison}. Updated ${formatDateTime(overview.generatedAt)}.`}
+        actions={
+          <nav aria-label="Comparison range" className="bg-muted flex items-center rounded-lg p-0.5">
+            {RANGE_OPTIONS.map((option) => {
+              const isActive = option.value === overview.range;
 
+              return (
+                <Link
+                  key={option.value}
+                  href={`/admin?range=${option.value}`}
+                  aria-current={isActive ? "true" : undefined}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                    isActive
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </Link>
+              );
+            })}
+          </nav>
+        }
+      />
+
+      {/* KPI row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card
-            key={stat.title}
-            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <div className={`rounded-lg p-2 ${stat.bgColor}`}>
-                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        <StatTile
+          label="Students"
+          value={formatCount(kpis.totalStudents)}
+          icon={UsersIcon}
+        />
+
+        <StatTile
+          label="Active enrollments"
+          value={formatCount(kpis.activeEnrollments)}
+          hint={`vs previous ${overview.rangeDays === 365 ? "year" : `${overview.rangeDays} days`}`}
+          icon={GraduationCapIcon}
+          delta={
+            kpis.enrollmentsDelta.good === null ? undefined : toTileDelta(kpis.enrollmentsDelta)
+          }
+        />
+
+        <StatTile label="Courses" value={formatCount(kpis.totalCourses)} icon={BookOpenIcon} />
+
+        <Link
+          href="/admin/users?status=pending_review"
+          className="group block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <StatTile
+            label="Pending approvals"
+            value={formatCount(kpis.pendingApprovals)}
+            hint={kpis.pendingApprovals > 0 ? "Applications awaiting review" : "All caught up"}
+            icon={ClipboardListIcon}
+            className={approvalsTileClassName}
+          />
+        </Link>
       </div>
 
+      {/* Hero: the approval queue */}
+      <PendingApprovalsQueue items={queueItems} totalCount={kpis.pendingApprovals} />
+
+      {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentUsersList.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No users registered yet.</p>
-              ) : (
-                recentUsersList.map((user) => (
-                  <div key={user.id} className="flex items-center gap-3">
-                    <div className="bg-brand-50 dark:bg-brand-950 rounded-lg p-1.5">
-                      <UserPlus className="text-brand-600 dark:text-brand-400 h-4 w-4" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-foreground text-sm">
-                        {user.full_name || user.email}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {user.email} &middot; {user.role}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <EnrollmentsChart
+          data={overview.enrollmentsByMonth}
+          isEmpty={!hasEnrollments}
+          subtitle={`${formatCount(enrollments12mTotal)} new in the trailing 12 months${enrollmentsDeltaSuffix}`}
+          className="lg:col-span-2"
+        />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2">
-              <Link
-                href="/admin/users"
-                className="text-foreground/80 hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50 rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors"
-              >
-                Manage Users
-              </Link>
-              <Link
-                href="/admin/courses"
-                className="text-foreground/80 hover:border-primary/30 hover:bg-brand-50/50 dark:hover:bg-brand-950/50 rounded-lg border px-4 py-2.5 text-left text-sm font-medium transition-colors"
-              >
-                Review Courses
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <AttendanceChart
+          data={overview.attendanceRateByMonth}
+          target={ATTENDANCE_TARGET}
+          isEmpty={!hasAttendance}
+          subtitle={`${formatPercent(kpis.attendanceRate)} present or late this window vs ${ATTENDANCE_TARGET}% target${attendanceDeltaSuffix} · months with no sessions read as 0%`}
+        />
+
+        <CompletionFunnel data={overview.completionFunnel} isEmpty={!hasFunnel} />
       </div>
+
+      {/* Recent signups */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent signups</CardTitle>
+          <CardDescription>The newest accounts on the platform</CardDescription>
+        </CardHeader>
+
+        <Table className="px-4">
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead className="hidden sm:table-cell">Role</TableHead>
+              <TableHead className="text-right">Joined</TableHead>
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {overview.recentUsers.length === 0 ? (
+              <TableEmpty colSpan={3}>No users have signed up yet.</TableEmpty>
+            ) : (
+              overview.recentUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar size="sm">
+                        {user.avatar_url ? <AvatarImage src={user.avatar_url} alt="" /> : null}
+                        <AvatarFallback>{initialsOf(user.full_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{user.full_name || user.email}</p>
+                        <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="text-muted-foreground hidden capitalize sm:table-cell">
+                    {user.role}
+                  </TableCell>
+
+                  <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
+                    {formatDate(user.createdAt)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+
+        <CardFooter className="justify-between px-4 py-3">
+          <span className="text-muted-foreground text-xs">
+            Showing the latest {overview.recentUsers.length} signups
+          </span>
+          <Link href="/admin/users" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            View all people
+            <ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
+          </Link>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

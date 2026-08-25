@@ -1,11 +1,37 @@
+import { Briefcase, ClipboardList, GraduationCap, Users } from "lucide-react";
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/dal";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatTile } from "@/components/layout/stat-tile";
 import { CreateUserDialog } from "@/components/admin/create-user-dialog";
-import { UsersTable } from "@/components/admin/users-table";
-import { Users, ClipboardList } from "lucide-react";
+import {
+  UsersDataTable,
+  type AdminCourseRow,
+  type AdminUserEnrollment,
+  type AdminUserRow,
+} from "@/components/admin/users-data-table";
 
-interface UserRow {
+const PAGE_SIZE = 20;
+
+const ROLE_FILTERS = ["student", "instructor", "admin", "super_admin"] as const;
+const STATUS_FILTERS = ["approved", "pending_review", "bypassed", "setup_pending"] as const;
+const SORT_COLUMNS = ["created_at", "full_name"] as const;
+
+type RoleFilter = (typeof ROLE_FILTERS)[number] | "all";
+type StatusFilter = (typeof STATUS_FILTERS)[number] | "all";
+type SortColumn = (typeof SORT_COLUMNS)[number];
+
+interface UserListQuery {
+  q: string;
+  role: RoleFilter;
+  status: StatusFilter;
+  sort: SortColumn;
+  dir: "asc" | "desc";
+  page: number;
+}
+
+interface RawUserRow {
   id: string;
   email: string;
   full_name: string;
@@ -14,183 +40,258 @@ interface UserRow {
   onboarding_completed: boolean;
   onboarding_bypassed: boolean;
   is_approved: boolean;
-  is_super_admin: boolean;
   created_at: string;
 }
 
-interface CourseRow {
-  id: string;
-  title: string;
-  batch: string;
-  status: string;
-}
-
-interface EnrollmentRow {
+interface RawEnrollmentRow {
   user_id: string;
   course_id: string;
-  courses: {
-    id: string;
-    title: string;
-    batch: string | null;
-  } | null;
+  courses:
+    | {
+        id: string;
+        title: string;
+        batch: string | null;
+      }
+    | Array<{
+        id: string;
+        title: string;
+        batch: string | null;
+      }>
+    | null;
 }
 
-async function getAllUsers(): Promise<UserRow[]> {
-  const supabase = await createClient();
+interface UsersPageStats {
+  total: number;
+  instructors: number;
+  students: number;
+  pendingReview: number;
+}
 
-  const [{ data, error }, { data: superAdmins }] = await Promise.all([
+interface UsersPageData {
+  rows: AdminUserRow[];
+  total: number;
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** Strips characters that would break the .or() ilike pattern. */
+function sanitizeQuery(raw: string): string {
+  return raw
+    .replace(/[%_,()]/g, " ")
+    .trim()
+    .slice(0, 100);
+}
+
+async function getUsersPageStats(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<UsersPageStats> {
+  const [total, instructors, students, pendingReview] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }),
+    supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "instructor"),
+    supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "student"),
     supabase
       .from("users")
-      .select(
-        "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, created_at"
-      )
-      .order("created_at", { ascending: false }),
-    supabase.from("super_admins").select("user_id"),
+      .select("id", { count: "exact", head: true })
+      .eq("role", "student")
+      .eq("onboarding_completed", true)
+      .eq("is_approved", false),
   ]);
+
+  return {
+    total: total.count ?? 0,
+    instructors: instructors.count ?? 0,
+    students: students.count ?? 0,
+    pendingReview: pendingReview.count ?? 0,
+  };
+}
+
+/**
+ * Enrollment counts for exactly the users on this page — a single query
+ * instead of one per row.
+ */
+async function getEnrollmentsForUsers(
+  userIds: string[]
+): Promise<Map<string, AdminUserEnrollment[]>> {
+  if (userIds.length === 0) return new Map();
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("enrollments")
+    .select("user_id, course_id, courses(id, title, batch)")
+    .in("user_id", userIds)
+    .order("enrolled_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching enrollments:", error);
+    return new Map();
+  }
+
+  const enrollmentsByUser = new Map<string, AdminUserEnrollment[]>();
+  for (const row of (data ?? []) as unknown as RawEnrollmentRow[]) {
+    const course = Array.isArray(row.courses) ? row.courses[0] : row.courses;
+    if (!course) continue;
+
+    const list = enrollmentsByUser.get(row.user_id) ?? [];
+    list.push({ course_id: row.course_id, title: course.title, batch: course.batch ?? null });
+    enrollmentsByUser.set(row.user_id, list);
+  }
+
+  return enrollmentsByUser;
+}
+
+async function getUsersPage(query: UserListQuery): Promise<UsersPageData> {
+  const supabase = await createClient();
+
+  // Super admins are flagged via the super_admins table, not a role column —
+  // load the (small) id list once for both filtering and row flags.
+  const { data: superAdmins } = await supabase.from("super_admins").select("user_id");
+  const superAdminIds = new Set(
+    ((superAdmins ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
+  );
+
+  let usersQuery = supabase
+    .from("users")
+    .select(
+      "id, email, full_name, role, avatar_url, onboarding_completed, onboarding_bypassed, is_approved, created_at",
+      { count: "exact" }
+    );
+
+  if (query.role === "super_admin") {
+    if (superAdminIds.size === 0) return { rows: [], total: 0 };
+    usersQuery = usersQuery.in("id", [...superAdminIds]);
+  } else if (query.role !== "all") {
+    usersQuery = usersQuery.eq("role", query.role);
+  }
+
+  switch (query.status) {
+    case "approved":
+      usersQuery = usersQuery.eq("is_approved", true);
+      break;
+    case "pending_review":
+      usersQuery = usersQuery
+        .eq("role", "student")
+        .eq("onboarding_completed", true)
+        .eq("is_approved", false);
+      break;
+    case "bypassed":
+      usersQuery = usersQuery.eq("onboarding_bypassed", true);
+      break;
+    case "setup_pending":
+      usersQuery = usersQuery
+        .eq("onboarding_completed", false)
+        .eq("onboarding_bypassed", false);
+      break;
+  }
+
+  if (query.q) {
+    usersQuery = usersQuery.or(`full_name.ilike.%${query.q}%,email.ilike.%${query.q}%`);
+  }
+
+  usersQuery = usersQuery.order(query.sort, { ascending: query.dir === "asc" });
+  if (query.sort !== "created_at") {
+    usersQuery = usersQuery.order("created_at", { ascending: false });
+  }
+
+  const from = (query.page - 1) * PAGE_SIZE;
+  const { data, count, error } = await usersQuery.range(from, from + PAGE_SIZE - 1);
 
   if (error) {
     console.error("Error fetching users:", error);
-    return [];
+    return { rows: [], total: 0 };
   }
 
-  const superAdminIds = new Set((superAdmins ?? []).map((row) => row.user_id));
-  return (data ?? []).map((user) => ({
+  const total = count ?? 0;
+  const users = ((data ?? []) as unknown as RawUserRow[]).map((user) => ({
     ...user,
     is_super_admin: superAdminIds.has(user.id),
   }));
+
+  const enrollmentsByUser = await getEnrollmentsForUsers(users.map((user) => user.id));
+
+  const rows: AdminUserRow[] = users.map((user) => ({
+    ...user,
+    enrollments: enrollmentsByUser.get(user.id) ?? [],
+  }));
+
+  return { rows, total };
 }
 
-async function getAllCourses(): Promise<CourseRow[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("courses")
-    .select("id, title, batch, status")
-    .order("title", { ascending: true });
-
-  if (error) {
-    console.error("Error fetching courses:", error);
-    return [];
-  }
-
-  return data ?? [];
-}
-
-async function getAllEnrollments(): Promise<EnrollmentRow[]> {
-  try {
-    const admin = createAdminClient();
-
-    const { data, error } = await admin
-      .from("enrollments")
-      .select("user_id, course_id, courses(id, title, batch)");
-
-    if (error) {
-      console.error("Error fetching enrollments:", error);
-      return [];
-    }
-
-    const rows = (data ?? []) as Array<{
-      user_id: string;
-      course_id: string;
-      courses: EnrollmentRow["courses"] | EnrollmentRow["courses"][];
-    }>;
-
-    return rows.map((row) => ({
-      user_id: row.user_id,
-      course_id: row.course_id,
-      courses: Array.isArray(row.courses) ? (row.courses[0] ?? null) : row.courses,
-    }));
-  } catch (err) {
-    console.error("Error fetching enrollments:", err);
-    return [];
-  }
-}
-
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedParams = await searchParams;
   const currentUser = await getCurrentUser();
-  const users = await getAllUsers();
-  const courses = await getAllCourses();
-  const enrollments = await getAllEnrollments();
 
-  const roleCounts = users.reduce(
-    (acc, u) => {
-      acc[u.role] = (acc[u.role] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  const roleParam = firstParam(resolvedParams.role);
+  const statusParam = firstParam(resolvedParams.status);
+  const sortParam = firstParam(resolvedParams.sort);
+  const parsedPage = Number.parseInt(firstParam(resolvedParams.page) ?? "1", 10);
 
-  const pendingReviewCount = users.filter(
-    (u) => u.role === "student" && u.onboarding_completed && !u.is_approved
-  ).length;
+  const query: UserListQuery = {
+    q: sanitizeQuery(firstParam(resolvedParams.q) ?? ""),
+    role: (ROLE_FILTERS as readonly string[]).includes(roleParam ?? "")
+      ? (roleParam as RoleFilter)
+      : "all",
+    status: (STATUS_FILTERS as readonly string[]).includes(statusParam ?? "")
+      ? (statusParam as StatusFilter)
+      : "all",
+    sort: (SORT_COLUMNS as readonly string[]).includes(sortParam ?? "")
+      ? (sortParam as SortColumn)
+      : "created_at",
+    dir: firstParam(resolvedParams.dir) === "asc" ? "asc" : "desc",
+    page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+  };
+
+  const supabase = await createClient();
+  const [{ data: coursesData }, { rows, total }, stats] = await Promise.all([
+    supabase.from("courses").select("id, title, batch, status").order("title", { ascending: true }),
+    getUsersPage(query),
+    getUsersPageStats(supabase),
+  ]);
+
+  // A stale `page` beyond the last page would render an empty grid; fall back
+  // to the final page instead.
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = query.page > totalPages && total > 0 ? totalPages : query.page;
+  const currentPageRows =
+    page === query.page
+      ? rows
+      : (await getUsersPage({ ...query, page })).rows;
+
+  const courses: AdminCourseRow[] = ((coursesData ?? []) as AdminCourseRow[]).map((course) => ({
+    ...course,
+    batch: course.batch ?? null,
+  }));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-foreground text-2xl font-bold">User Management</h1>
-          <p className="text-muted-foreground mt-1 text-sm">View and manage all platform users</p>
-        </div>
-        <CreateUserDialog />
-      </div>
+      <PageHeader title="User Management" description="View and manage all platform users" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">Total Users</CardTitle>
-            <Users className="text-muted-foreground h-5 w-5" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">Instructors</CardTitle>
-            <Users className="text-muted-foreground h-5 w-5" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{roleCounts.instructor ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">Students</CardTitle>
-            <Users className="text-muted-foreground h-5 w-5" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{roleCounts.student ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card
-          className={
-            pendingReviewCount > 0 ? "bg-warning/10 ring-warning/50 dark:bg-warning/20 ring-2" : ""
-          }
-        >
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Pending Review
-            </CardTitle>
-            <ClipboardList
-              className={`h-5 w-5 ${pendingReviewCount > 0 ? "text-warning" : "text-muted-foreground"}`}
-            />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${pendingReviewCount > 0 ? "text-warning" : ""}`}>
-              {pendingReviewCount}
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {pendingReviewCount > 0 ? "Applications awaiting review" : "All caught up!"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatTile label="Total users" value={stats.total} icon={Users} />
+        <StatTile label="Instructors" value={stats.instructors} icon={Briefcase} />
+        <StatTile label="Students" value={stats.students} icon={GraduationCap} />
+        <StatTile
+          label="Pending review"
+          value={stats.pendingReview}
+          hint={stats.pendingReview > 0 ? "Applications awaiting review" : "All caught up!"}
+          icon={ClipboardList}
+          className={stats.pendingReview > 0 ? "ring-warning/50" : undefined}
+        />
       </div>
 
-      <UsersTable
-        initialUsers={users}
+      <UsersDataTable
+        rows={currentPageRows}
         courses={courses}
-        enrollments={enrollments}
         currentUserId={currentUser.id}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        createAction={<CreateUserDialog />}
       />
     </div>
   );

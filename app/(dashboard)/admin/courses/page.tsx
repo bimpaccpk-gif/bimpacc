@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/dal";
 import { CourseCreateDialog } from "@/components/admin/course-create-dialog";
 import { CourseList, CourseRow } from "@/components/admin/course-list";
+import { PageHeader } from "@/components/layout/page-header";
 
 async function getCourses(): Promise<CourseRow[]> {
   const supabase = await createClient();
@@ -42,12 +43,12 @@ async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string,
     supabase.from("subjects").select("id, course_id").in("course_id", courseIds),
   ]);
 
-  (semesters ?? []).forEach((s: any) => {
+  (semesters ?? []).forEach((s: { course_id: string }) => {
     if (counts[s.course_id]) counts[s.course_id].semesters += 1;
   });
 
   const subjectIdToCourseId: Record<string, string> = {};
-  (subjects ?? []).forEach((s: any) => {
+  (subjects ?? []).forEach((s: { id: string; course_id: string }) => {
     if (counts[s.course_id]) {
       counts[s.course_id].subjects += 1;
       subjectIdToCourseId[s.id] = s.course_id;
@@ -66,13 +67,13 @@ async function getCourseItemCounts(courses: CourseRow[]): Promise<Record<string,
       : Promise.resolve({ data: [] }),
   ]);
 
-  (courseLessons ?? []).forEach((l: any) => {
+  (courseLessons ?? []).forEach((l: { course_id: string | null }) => {
     if (l.course_id && counts[l.course_id]) {
       counts[l.course_id].lessons += 1;
     }
   });
 
-  (subjectLessons ?? []).forEach((l: any) => {
+  (subjectLessons ?? []).forEach((l: { subject_id: string | null }) => {
     if (l.subject_id) {
       const cId = subjectIdToCourseId[l.subject_id];
       if (cId && counts[cId]) {
@@ -94,7 +95,7 @@ async function getEnrollmentCounts(courseIds: string[]): Promise<Record<string, 
 
   const counts: Record<string, number> = {};
   courseIds.forEach((id) => { counts[id] = 0; });
-  (enrollments ?? []).forEach((e: any) => {
+  (enrollments ?? []).forEach((e: { course_id: string }) => {
     if (counts[e.course_id] !== undefined) counts[e.course_id] += 1;
   });
   return counts;
@@ -107,21 +108,18 @@ export default async function AdminCoursesPage() {
   const enrollmentCounts = await getEnrollmentCounts(courses.map((c) => c.id));
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground bg-gradient-to-br from-foreground to-foreground/80 bg-clip-text">
-            Courses
-          </h1>
-          <p className="text-muted-foreground/80">
-            Create and manage your courses, subjects, and lessons seamlessly.
-          </p>
-        </div>
-        <CourseCreateDialog />
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Courses"
+        description="Create and organize courses, then manage their content hierarchy."
+        breadcrumbs={[
+          { label: "Dashboard", href: "/admin" },
+          { label: "Content" },
+          { label: "Courses" },
+        ]}
+        actions={<CourseCreateDialog />}
+      />
 
-      {/* Course List */}
       <CourseList initialCourses={courses} itemCounts={itemCounts} enrollmentCounts={enrollmentCounts} />
     </div>
   );

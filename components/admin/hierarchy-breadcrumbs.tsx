@@ -1,104 +1,78 @@
-"use client";
+import type { PageHeaderCrumb } from "@/components/layout/page-header";
 
-import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import { HierarchyType } from "@/types";
-import { getHierarchyConfig } from "@/lib/hierarchy-config";
+/**
+ * Breadcrumb trails for the admin course-content hierarchy
+ * (`/admin/courses/[courseId]/...`).
+ *
+ * Replaces the old `HierarchyBreadcrumbs` client nav — trails are now plain
+ * data handed to `PageHeader`'s `breadcrumbs` prop, so this module is
+ * server-safe and renders nothing itself.
+ *
+ * Every href resolves to a page that actually exists: there is no dedicated
+ * semester or subject detail route, so those crumbs point at the listing page
+ * where the entity is managed.
+ */
 
-interface BreadcrumbItem {
-  label: string;
-  href?: string;
-}
+/** Root segments shared by every course-content page. */
+const ROOT_CRUMBS: PageHeaderCrumb[] = [
+  { label: "Dashboard", href: "/admin" },
+  { label: "Content", href: "/admin/courses" },
+];
 
-interface HierarchyBreadcrumbsProps {
+interface CourseBreadcrumbInput {
   courseId: string;
   courseTitle: string;
-  hierarchyType: HierarchyType;
-  subjectId?: string;
-  subjectTitle?: string;
   semesterId?: string;
   semesterTitle?: string;
-  currentLevel: "course" | "semester" | "subject" | "lesson";
+  subjectId?: string;
+  subjectTitle?: string;
+  /**
+   * Label for the deepest segment (the current page), e.g. "Semesters",
+   * "Subjects", "Lessons", "Attendance". Omit it on the course hub itself so
+   * the course title becomes the current-page crumb.
+   */
+  current?: string;
 }
 
-export function HierarchyBreadcrumbs({
+function getCourseBreadcrumbs({
   courseId,
   courseTitle,
-  hierarchyType,
-  subjectId,
-  subjectTitle,
   semesterId,
   semesterTitle,
-  currentLevel,
-}: HierarchyBreadcrumbsProps) {
-  const config = getHierarchyConfig(hierarchyType);
+  subjectId,
+  subjectTitle,
+  current,
+}: CourseBreadcrumbInput): PageHeaderCrumb[] {
+  const crumbs: PageHeaderCrumb[] = [
+    ...ROOT_CRUMBS,
+    current
+      ? { label: courseTitle, href: `/admin/courses/${courseId}` }
+      : { label: courseTitle },
+  ];
 
-  const getBreadcrumbs = (): BreadcrumbItem[] => {
-    const breadcrumbs: BreadcrumbItem[] = [
-      { label: "Courses", href: "/admin/courses" }
-    ];
+  if (semesterId) {
+    // No per-semester detail page — the trail points at the semesters list.
+    crumbs.push({
+      label: semesterTitle ?? "Semester",
+      href: `/admin/courses/${courseId}/semesters`,
+    });
+  }
 
-    switch (hierarchyType) {
-      case 1: // Course → Semester → Subject → Lesson
-        if (currentLevel === "course") {
-          breadcrumbs.push({ label: courseTitle });
-        } else if (currentLevel === "semester") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
-          breadcrumbs.push({ label: semesterTitle || "Semester" });
-        } else if (currentLevel === "subject") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
-          breadcrumbs.push({ label: semesterTitle || "Semester", href: `/admin/courses/${courseId}/semesters/${semesterId}` });
-          breadcrumbs.push({ label: subjectTitle || "Subject" });
-        } else if (currentLevel === "lesson") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/semesters` });
-          breadcrumbs.push({ label: semesterTitle || "Semester", href: `/admin/courses/${courseId}/semesters/${semesterId}` });
-          breadcrumbs.push({ label: subjectTitle || "Subject", href: `/admin/courses/${courseId}/semesters/${semesterId}/subjects/${subjectId}/lessons` });
-          breadcrumbs.push({ label: "Lessons" });
-        }
-        break;
+  if (subjectId) {
+    crumbs.push({
+      label: subjectTitle ?? "Subject",
+      href: semesterId
+        ? `/admin/courses/${courseId}/semesters/${semesterId}/subjects`
+        : `/admin/courses/${courseId}/subjects`,
+    });
+  }
 
-      case 2: // Course → Subject → Lesson
-        if (currentLevel === "course") {
-          breadcrumbs.push({ label: courseTitle });
-        } else if (currentLevel === "subject") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
-          breadcrumbs.push({ label: subjectTitle || "Subject" });
-        } else if (currentLevel === "lesson") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/subjects` });
-          breadcrumbs.push({ label: subjectTitle || "Subject", href: `/admin/courses/${courseId}/subjects/${subjectId}/lessons` });
-          breadcrumbs.push({ label: "Lessons" });
-        }
-        break;
+  if (current) {
+    crumbs.push({ label: current });
+  }
 
-      case 3: // Lesson only
-        if (currentLevel === "course") {
-          breadcrumbs.push({ label: courseTitle });
-        } else if (currentLevel === "lesson") {
-          breadcrumbs.push({ label: courseTitle, href: `/admin/courses/${courseId}/lessons` });
-          breadcrumbs.push({ label: "Lessons" });
-        }
-        break;
-    }
-
-    return breadcrumbs;
-  };
-
-  const breadcrumbs = getBreadcrumbs();
-
-  return (
-    <nav className="flex items-center space-x-1 text-sm text-muted-foreground">
-      {breadcrumbs.map((item, index) => (
-        <div key={index} className="flex items-center">
-          {index > 0 && <ChevronRight className="h-4 w-4 mx-1" />}
-          {item.href ? (
-            <Link href={item.href} className="hover:text-foreground transition-colors">
-              {item.label}
-            </Link>
-          ) : (
-            <span className="text-foreground font-medium">{item.label}</span>
-          )}
-        </div>
-      ))}
-    </nav>
-  );
+  return crumbs;
 }
+
+export { getCourseBreadcrumbs }
+export type { CourseBreadcrumbInput }

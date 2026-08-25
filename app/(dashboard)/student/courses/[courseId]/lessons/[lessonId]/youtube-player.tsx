@@ -599,12 +599,12 @@ export function YouTubeVideoPlayer({
                 {/* Progress bar with glow */}
                 <div
                   className="absolute inset-y-0 left-0 rounded-full transition-none"
-                  style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary)) 80%, hsl(var(--primary) / 0.7))", boxShadow: "0 0 8px hsl(var(--primary) / 0.5), 0 0 2px hsl(var(--primary) / 0.8)" }}
+                  style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg, var(--primary), var(--primary) 80%, color-mix(in oklab, var(--primary) 70%, transparent))", boxShadow: "0 0 8px color-mix(in oklab, var(--primary) 50%, transparent), 0 0 2px color-mix(in oklab, var(--primary) 80%, transparent)" }}
                 />
                 {/* Scrubber thumb */}
                 <div
                   className="absolute top-1/2 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white opacity-0 shadow-lg transition-opacity group-hover/timeline:opacity-100 sm:h-4 sm:w-4"
-                  style={{ left: `${progressPercent}%`, boxShadow: "0 0 6px hsl(var(--primary) / 0.6)" }}
+                  style={{ left: `${progressPercent}%`, boxShadow: "0 0 6px color-mix(in oklab, var(--primary) 60%, transparent)" }}
                 />
               </div>
             </div>

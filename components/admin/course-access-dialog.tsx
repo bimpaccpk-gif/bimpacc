@@ -250,10 +250,11 @@ export function CourseAccessDialog({ courseId, courseTitle, hierarchyType = 1 }:
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-primary/10 text-primary hover:bg-primary/20 dark:text-primary inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors"
+        title="Student Access"
+        aria-label="Manage student access"
+        className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4"
       >
-        <Shield className="h-3 w-3" />
-        Student Access
+        <Shield />
       </button>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
         <DialogHeader className="shrink-0">

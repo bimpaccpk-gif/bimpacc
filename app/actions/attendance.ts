@@ -14,6 +14,21 @@ import type { AttendanceStatus, CourseAttendanceDetail } from "@/types";
 
 type AdminOrInstructor = { userId: string; role: string };
 
+/** Course metadata needed by the attendance pages' course picker. */
+export interface AttendanceCourseMeta {
+  id: string;
+  title: string;
+  batch: string | null;
+}
+
+/** One recorded session with its aggregate attendance rate. */
+export interface AttendanceSessionSummary {
+  session_date: string;
+  present_count: number;
+  total_count: number;
+  percentage: number;
+}
+
 interface EnrollmentWithUser {
   id: string;
   user_id: string;
@@ -118,7 +133,7 @@ export async function getCourseAttendance(
  */
 export async function getAttendanceSessionDates(
   courseId: string
-): Promise<{ session_date: string; present_count: number; total_count: number; percentage: number }[]> {
+): Promise<AttendanceSessionSummary[]> {
   await verifyAttendanceAccess(courseId);
   const admin = await createAdminClient();
 
@@ -554,6 +569,74 @@ export async function getAttendanceStats(
     unmarked,
     attendancePercentage,
   };
+}
+
+// ─── Attendance Page Queries ──────────────────────────────────
+
+/**
+ * Fetch the course an attendance page is scoped to. Returns null when the
+ * course does not exist or the caller (admin/instructor) may not view it —
+ * both render as "course not found" upstream.
+ */
+export async function getAttendanceCourse(
+  courseId: string
+): Promise<AttendanceCourseMeta | null> {
+  try {
+    await verifyAttendanceAccess(courseId);
+  } catch {
+    return null;
+  }
+
+  const admin = await createAdminClient();
+  const { data } = await admin
+    .from("courses")
+    .select("id, title, batch")
+    .eq("id", courseId)
+    .single();
+
+  return (data as AttendanceCourseMeta | null) ?? null;
+}
+
+/**
+ * Course options for the attendance page picker.
+ *
+ * `scope: "admin"` requires the admin role and returns every course;
+ * `scope: "instructor"` accepts instructors and admins and returns only the
+ * courses assigned to the caller (all of them for admins), matching
+ * `getInstructorCourses`.
+ */
+export async function getAttendanceCourseOptions(
+  scope: "admin" | "instructor"
+): Promise<AttendanceCourseMeta[]> {
+  const { userId } = await verifySession();
+  const supabase = await createClient();
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  const role = profile?.role;
+  if (role !== "admin" && role !== "instructor") {
+    throw new Error("Unauthorized. Admin or Instructor access required.");
+  }
+  if (scope === "admin" && role !== "admin") {
+    throw new Error("Unauthorized. Admin access required.");
+  }
+
+  let query = supabase
+    .from("courses")
+    .select("id, title, batch")
+    .order("created_at", { ascending: false });
+
+  if (role !== "admin") {
+    query = query.eq("instructor_id", userId);
+  }
+
+  const { data } = await query;
+
+  return (data as AttendanceCourseMeta[] | null) ?? [];
 }
 
 // ─── Utility ──────────────────────────────────────────────────

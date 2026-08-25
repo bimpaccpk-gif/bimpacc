@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DisableContextMenu } from "@/components/disable-context-menu";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { Toaster } from "sonner";
 import "./globals.css";
 
+// Variable names must match the @theme inline mappings in globals.css
 const geistSans = Geist({
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
 });
 

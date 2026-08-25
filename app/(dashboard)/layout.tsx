@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import { getCurrentUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -6,12 +8,17 @@ import { ApprovalPendingModal } from "@/components/student/approval-modal";
 import { ScreenProtection } from "@/components/student/screen-protection";
 import { getUserNotifications } from "@/app/actions/notifications";
 
+// Written client-side by components/layout/app-sidebar.tsx on collapse toggle.
+const SIDEBAR_COLLAPSED_COOKIE = "sidebar-collapsed";
+
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
 
   const isStudent = user.role === "student";
   const needsOnboarding = isStudent && !user.onboarding_completed && !user.onboarding_bypassed;
@@ -34,7 +41,12 @@ export default async function DashboardLayout({
 
   return (
     <>
-      <DashboardShell role={user.role} user={user} notifications={notifData?.notifications ?? []}>
+      <DashboardShell
+        role={user.role}
+        user={user}
+        notifications={notifData?.notifications ?? []}
+        initialCollapsed={initialCollapsed}
+      >
         {children}
       </DashboardShell>
       {needsOnboarding && <OnboardingModal user={user} selectedCourse={selectedCourse} />}

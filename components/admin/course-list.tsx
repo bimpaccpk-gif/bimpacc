@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Button } from "@/components/ui/button";
 import { CourseCreateDialog } from "@/components/admin/course-create-dialog";
 import { CourseEditDialog } from "@/components/admin/course-edit-dialog";
 import { CourseDeleteButton } from "@/components/admin/course-delete-button";
 import { ManageContentDialog } from "@/components/admin/manage-content-dialog";
 import { CourseAccessDialog } from "@/components/admin/course-access-dialog";
 import { EnrolledStudentsDialog } from "@/components/admin/enrolled-students-dialog";
-import { getHierarchyConfig } from "@/lib/hierarchy-config";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { getCourseAccent } from "@/lib/course-accent";
 import { HierarchyType } from "@/types";
 import { cn } from "@/lib/utils";
 import { reorderCourses } from "@/app/actions/courses";
-import { Sparkles, Layers, List, BookOpen, Activity, Calendar, GripVertical, Users } from "lucide-react";
+import { Layers, ListTree, BookOpen, GripVertical, CalendarDays, GraduationCap } from "lucide-react";
 
 export interface CourseRow {
   id: string;
@@ -34,119 +35,80 @@ interface CourseListProps {
   enrollmentCounts: Record<string, number>;
 }
 
-const statusConfig: Record<string, { label: string; className: string; dotClass: string }> = {
-  draft: {
-    label: "Draft",
-    className: "bg-muted text-muted-foreground ring-1 ring-border/20",
-    dotClass: "bg-muted-foreground",
-  },
-  published: {
-    label: "Published",
-    className:
-      "bg-success/10 text-success dark:bg-success/10 dark:text-success ring-1 ring-success/20",
-    dotClass: "bg-success animate-pulse",
-  },
-  archived: {
-    label: "Archived",
-    className:
-      "bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning ring-1 ring-warning/20",
-    dotClass: "bg-warning",
-  },
+const statusVariant: Record<string, "success" | "secondary" | "warning"> = {
+  published: "success",
+  draft: "secondary",
+  archived: "warning",
 };
 
-const hierarchyIcons: Record<number, React.ReactNode> = {
-  1: <Layers className="h-6 w-6" />,
-  2: <List className="h-6 w-6" />,
-  3: <BookOpen className="h-6 w-6" />,
+const statusLabel: Record<string, string> = {
+  draft: "Draft",
+  published: "Published",
+  archived: "Archived",
 };
 
-// Distinct colors per hierarchy type for instant visual identification
-const hierarchyColors: Record<number, {
-  edgeGradient: string;
-  iconBg: string;
-  iconColor: string;
-  badgeBg: string;
-  badgeText: string;
-  badgeRing: string;
-  textAccent: string;
-  iconAccent: string;
-  hoverBg: string;
-  dragHoverBg: string;
-}> = {
-  1: {
-    edgeGradient: "from-blue-600 to-blue-400",
-    iconBg: "bg-blue-100 dark:bg-blue-950/60 border-blue-200/40 dark:border-blue-800/40",
-    iconColor: "text-blue-600 dark:text-blue-400",
-    badgeBg: "bg-blue-100 dark:bg-blue-900/60",
-    badgeText: "text-blue-700 dark:text-blue-400",
-    badgeRing: "ring-blue-200 dark:ring-blue-800/40",
-    textAccent: "text-blue-600 dark:text-blue-400",
-    iconAccent: "text-blue-600 dark:text-blue-400",
-    hoverBg: "hover:border-blue-200 dark:hover:border-blue-800",
-    dragHoverBg: "hover:bg-blue-50 dark:hover:bg-blue-950/20",
+const hierarchyGroups: Array<{
+  type: HierarchyType;
+  label: string;
+  detail: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    type: 1,
+    label: "Full structure",
+    detail: "Semesters → Subjects → Lessons",
+    icon: <Layers />,
   },
-  2: {
-    edgeGradient: "from-violet-600 to-violet-400",
-    iconBg: "bg-violet-100 dark:bg-violet-950/60 border-violet-200/40 dark:border-violet-800/40",
-    iconColor: "text-violet-600 dark:text-violet-400",
-    badgeBg: "bg-violet-100 dark:bg-violet-900/60",
-    badgeText: "text-violet-700 dark:text-violet-400",
-    badgeRing: "ring-violet-200 dark:ring-violet-800/40",
-    textAccent: "text-violet-600 dark:text-violet-400",
-    iconAccent: "text-violet-600 dark:text-violet-400",
-    hoverBg: "hover:border-violet-200 dark:hover:border-violet-800",
-    dragHoverBg: "hover:bg-violet-50 dark:hover:bg-violet-950/20",
+  {
+    type: 2,
+    label: "Standard",
+    detail: "Subjects → Lessons",
+    icon: <ListTree />,
   },
-  3: {
-    edgeGradient: "from-amber-600 to-amber-400",
-    iconBg: "bg-amber-100 dark:bg-amber-950/60 border-amber-200/40 dark:border-amber-800/40",
-    iconColor: "text-amber-600 dark:text-amber-400",
-    badgeBg: "bg-amber-100 dark:bg-amber-900/60",
-    badgeText: "text-amber-700 dark:text-amber-400",
-    badgeRing: "ring-amber-200 dark:ring-amber-800/40",
-    textAccent: "text-amber-600 dark:text-amber-400",
-    iconAccent: "text-amber-600 dark:text-amber-400",
-    hoverBg: "hover:border-amber-200 dark:hover:border-amber-800",
-    dragHoverBg: "hover:bg-amber-50 dark:hover:bg-amber-950/20",
+  {
+    type: 3,
+    label: "Simple",
+    detail: "Lessons only",
+    icon: <BookOpen />,
   },
-};
-
-const hierarchyGroups = [
-  { type: 1 as HierarchyType, title: "Full Course Structure (Semesters → Subjects → Lessons)", color: "text-blue-600 dark:text-blue-400" },
-  { type: 2 as HierarchyType, title: "Standard Course (Subjects → Lessons)", color: "text-violet-600 dark:text-violet-400" },
-  { type: 3 as HierarchyType, title: "Simple Course (Lessons Only)", color: "text-amber-600 dark:text-amber-400" },
 ];
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+// Sort courses by order_index primarily, then fallback to creation date (handled by server query initially)
+function sortCourses(courses: CourseRow[]): CourseRow[] {
+  return [...courses].sort((a, b) => {
+    const aOrder = a.order_index ?? 0;
+    const bOrder = b.order_index ?? 0;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 }
 
-export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: CourseListProps) {
-  // Sort courses by order_index primarily, then fallback to creation date (handled by server query initially)
-  const [courses, setCourses] = useState(() => {
-    return [...initialCourses].sort((a, b) => {
-      const aOrder = a.order_index ?? 0;
-      const bOrder = b.order_index ?? 0;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      // Fallback to date
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-  });
+function formatShortDate(date: string) {
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-  useEffect(() => {
-    setCourses(
-      [...initialCourses].sort((a, b) => {
-        const aOrder = a.order_index ?? 0;
-        const bOrder = b.order_index ?? 0;
-        if (aOrder !== bOrder) return aOrder - bOrder;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      })
-    );
-  }, [initialCourses]);
+function contentSummary(
+  course: CourseRow,
+  counts: { semesters: number; subjects: number; lessons: number } | undefined
+) {
+  if (!counts) return "0 lessons";
+  const parts: string[] = [];
+  if (course.hierarchy_type === 1) parts.push(`${counts.semesters} semesters`, `${counts.subjects} subjects`);
+  if (course.hierarchy_type === 2) parts.push(`${counts.subjects} subjects`);
+  parts.push(`${counts.lessons} lessons`);
+  return parts.join(" · ");
+}
+
+export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: CourseListProps) {
+  const [courses, setCourses] = useState(() => sortCourses(initialCourses));
+
+  // Re-sort when the server sends fresh rows (e.g. after router.refresh()) —
+  // adjusted during render instead of in an effect to avoid cascading renders.
+  const [lastInitialCourses, setLastInitialCourses] = useState(initialCourses);
+  if (lastInitialCourses !== initialCourses) {
+    setLastInitialCourses(initialCourses);
+    setCourses(sortCourses(initialCourses));
+  }
 
   const handleDragEnd = useCallback(
     async (result: DropResult, hierarchyType: HierarchyType) => {
@@ -183,9 +145,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
       try {
         await reorderCourses(updates.map((u) => ({ id: u.id, order_index: u.order_index! })));
       } catch (error) {
-        // Revert on error by refetching
         console.error("Failed to reorder courses:", error);
-        // The server will have the correct state, so we don't need to manually revert
       }
     },
     [courses]
@@ -193,47 +153,52 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
 
   if (courses.length === 0) {
     return (
-      <div className="animate-in zoom-in-95 border-primary/30 bg-primary/5 dark:bg-primary/10 relative flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-dashed px-6 py-24 backdrop-blur-sm duration-700">
-        <div className="from-primary/10 pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] via-transparent to-transparent" />
-        <div className="group from-primary to-primary/80 shadow-primary/20 relative z-10 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br shadow-xl transition-transform duration-500 hover:scale-105">
-          <Sparkles className="text-primary-foreground h-10 w-10" />
-        </div>
-        <h3 className="relative z-10 mt-6 text-2xl font-semibold tracking-tight">
-          Create your first course
-        </h3>
-        <p className="text-muted-foreground relative z-10 mt-2 mb-6 max-w-sm text-center">
-          Get started by designing a new course. Choose from versatile hierarchy structures to best
-          organize your content.
-        </p>
-        <div className="group relative z-10">
-          <CourseCreateDialog />
-        </div>
-      </div>
+      <EmptyState
+        icon={BookOpen}
+        title="Create your first course"
+        description="Design a new course and choose the hierarchy structure that fits how your content is organized."
+        action={<CourseCreateDialog />}
+      />
     );
   }
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       {hierarchyGroups.map((group) => {
         const groupCourses = courses.filter((c) => c.hierarchy_type === group.type);
         if (groupCourses.length === 0) return null;
 
+        const totalStudents = groupCourses.reduce(
+          (sum, c) => sum + (enrollmentCounts[c.id] ?? 0),
+          0
+        );
+
         return (
-          <div
-            key={group.type}
-            className="animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-4"
-          >
-            <h2 className={cn("pl-1 text-xl font-bold tracking-tight", group.color)}>
-              {group.title}
-            </h2>
+          <section key={group.type} className="flex flex-col gap-3">
+            {/* Section header */}
+            <div className="flex items-baseline gap-2 px-0.5">
+              <span className="flex items-center gap-1.5 text-muted-foreground [&_svg]:size-3.5">
+                {group.icon}
+              </span>
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                {group.label}
+              </h2>
+              <span className="text-xs text-muted-foreground">{group.detail}</span>
+              <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                {groupCourses.length} course{groupCourses.length !== 1 ? "s" : ""} ·{" "}
+                {totalStudents} student{totalStudents !== 1 ? "s" : ""}
+              </span>
+            </div>
+
             <DragDropContext onDragEnd={(result) => handleDragEnd(result, group.type)}>
               <Droppable droppableId={`courses-list-${group.type}`}>
                 {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                  <div {...provided.droppableProps} ref={provided.innerRef} className="flex flex-col gap-2">
                     {groupCourses.map((course, index) => {
-                      const status = statusConfig[course.status] ?? statusConfig.draft;
-                      const config = getHierarchyConfig(course.hierarchy_type);
-                      const colors = hierarchyColors[course.hierarchy_type];
+                      const variant = statusVariant[course.status] ?? "secondary";
+                      const label = statusLabel[course.status] ?? "Draft";
+                      const accent = getCourseAccent(course.hierarchy_type);
+                      const students = enrollmentCounts[course.id] ?? 0;
 
                       return (
                         <Draggable key={course.id} draggableId={course.id} index={index}>
@@ -242,156 +207,78 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               className={cn(
-                                `group bg-background/60 dark:bg-card/60 relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-white/20 p-4 backdrop-blur-xl sm:flex-row sm:items-center dark:border-white/10`,
-                                colors.hoverBg,
+                                "group relative flex flex-col gap-4 rounded-xl border bg-card p-4 transition-[box-shadow,border-color] sm:flex-row sm:items-center",
                                 snapshot.isDragging
-                                  ? `bg-background/95 z-50 scale-[1.02] shadow-2xl ring-2 will-change-transform ring-[${colors.iconAccent.replace("text-", "")}]`
-                                  : "shadow-sm transition-[shadow,border-color,opacity] duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                                  ? cn("z-50 shadow-lg ring-2 ring-ring", accent.draggingRing)
+                                  : cn("hover:shadow-sm", accent.hoverBorder)
                               )}
                               style={provided.draggableProps.style}
                             >
-                              {/* Left Edge Accent */}
-                              <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${colors.edgeGradient} opacity-60 transition-opacity group-hover:opacity-100`} />
-
-                              {/* Drag Handle */}
+                              {/* Drag handle */}
                               <div
                                 {...provided.dragHandleProps}
-                                className={`-ml-1 cursor-grab rounded-lg p-2 pr-1 pl-2 transition-colors active:cursor-grabbing ${colors.dragHoverBg}`}
+                                className="-ml-2 cursor-grab rounded-md p-1.5 text-muted-foreground/50 opacity-0 transition-opacity hover:text-muted-foreground focus-visible:opacity-100 active:cursor-grabbing group-hover:opacity-100"
+                                aria-label="Drag to reorder"
                               >
-                                <GripVertical className={`h-5 w-5 ${colors.iconAccent} opacity-50 group-hover:opacity-100`} />
+                                <GripVertical className="size-4" />
                               </div>
 
-                              {/* Icon Container */}
-                              <div className={`hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-300 group-hover:scale-110 sm:flex ${colors.iconBg}`}>
-                                <div className={colors.iconColor}>
-                                  {hierarchyIcons[course.hierarchy_type]}
-                                </div>
+                              {/* Hierarchy icon */}
+                              <div
+                                className={cn(
+                                  "hidden size-10 shrink-0 items-center justify-center rounded-lg border sm:flex [&_svg]:size-4",
+                                  accent.iconTile,
+                                  accent.iconColor
+                                )}
+                              >
+                                {group.icon}
                               </div>
 
-                              {/* Main Details (Title, Description) */}
-                              <div className="ml-4 min-w-0 flex-1 py-1 pr-4 sm:ml-0">
-                                <div className="mb-1 flex items-center gap-2 sm:hidden">
-                                  <span
-                                    className={cn(
-                                      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase shadow-sm",
-                                      status.className
-                                    )}
-                                  >
-                                    <span
-                                      className={cn(
-                                        "relative flex h-1.5 w-1.5 rounded-full",
-                                        status.dotClass
-                                      )}
-                                    />
-                                    {status.label}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <h3 className={`text-xl font-bold tracking-tight transition-colors text-foreground group-hover:${colors.textAccent.split(" ")[0]}`}>
+                              {/* Title + meta */}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3 className="truncate text-sm font-semibold tracking-tight text-foreground">
                                     {course.title}
                                   </h3>
                                   {course.batch && (
-                                    <span className={`inline-flex shrink-0 items-center rounded-md px-2 py-1 text-xs font-bold tracking-wider uppercase shadow-sm ring-1 ${colors.badgeBg} ${colors.badgeText} ${colors.badgeRing}`}>
+                                    <Badge variant="outline" className="px-1.5 py-0 text-[11px] font-medium uppercase">
                                       Batch {course.batch}
+                                    </Badge>
+                                  )}
+                                  <Badge variant={variant}>{label}</Badge>
+                                  {course.registration_open ? (
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+                                      <span className="relative flex size-1.5">
+                                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
+                                        <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+                                      </span>
+                                      Enrolling
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                      <span className="size-1.5 rounded-full bg-border" />
+                                      Closed
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-muted-foreground/80 mt-1 text-sm leading-relaxed">
+                                <p className="mt-0.5 truncate text-sm text-muted-foreground">
                                   {course.description || "No description provided."}
                                 </p>
-
-                                {/* Inline Stats for Mobile */}
-                                <div className="text-muted-foreground/80 mt-3 flex items-center gap-4 text-xs font-semibold sm:hidden">
-                                  <div className="flex items-center gap-1.5">
-                                    <Users className={`h-4 w-4 shrink-0 ${colors.iconAccent}`} />
-                                    <span>{enrollmentCounts[course.id] ?? 0} Students</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Activity className={`h-4 w-4 shrink-0 ${colors.iconAccent}`} />
-                                    <span>
-                                      {course.hierarchy_type === 1 && (
-                                        <>{itemCounts[course.id]?.semesters ?? 0} Sem. • {itemCounts[course.id]?.subjects ?? 0} Subj. • </>
-                                      )}
-                                      {course.hierarchy_type === 2 && (
-                                        <>{itemCounts[course.id]?.subjects ?? 0} Subj. • </>
-                                      )}
-                                      {itemCounts[course.id]?.lessons ?? 0} Lessons
-                                    </span>
-                                  </div>
-                                  <div className={`flex items-center gap-1.5 rounded-md px-2 py-1 shrink-0 ${colors.badgeBg} ${colors.badgeText}`}>
-                                    <span>{config.name} Setup</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Badges / Stats (Desktop) */}
-                              <div className="border-border/50 hidden w-48 shrink-0 flex-col items-start justify-center gap-2 border-l border-dashed pl-6 sm:flex xl:items-end">
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold tracking-wider uppercase shadow-sm",
-                                    status.className
-                                  )}
-                                >
-                                  <span
-                                    className={cn(
-                                      "relative flex h-1.5 w-1.5 rounded-full",
-                                      status.dotClass
-                                    )}
-                                  />
-                                  {status.label}
-                                </span>
-                                {course.registration_open ? (
-                                  <span className="inline-flex items-center rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold tracking-wider text-success uppercase shadow-sm ring-1 ring-success/20 dark:bg-success/20 dark:text-success">
-                                    Enrolling
+                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1">
+                                    <GraduationCap className="size-3.5" />
+                                    {students} student{students !== 1 ? "s" : ""}
                                   </span>
-                                ) : (
-                                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-bold tracking-wider text-muted-foreground uppercase shadow-sm ring-1 ring-border/20 dark:bg-muted/50 dark:text-muted-foreground">
-                                    Closed
+                                  <span>{contentSummary(course, itemCounts[course.id])}</span>
+                                  <span className="inline-flex items-center gap-1">
+                                    <CalendarDays className="size-3.5" />
+                                    {formatShortDate(course.created_at)}
                                   </span>
-                                )}
-
-                                <div className="text-muted-foreground/80 flex flex-col items-end gap-2 text-[11px] font-bold mt-3 w-full">
-                                  <div
-                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
-                                    title="Enrolled Students"
-                                  >
-                                    <Users className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
-                                    <span className="truncate">
-                                      {enrollmentCounts[course.id] ?? 0} Student{enrollmentCounts[course.id] !== 1 ? "s" : ""}
-                                    </span>
-                                  </div>
-                                  <div
-                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
-                                    title="Content Counts"
-                                  >
-                                    <Activity className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
-                                    <span className="truncate">
-                                      {course.hierarchy_type === 1 && (
-                                        <>{itemCounts[course.id]?.semesters ?? 0} Sem • {itemCounts[course.id]?.subjects ?? 0} Subj • </>
-                                      )}
-                                      {course.hierarchy_type === 2 && (
-                                        <>{itemCounts[course.id]?.subjects ?? 0} Subj • </>
-                                      )}
-                                      {itemCounts[course.id]?.lessons ?? 0} Less.
-                                    </span>
-                                  </div>
-                                  <div
-                                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 w-full justify-between ${colors.badgeBg} border-transparent`}
-                                    title={`Created on ${formatDate(course.created_at)}`}
-                                  >
-                                    <Calendar className={`h-3 w-3 shrink-0 ${colors.iconAccent}`} />
-                                    <span>
-                                      {new Date(course.created_at).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                      })}
-                                    </span>
-                                  </div>
                                 </div>
                               </div>
 
                               {/* Actions */}
-                              <div className="flex shrink-0 items-center gap-2 p-1 pl-4 sm:pl-2">
+                              <div className="flex shrink-0 items-center gap-1 sm:ml-2">
                                 <EnrolledStudentsDialog
                                   courseId={course.id}
                                   courseTitle={course.title}
@@ -406,13 +293,6 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                   initialRegistrationOpen={course.registration_open}
                                   initialHierarchyType={course.hierarchy_type}
                                 />
-                                <div className="w-[160px] sm:w-[150px]">
-                                  <ManageContentDialog
-                                    courseId={course.id}
-                                    courseTitle={course.title}
-                                    hierarchyType={course.hierarchy_type}
-                                  />
-                                </div>
                                 <CourseAccessDialog
                                   courseId={course.id}
                                   courseTitle={course.title}
@@ -422,6 +302,14 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                                   courseId={course.id}
                                   courseTitle={course.title}
                                 />
+                                <div aria-hidden className="mx-1.5 h-6 w-px bg-border" />
+                                <div className="sm:w-auto">
+                                  <ManageContentDialog
+                                    courseId={course.id}
+                                    courseTitle={course.title}
+                                    hierarchyType={course.hierarchy_type}
+                                  />
+                                </div>
                               </div>
                             </div>
                           )}
@@ -433,7 +321,7 @@ export function CourseList({ initialCourses, itemCounts, enrollmentCounts }: Cou
                 )}
               </Droppable>
             </DragDropContext>
-          </div>
+          </section>
         );
       })}
     </div>

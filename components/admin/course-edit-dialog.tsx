@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
-import { buttonVariants, Button } from "@/components/ui/button";
+import { useState, useActionState } from "react";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -39,23 +39,32 @@ export function CourseEditDialog({
   initialHierarchyType,
 }: CourseEditDialogProps) {
   const [open, setOpen] = useState(false);
-  const [state, action, pending] = useActionState(updateCourse, undefined);
+  // Wrap the server action so the dialog closes on success without an effect
+  const [state, action, pending] = useActionState(
+    async (
+      prevState: Parameters<typeof updateCourse>[0],
+      formData: Parameters<typeof updateCourse>[1]
+    ) => {
+      const result = await updateCourse(prevState, formData);
+      if (result?.success) {
+        setOpen(false);
+      }
+      return result;
+    },
+    undefined
+  );
   const [status, setStatus] = useState(initialStatus || "draft");
   const [registrationOpen, setRegistrationOpen] = useState(initialRegistrationOpen);
   const [hierarchyType, setHierarchyType] = useState<HierarchyType>(initialHierarchyType);
   const hierarchyOptions = getHierarchyOptions();
 
-  // Close dialog on success
-  useEffect(() => {
-    if (state?.success) {
-      setOpen(false);
-    }
-  }, [state?.success]);
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="flex items-center justify-center border border-input bg-background h-[44px] w-[44px] sm:h-11 sm:w-11 rounded-xl border-primary/20 text-primary hover:bg-primary/5 hover:text-primary dark:border-primary/50 dark:text-primary dark:hover:bg-primary/10 active:scale-[0.98] transition-all">
-        <Edit2 className="h-4 w-4" />
+      <DialogTrigger
+        className={buttonVariants({ variant: "ghost", size: "icon" })}
+        title="Edit course"
+      >
+        <Edit2 className="size-4" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-3">

@@ -85,9 +85,9 @@ export function EnrolledStudentsDialog({
         } else {
           setStudents(result.data);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching enrolled students:", err);
-        setError(err.message ?? "Failed to load enrolled students");
+        setError(err instanceof Error ? err.message : "Failed to load enrolled students");
         setStudents([]);
       } finally {
         setLoading(false);
@@ -102,13 +102,12 @@ export function EnrolledStudentsDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         title="View Enrolled Students"
-        className={`shrink-0 border-transparent ${colors.avatarBg} ${colors.avatarText}`}
         onClick={() => setOpen(true)}
       >
-        <Users className="h-4 w-4" />
+        <Users className="size-4" />
       </Button>
       <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col">
         <DialogHeader>

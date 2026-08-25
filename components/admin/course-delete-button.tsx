@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { deleteCourse } from "@/app/actions/courses";
+import { cn } from "@/lib/utils";
 import { Trash2, AlertCircle, Loader2 } from "lucide-react";
 
 interface CourseDeleteButtonProps {
@@ -33,9 +34,13 @@ export function CourseDeleteButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className={buttonVariants({ variant: "destructive", size: "sm" })}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "icon" }),
+          "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        )}
+        title="Delete course"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="size-4" />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
