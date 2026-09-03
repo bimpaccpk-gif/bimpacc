@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { reportScreenRecordingViolation } from "@/app/actions/auth";
 
 interface ScreenProtectionProps {
   role: string | null | undefined;
@@ -11,23 +9,22 @@ interface ScreenProtectionProps {
 
 export function ScreenProtection({ role }: ScreenProtectionProps) {
   const [isBlurred, setIsBlurred] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     // Only apply for students, or if role is missing (fail-secure)
     if (role === "admin") return;
 
-    const triggerLockout = async () => {
-      await reportScreenRecordingViolation();
-      router.push("/login?error=account_locked");
-    };
+    // POLICY: Screenshots are ALLOWED for students. Screenshot keys
+    // (PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5) must never lock the account.
+    // Only content-extraction and DevTools shortcuts are blocked below.
 
     // 1. Prevent Right Click
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
 
-    // 2. Prevent Keyboard Shortcuts (DevTools, PrintScreen, Copy/Paste)
+    // 2. Prevent Keyboard Shortcuts (DevTools, Print, Copy/Paste) —
+    // screenshot keys are deliberately NOT handled here.
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent F12
       if (e.key === "F12") {
@@ -65,21 +62,8 @@ export function ScreenProtection({ role }: ScreenProtectionProps) {
         e.preventDefault();
       }
 
-      // Mac screenshot combos: Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5
-      if (e.metaKey && e.shiftKey && ["3", "4", "5", "S", "s"].includes(e.key)) {
-        e.preventDefault();
-        triggerLockout();
-      }
-      
-      // Windows Snipping tool (Win+Shift+S) is handled by OS, harder to block via JS natively
-      // But we prevent default anyway if meta+shift+s
-      
-      // Windows Print Screen
-      if (e.key === "PrintScreen") {
-        navigator.clipboard.writeText(""); // Attempt to clear clipboard
-        e.preventDefault();
-        triggerLockout();
-      }
+      // Screenshots (PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5) are allowed —
+      // do NOT preventDefault or lock the account for them.
     };
 
     // 3. Prevent Copy/Cut events entirely
@@ -133,16 +117,7 @@ export function ScreenProtection({ role }: ScreenProtectionProps) {
 
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
-    
-    // Fallback for PrintScreen released
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "PrintScreen") {
-        navigator.clipboard.writeText("").catch(() => {});
-        triggerLockout();
-      }
-    };
-    document.addEventListener("keyup", handleKeyUp);
-    
+
     document.addEventListener("copy", handleCopyCut);
     document.addEventListener("cut", handleCopyCut); // Reuse same logic for cut
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -159,7 +134,6 @@ export function ScreenProtection({ role }: ScreenProtectionProps) {
       }
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("keyup", handleKeyUp);
       document.removeEventListener("copy", handleCopyCut);
       document.removeEventListener("cut", handleCopyCut);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
