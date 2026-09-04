@@ -21,7 +21,6 @@ import {
 import type { SessionUser } from "@/lib/dal";
 import type { UserRole } from "@/types";
 import { signOut } from "@/app/actions/auth";
-import type { Notification } from "@/app/actions/notifications";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -33,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { NotificationBell } from "./notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const SIDEBAR_COLLAPSED_COOKIE = "sidebar-collapsed";
@@ -55,7 +53,6 @@ export interface SidebarUser {
 interface AppSidebarProps {
   role: UserRole;
   user: SessionUser;
-  notifications?: Notification[];
   /** Hydrated from the `sidebar-collapsed` cookie so first paint matches storage. */
   initialCollapsed?: boolean;
 }
@@ -256,14 +253,11 @@ function CollapseToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 export function AppSidebar({
   role,
   user,
-  notifications = [],
   initialCollapsed = false,
 }: AppSidebarProps) {
   const [collapsed, setCollapsed] = React.useState(initialCollapsed);
   const sections = getNavSections(role, user.is_super_admin);
   const roleLabel = getRoleLabel(role, user.is_super_admin);
-  // Stable identity so the bell's sync effect doesn't reset on local re-renders.
-  const bellNotifications = React.useMemo(() => notifications ?? [], [notifications]);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -315,14 +309,13 @@ export function AppSidebar({
         <SidebarSectionList sections={sections} collapsed={collapsed} />
       </nav>
 
-      {/* Footer: notifications + account */}
+      {/* Footer: account menu */}
       <div
         className={cn(
           "mt-auto flex shrink-0 flex-col gap-1 border-t border-sidebar-border p-3",
           collapsed && "items-center"
         )}
       >
-        <NotificationBell notifications={bellNotifications} />
         <SidebarUserMenu user={user} roleLabel={roleLabel} showDetails={!collapsed} />
       </div>
     </aside>

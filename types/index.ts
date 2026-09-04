@@ -235,20 +235,6 @@ export interface LessonResource {
 }
 
 // ──────────────────────────────────────────────────────────
-// Notifications
-// ──────────────────────────────────────────────────────────
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string | null;
-  type: "info" | "success" | "warning" | "error";
-  read: boolean;
-  created_at: string;
-}
-
-// ──────────────────────────────────────────────────────────
 // Lesson Comments
 // ──────────────────────────────────────────────────────────
 

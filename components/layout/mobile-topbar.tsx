@@ -10,7 +10,6 @@ import { getNavSections } from "@/lib/navigation";
 import type { SessionUser } from "@/lib/dal";
 import type { UserRole } from "@/types";
 import { signOut } from "@/app/actions/auth";
-import type { Notification } from "@/app/actions/notifications";
 import {
   Sheet,
   SheetContent,
@@ -18,25 +17,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { NotificationBell } from "./notification-bell";
 import { SidebarSectionList, SidebarUserMenu, getRoleLabel } from "./app-sidebar";
 
 interface MobileTopbarProps {
   role: UserRole;
   user: SessionUser;
-  notifications?: Notification[];
 }
 
 /**
- * Phone / tablet chrome (< lg). Restores bell + account menu reachability
+ * Phone / tablet chrome (< lg). Keeps the account menu reachable
  * while the desktop rail is hidden, and hosts the slide-out navigation.
  */
-export function MobileTopbar({ role, user, notifications = [] }: MobileTopbarProps) {
+export function MobileTopbar({ role, user }: MobileTopbarProps) {
   const [open, setOpen] = React.useState(false);
   const sections = getNavSections(role, user.is_super_admin);
   const roleLabel = getRoleLabel(role, user.is_super_admin);
-  // Stable identity so the bell's sync effect doesn't reset on local re-renders.
-  const bellNotifications = React.useMemo(() => notifications ?? [], [notifications]);
 
   return (
     <header
@@ -99,9 +94,8 @@ export function MobileTopbar({ role, user, notifications = [] }: MobileTopbarPro
         </Link>
       </div>
 
-      {/* Right: notifications + account */}
+      {/* Right: account menu */}
       <div className="flex items-center gap-1.5">
-        <NotificationBell notifications={bellNotifications} />
         <SidebarUserMenu user={user} roleLabel={roleLabel} showDetails={false} />
       </div>
     </header>

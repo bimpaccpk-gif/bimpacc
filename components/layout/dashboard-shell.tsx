@@ -3,13 +3,11 @@ import { MobileTopbar } from "@/components/layout/mobile-topbar";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/types";
 import type { SessionUser } from "@/lib/dal";
-import type { Notification as NotificationType } from "@/app/actions/notifications";
 
 interface DashboardShellProps {
   children: React.ReactNode;
   role: UserRole;
   user: SessionUser;
-  notifications?: NotificationType[];
   /** Hydrated server-side from the `sidebar-collapsed` cookie. */
   initialCollapsed?: boolean;
 }
@@ -25,7 +23,6 @@ export function DashboardShell({
   children,
   role,
   user,
-  notifications,
   initialCollapsed = false,
 }: DashboardShellProps) {
   return (
@@ -33,7 +30,6 @@ export function DashboardShell({
       <AppSidebar
         role={role}
         user={user}
-        notifications={notifications ?? []}
         initialCollapsed={initialCollapsed}
       />
       <div
@@ -42,7 +38,7 @@ export function DashboardShell({
           initialCollapsed ? "lg:pl-16" : "lg:pl-64"
         )}
       >
-        <MobileTopbar role={role} user={user} notifications={notifications ?? []} />
+        <MobileTopbar role={role} user={user} />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>

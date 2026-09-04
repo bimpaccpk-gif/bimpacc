@@ -61,7 +61,7 @@ The project has made **significant progress** since the previous analysis. Here'
 - ✅ Profile page with role-specific stats
 
 #### Shared Features ✅
-- ✅ Notification system with bell icon & mark-as-read
+- In-app notification system retired at the owner's request (September 4, 2026).
 - ✅ Dark mode toggle
 - ✅ Responsive design with mobile menu
 - ✅ Error boundaries at all route levels
@@ -192,37 +192,9 @@ Create:
 
 ---
 
-### 7. **Advanced Notifications System**
-**Current State:** Basic notification table with bell icon  
-**Proposed Improvements:**
+### 7. **Notification System — Retired**
 
-#### In-App Enhancements
-- 🔔 Notification preferences (toggle types on/off)
-- 🔔 Mark all as read
-- 🔔 Filter by type (unread, warnings, info)
-- 🔔 Notification archive
-- 🔔 Real-time updates via Supabase Realtime subscriptions
-
-#### Email Notifications
-- 📧 Enrollment confirmation
-- 📧 Course completion & certificate
-- 📧 Approval status changes
-- 📧 Upcoming quiz reminders
-- 📧 Instructor announcements
-
-#### Admin Broadcast
-- 📢 Send notification to all students
-- 📢 Send to specific course enrollments
-- 📢 Schedule notifications for future delivery
-
-**Implementation:**
-- Add Supabase Realtime subscriptions for live updates
-- Create notification preferences table
-- Build notification center page
-- Integrate with email system (see #2)
-
-**Effort:** Medium (4-5 days)  
-**Priority:** P1 (High)
+The in-app notification system was removed at the owner's request on September 4, 2026. Its bells, background polling, dashboard fetch, server actions, and types have been removed. A follow-up database migration removes the unused notification table after the updated application is deployed. Notification-center enhancements and broadcasts are no longer planned.
 
 ---
 
@@ -582,7 +554,6 @@ npm install -D playwright  # E2E tests
 | **Random Password Generation** | 🟡 High | Low | **P1** | Week 1 |
 | **Performance Optimizations** | 🟡 High | Medium | **P1** | Week 2-3 |
 | **Analytics Dashboard** | 🟡 High | High | **P1** | Week 3-4 |
-| **Enhanced Notifications** | 🟡 High | Medium | **P1** | Week 3-4 |
 | **Assignments & Submissions** | 🟡 High | Very High | **P1** | Week 5-7 |
 | **Attendance Insights** | 🟢 Medium | Medium | **P2** | Week 4 |
 | **Export & Reporting** | 🟢 Medium | Medium | **P2** | Week 5 |
@@ -623,7 +594,6 @@ npm install -D playwright  # E2E tests
 - [ ] Student learning analytics
 - [ ] Attendance insights & reports
 - [ ] Export data to CSV functionality
-- [ ] Notification system enhancements
 
 **Deliverables:** Comprehensive analytics across all roles
 
@@ -723,7 +693,6 @@ CREATE INDEX idx_enrollments_course_id ON enrollments(course_id);
 CREATE INDEX idx_lesson_progress_enrollment ON lesson_progress(enrollment_id);
 CREATE INDEX idx_attendance_enrollment ON attendance_records(enrollment_id);
 CREATE INDEX idx_quiz_attempts_user ON quiz_attempts(user_id);
-CREATE INDEX idx_notifications_user_read ON notifications(user_id, is_read);
 ```
 
 ### Code Quality

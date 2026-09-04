@@ -6,7 +6,6 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { OnboardingModal } from "@/components/student/onboarding-modal";
 import { ApprovalPendingModal } from "@/components/student/approval-modal";
 import { ScreenProtection } from "@/components/student/screen-protection";
-import { getUserNotifications } from "@/app/actions/notifications";
 
 // Written client-side by components/layout/app-sidebar.tsx on collapse toggle.
 const SIDEBAR_COLLAPSED_COOKIE = "sidebar-collapsed";
@@ -36,15 +35,11 @@ export default async function DashboardLayout({
     selectedCourse = course;
   }
 
-  // Fetch notifications for the bell
-  const { data: notifData } = await getUserNotifications();
-
   return (
     <>
       <DashboardShell
         role={user.role}
         user={user}
-        notifications={notifData?.notifications ?? []}
         initialCollapsed={initialCollapsed}
       >
         {children}
