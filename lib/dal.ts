@@ -43,16 +43,17 @@ export interface FullUserProfile extends SessionUser {
 export const verifySession = cache(async () => {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the JWT signature locally (asymmetric signing keys),
+  // avoiding a network round trip to Supabase Auth on every request. With a
+  // symmetric (HS256) project key it transparently falls back to getUser().
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
-  if (error || !user) {
+  if (error || !claims?.sub) {
     redirect("/login");
   }
 
-  return { userId: user.id, email: user.email ?? "" };
+  return { userId: claims.sub, email: (claims.email as string | undefined) ?? "" };
 });
 
 export const getCurrentUser = cache(async (): Promise<SessionUser> => {

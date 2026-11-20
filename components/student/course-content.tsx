@@ -11,7 +11,7 @@ interface LessonRow {
   title: string;
   description: string;
   video_url: string | null;
-  content: string | null;
+  content?: string | null;
   order_index: number;
   duration_minutes: number | null;
   isPaused: boolean;

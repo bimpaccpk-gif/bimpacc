@@ -118,11 +118,19 @@ async function getLessonWithSiblings(
     let subjects: any[] = [];
 
     if (hierarchyType === 1) {
-      const { data: semesters } = await admin
-        .from("semesters")
-        .select("id, order_index")
-        .eq("course_id", courseId)
-        .order("order_index", { ascending: true });
+      const [{ data: semesters }, { data: legacySubjects }] = await Promise.all([
+        admin
+          .from("semesters")
+          .select("id, order_index")
+          .eq("course_id", courseId)
+          .order("order_index", { ascending: true }),
+        admin
+          .from("subjects")
+          .select("id, title, semester_id, order_index")
+          .eq("course_id", courseId)
+          .is("semester_id", null)
+          .order("order_index", { ascending: true }),
+      ]);
 
       const semesterIds = (semesters ?? []).map((s: any) => s.id);
       (semesters ?? []).forEach((s: any) => {
@@ -138,13 +146,6 @@ async function getLessonWithSiblings(
           .order("order_index", { ascending: true });
         semesterSubjects = data ?? [];
       }
-
-      const { data: legacySubjects } = await admin
-        .from("subjects")
-        .select("id, title, semester_id, order_index")
-        .eq("course_id", courseId)
-        .is("semester_id", null)
-        .order("order_index", { ascending: true });
 
       subjects = [...semesterSubjects, ...(legacySubjects ?? [])];
     } else {
@@ -247,15 +248,14 @@ async function getResourcesWithUrls(lessonId: string) {
 
   if (!resources || resources.length === 0) return [];
 
-  const signedUrls: { path: string; signedUrl: string }[] = [];
-  for (const r of resources) {
-    const { data: urlData } = await supabase.storage
-      .from("lesson_resources")
-      .createSignedUrl(r.file_path, 3600);
-    if (urlData) {
-      signedUrls.push({ path: r.file_path, signedUrl: urlData.signedUrl });
-    }
-  }
+  // One storage request for all files instead of one request per file.
+  const { data: signedData } = await supabase.storage.from("lesson_resources").createSignedUrls(
+    resources.map((r) => r.file_path),
+    3600
+  );
+  const signedUrls = (signedData ?? []).filter(
+    (s): s is typeof s & { path: string; signedUrl: string } => !!s.path && !!s.signedUrl
+  );
 
   return resources.map((r) => {
     const signed = signedUrls.find((s) => s.path === r.file_path);
@@ -277,19 +277,28 @@ export default async function LessonPlayerPage({
   params: Promise<{ courseId: string; lessonId: string }>;
 }) {
   const { courseId, lessonId } = await params;
-  const user = await getCurrentUser();
-  const fullProfile = await getFullUserProfile();
-
-  const course = await getCourseInfo(courseId);
+  const [user, fullProfile, course] = await Promise.all([
+    getCurrentUser(),
+    getFullUserProfile(),
+    getCourseInfo(courseId),
+  ]);
 
   if (!course) {
     redirect("/student/courses");
   }
 
-  await verifyEnrollment(user.id, course.id);
-  await verifyNotPaused();
-
-  const accessResult = await resolveContentAccess(user.id, courseId, lessonId);
+  // Access checks and lesson data are independent, so they run together.
+  // Nothing is rendered until every check has passed: verifyEnrollment and
+  // verifyNotPaused redirect, and a paused result returns the banner below.
+  const [, , accessResult, lessonData, quizResult, resources, commentsResult] = await Promise.all([
+    verifyEnrollment(user.id, course.id),
+    verifyNotPaused(),
+    resolveContentAccess(user.id, courseId, lessonId),
+    getLessonWithSiblings(courseId, lessonId, course.hierarchy_type, user.id),
+    getQuizForLesson(lessonId),
+    getResourcesWithUrls(lessonId),
+    getLessonComments(lessonId),
+  ]);
 
   if (accessResult.isPaused) {
     return (
@@ -300,16 +309,17 @@ export default async function LessonPlayerPage({
     );
   }
 
-  const { current, allLessons, completedIds } = await getLessonWithSiblings(
-    courseId,
-    lessonId,
-    course.hierarchy_type,
-    user.id
-  );
+  const { current, allLessons: lessonsWithContent, completedIds } = lessonData;
 
   if (!current) {
     redirect(`/student/courses/${courseId}`);
   }
+
+  // Only the current lesson's body is shown; don't ship every lesson's
+  // content to the browser.
+  const allLessons = lessonsWithContent.map((l) =>
+    l.id === current.id ? l : { ...l, content: null }
+  );
 
   const currentIndex = allLessons.findIndex((l) => l.id === lessonId);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
@@ -318,18 +328,15 @@ export default async function LessonPlayerPage({
   const videoId = current.video_url ? getYouTubeVideoId(current.video_url) : null;
   const isCompleted = completedIds.has(current.id);
 
-  // Fetch quiz
-  const { data: quizData } = await getQuizForLesson(lessonId);
-  const { data: bestAttempt } = await getBestQuizAttempt(quizData?.id ?? "");
+  const quizData = quizResult.data;
+  const { data: bestAttempt } = quizData
+    ? await getBestQuizAttempt(quizData.id)
+    : { data: null };
   const previousAttempt = bestAttempt
     ? { score: bestAttempt.score, passed: bestAttempt.passed }
     : null;
 
-  // Fetch resources with signed URLs
-  const resources = await getResourcesWithUrls(lessonId);
-
-  // Fetch comments
-  const { data: commentsData } = await getLessonComments(lessonId);
+  const commentsData = commentsResult.data;
 
   const allLessonCount = allLessons.length;
   const completedCount = allLessons.filter((l) => completedIds.has(l.id)).length;
@@ -338,41 +345,40 @@ export default async function LessonPlayerPage({
   if (allLessonCount > 0 && completedCount === allLessonCount) {
     const admin = createAdminClient();
 
-    // Check all quiz passing scores
-    const { data: quizzes } = await admin
-      .from("quizzes")
-      .select("id, passing_score, lesson_id")
-      .in(
-        "lesson_id",
-        allLessons.map((l) => l.id)
-      );
-
-    let allQuizzesPassed = true;
-    for (const quiz of (quizzes as any[]) ?? []) {
-      const { data: bestAttempt } = await admin
-        .from("quiz_attempts")
-        .select("score, passed")
-        .eq("quiz_id", quiz.id)
-        .eq("user_id", user.id)
-        .eq("passed", true)
-        .order("score", { ascending: false })
-        .limit(1);
-
-      if (!bestAttempt || bestAttempt.length === 0) {
-        allQuizzesPassed = false;
-        break;
-      }
-    }
-
-    if (allQuizzesPassed) {
-      const existingCert = await admin
+    const [{ data: quizzes }, existingCert] = await Promise.all([
+      admin
+        .from("quizzes")
+        .select("id")
+        .in(
+          "lesson_id",
+          allLessons.map((l) => l.id)
+        ),
+      admin
         .from("certificates")
         .select("id")
         .eq("user_id", user.id)
         .eq("course_id", courseId)
-        .maybeSingle();
+        .maybeSingle(),
+    ]);
 
-      if (!existingCert.data) {
+    if (!existingCert.data) {
+      // One query for all passed attempts instead of one query per quiz.
+      const quizIds = ((quizzes as { id: string }[] | null) ?? []).map((q) => q.id);
+      let allQuizzesPassed = true;
+      if (quizIds.length > 0) {
+        const { data: passedAttempts } = await admin
+          .from("quiz_attempts")
+          .select("quiz_id")
+          .eq("user_id", user.id)
+          .eq("passed", true)
+          .in("quiz_id", quizIds);
+        const passedQuizIds = new Set(
+          ((passedAttempts as { quiz_id: string }[] | null) ?? []).map((a) => a.quiz_id)
+        );
+        allQuizzesPassed = quizIds.every((id) => passedQuizIds.has(id));
+      }
+
+      if (allQuizzesPassed) {
         const certNumber = `BIMPACC-${courseId.slice(0, 8).toUpperCase()}-${user.id.slice(0, 8).toUpperCase()}`;
         await admin.from("certificates").insert({
           user_id: user.id,

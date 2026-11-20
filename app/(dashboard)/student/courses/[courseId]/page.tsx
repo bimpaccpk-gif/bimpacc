@@ -181,7 +181,7 @@ interface LessonRow {
   title: string;
   description: string;
   video_url: string | null;
-  content: string | null;
+  content?: string | null;
   order_index: number;
   duration_minutes: number | null;
   isPaused: boolean;
@@ -199,28 +199,37 @@ async function getCourseDetail(courseId: string): Promise<CourseDetail | null> {
   return data as CourseDetail;
 }
 
-async function getSubjectsWithLessons(
-  courseId: string,
+async function getOverrideMap(
+  admin: ReturnType<typeof createAdminClient>,
   userId: string
-): Promise<SubjectWithLessons[]> {
-  const admin = createAdminClient();
-
-  // Fetch per-student overrides
+): Promise<Map<string, boolean>> {
   const { data: overrides } = await admin
     .from("student_content_access")
-    .select("*")
+    .select("content_type, content_id, is_paused")
     .eq("user_id", userId);
 
   const overrideMap = new Map<string, boolean>();
   for (const o of (overrides as any[]) ?? []) {
     overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
   }
+  return overrideMap;
+}
 
-  const { data: subjects } = await admin
-    .from("subjects")
-    .select("id, title, description, order_index, is_paused")
-    .eq("course_id", courseId)
-    .order("order_index", { ascending: true });
+async function getSubjectsWithLessons(
+  courseId: string,
+  userId: string
+): Promise<SubjectWithLessons[]> {
+  const admin = createAdminClient();
+
+  // Overrides and subjects are independent — fetch them together.
+  const [overrideMap, { data: subjects }] = await Promise.all([
+    getOverrideMap(admin, userId),
+    admin
+      .from("subjects")
+      .select("id, title, description, order_index, is_paused")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true }),
+  ]);
 
   if (!subjects || subjects.length === 0) return [];
 
@@ -234,7 +243,7 @@ async function getSubjectsWithLessons(
   const { data: lessons } = await admin
     .from("lessons")
     .select(
-      "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
+      "id, title, description, video_url, order_index, duration_minutes, subject_id, is_paused"
     )
     .in("subject_id", subjectIds)
     .order("order_index", { ascending: true });
@@ -249,7 +258,6 @@ async function getSubjectsWithLessons(
       title: l.title,
       description: l.description,
       video_url: l.video_url,
-      content: l.content,
       order_index: l.order_index,
       duration_minutes: l.duration_minutes,
       isPaused:
@@ -276,23 +284,21 @@ async function getSemestersWithSubjectsWithLessons(
 ): Promise<SemesterWithSubjectsWithLessons[]> {
   const admin = createAdminClient();
 
-  // Fetch per-student overrides
-  const { data: overrides } = await admin
-    .from("student_content_access")
-    .select("*")
-    .eq("user_id", userId);
-
-  const overrideMap = new Map<string, boolean>();
-  for (const o of (overrides as any[]) ?? []) {
-    overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
-  }
-
-  // Fetch semesters for this course
-  const { data: semesters } = await admin
-    .from("semesters")
-    .select("id, title, description, order_index, is_paused")
-    .eq("course_id", courseId)
-    .order("order_index", { ascending: true });
+  // Overrides, semesters and legacy (semester-less) subjects are independent.
+  const [overrideMap, { data: semesters }, { data: legacySubjects }] = await Promise.all([
+    getOverrideMap(admin, userId),
+    admin
+      .from("semesters")
+      .select("id, title, description, order_index, is_paused")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true }),
+    admin
+      .from("subjects")
+      .select("id, title, description, order_index, semester_id, is_paused")
+      .eq("course_id", courseId)
+      .is("semester_id", null)
+      .order("order_index", { ascending: true }),
+  ]);
 
   if (!semesters || semesters.length === 0) return [];
 
@@ -319,13 +325,6 @@ async function getSemestersWithSubjectsWithLessons(
     semesterSubjects = data ?? [];
   }
 
-  const { data: legacySubjects } = await admin
-    .from("subjects")
-    .select("id, title, description, order_index, semester_id, is_paused")
-    .eq("course_id", courseId)
-    .is("semester_id", null)
-    .order("order_index", { ascending: true });
-
   const subjects = [...semesterSubjects, ...(legacySubjects ?? [])];
 
   // Calculate subject pause states
@@ -346,7 +345,7 @@ async function getSemestersWithSubjectsWithLessons(
     const { data: lessons } = await admin
       .from("lessons")
       .select(
-        "id, title, description, video_url, content, order_index, duration_minutes, subject_id, is_paused"
+        "id, title, description, video_url, order_index, duration_minutes, subject_id, is_paused"
       )
       .in("subject_id", subjectIds)
       .order("order_index", { ascending: true });
@@ -360,8 +359,7 @@ async function getSemestersWithSubjectsWithLessons(
         title: l.title,
         description: l.description,
         video_url: l.video_url,
-        content: l.content,
-        order_index: l.order_index,
+          order_index: l.order_index,
         duration_minutes: l.duration_minutes,
         isPaused:
           lessonOverride !== undefined ? lessonOverride : parentPaused || (l.is_paused ?? false),
@@ -418,22 +416,14 @@ async function getSemestersWithSubjectsWithLessons(
 async function getDirectLessons(courseId: string, userId: string): Promise<LessonRow[]> {
   const admin = createAdminClient();
 
-  // Fetch per-student overrides
-  const { data: overrides } = await admin
-    .from("student_content_access")
-    .select("*")
-    .eq("user_id", userId);
-
-  const overrideMap = new Map<string, boolean>();
-  for (const o of (overrides as any[]) ?? []) {
-    overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
-  }
-
-  const { data } = await admin
-    .from("lessons")
-    .select("id, title, description, video_url, content, order_index, duration_minutes, is_paused")
-    .eq("course_id", courseId)
-    .order("order_index", { ascending: true });
+  const [overrideMap, { data }] = await Promise.all([
+    getOverrideMap(admin, userId),
+    admin
+      .from("lessons")
+      .select("id, title, description, video_url, order_index, duration_minutes, is_paused")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: true }),
+  ]);
 
   return ((data as any[]) ?? []).map((l) => {
     const lessonOverride = overrideMap.get(`lesson:${l.id}`);
@@ -442,7 +432,6 @@ async function getDirectLessons(courseId: string, userId: string): Promise<Lesso
       title: l.title,
       description: l.description,
       video_url: l.video_url,
-      content: l.content,
       order_index: l.order_index,
       duration_minutes: l.duration_minutes,
       isPaused: lessonOverride !== undefined ? lessonOverride : (l.is_paused ?? false),
@@ -624,37 +613,33 @@ export default async function CourseDetailPage({
   params: Promise<{ courseId: string }>;
 }) {
   const { courseId } = await params;
-  const user = await getCurrentUser();
-
-  const course = await getCourseDetail(courseId);
+  const [user, course] = await Promise.all([getCurrentUser(), getCourseDetail(courseId)]);
 
   if (!course) {
     redirect("/student/courses");
   }
 
-  // STRICT ACCESS CONTROL: Verify enrollment before showing any course content
-  // This is the LAW - students cannot view courses they are not enrolled in
-  await verifyEnrollment(user.id, course.id);
-
-  // Fetch content based on hierarchy type
-  let semesters: SemesterWithSubjectsWithLessons[] = [];
-  let subjects: SubjectWithLessons[] = [];
-  let directLessons: LessonRow[] = [];
-
-  if (course.hierarchy_type === 1) {
-    // Course → Semester → Subject → Lesson
-    semesters = await getSemestersWithSubjectsWithLessons(course.id, user.id);
-  } else if (course.hierarchy_type === 2) {
-    // Course → Subject → Lesson
-    subjects = await getSubjectsWithLessons(course.id, user.id);
-  } else {
-    // Type 3: Course → Lesson
-    directLessons = await getDirectLessons(course.id, user.id);
-  }
-
-  // Fetch completed lesson IDs
   const supabase = await createClient();
-  const completedIds = await getCompletedLessonIds(supabase, user.id, course.id);
+
+  // Fetch content based on hierarchy type:
+  //   1: Course → Semester → Subject → Lesson
+  //   2: Course → Subject → Lesson
+  //   3: Course → Lesson
+  // STRICT ACCESS CONTROL: enrollment is verified in parallel with the content
+  // queries; if it fails, verifyEnrollment redirects and nothing is rendered.
+  const [, semesters, subjects, directLessons, completedIds] = await Promise.all([
+    verifyEnrollment(user.id, course.id),
+    course.hierarchy_type === 1
+      ? getSemestersWithSubjectsWithLessons(course.id, user.id)
+      : Promise.resolve<SemesterWithSubjectsWithLessons[]>([]),
+    course.hierarchy_type === 2
+      ? getSubjectsWithLessons(course.id, user.id)
+      : Promise.resolve<SubjectWithLessons[]>([]),
+    course.hierarchy_type !== 1 && course.hierarchy_type !== 2
+      ? getDirectLessons(course.id, user.id)
+      : Promise.resolve<LessonRow[]>([]),
+    getCompletedLessonIds(supabase, user.id, course.id),
+  ]);
   const c = hierarchyDetailColors[course.hierarchy_type] ?? hierarchyDetailColors[3];
 
   const totalSemesterLessons = semesters.reduce(

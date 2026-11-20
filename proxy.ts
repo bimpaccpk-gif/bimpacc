@@ -53,9 +53,11 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() refreshes the session cookie when needed and verifies the JWT
+  // locally when the project uses asymmetric signing keys (falls back to a
+  // getUser() network call otherwise).
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
 
   const { pathname } = request.nextUrl;
 
@@ -85,23 +87,16 @@ export async function proxy(request: NextRequest) {
   let isSuperAdmin = false;
 
   if (needsRoleCheck) {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("role, is_paused")
-      .eq("id", user!.id)
-      .single();
+    // Fetch the profile and super-admin capability together; the capability
+    // only counts for admins.
+    const [{ data: profile }, { data: capability }] = await Promise.all([
+      supabase.from("users").select("role, is_paused").eq("id", user!.id).single(),
+      supabase.from("super_admins").select("user_id").eq("user_id", user!.id).maybeSingle(),
+    ]);
 
     role = profile?.role ?? null;
     isPaused = profile?.is_paused ?? false;
-
-    if (role === "admin") {
-      const { data: capability } = await supabase
-        .from("super_admins")
-        .select("user_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      isSuperAdmin = Boolean(capability);
-    }
+    isSuperAdmin = role === "admin" && Boolean(capability);
 
     // Account pause/ban check — redirect paused users away from protected routes
     if (isPaused && !isAuthRoute) {

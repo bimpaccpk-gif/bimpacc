@@ -102,10 +102,11 @@ async function getEnrollmentCounts(courseIds: string[]): Promise<Record<string, 
 }
 
 export default async function AdminCoursesPage() {
-  await getCurrentUser();
-  const courses = await getCourses();
-  const itemCounts = await getCourseItemCounts(courses);
-  const enrollmentCounts = await getEnrollmentCounts(courses.map((c) => c.id));
+  const [, courses] = await Promise.all([getCurrentUser(), getCourses()]);
+  const [itemCounts, enrollmentCounts] = await Promise.all([
+    getCourseItemCounts(courses),
+    getEnrollmentCounts(courses.map((c) => c.id)),
+  ]);
 
   return (
     <div className="space-y-6">
