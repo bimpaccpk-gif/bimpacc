@@ -2,11 +2,22 @@ import { describe, expect, it } from "vitest";
 import { getMfaEnforcement, isMfaExemptPath, mfaGate } from "@/lib/mfa-policy";
 
 describe("getMfaEnforcement", () => {
-  it("is off unless explicitly set to enforce", () => {
-    expect(getMfaEnforcement(undefined)).toBe("off");
-    expect(getMfaEnforcement("")).toBe("off");
-    expect(getMfaEnforcement("true")).toBe("off");
-    expect(getMfaEnforcement("enforce")).toBe("enforce");
+  it("is enforced by default in production (unset, empty or unrecognised values)", () => {
+    expect(getMfaEnforcement(undefined, "production")).toBe("enforce");
+    expect(getMfaEnforcement("", "production")).toBe("enforce");
+    expect(getMfaEnforcement("false", "production")).toBe("enforce");
+    expect(getMfaEnforcement("0", "production")).toBe("enforce");
+  });
+
+  it("can only be turned off in production with the explicit value 'off'", () => {
+    expect(getMfaEnforcement("off", "production")).toBe("off");
+    expect(getMfaEnforcement("enforce", "production")).toBe("enforce");
+  });
+
+  it("defaults to off in development and test so local work needs no authenticator", () => {
+    expect(getMfaEnforcement(undefined, "development")).toBe("off");
+    expect(getMfaEnforcement(undefined, "test")).toBe("off");
+    expect(getMfaEnforcement("enforce", "development")).toBe("enforce");
   });
 });
 
