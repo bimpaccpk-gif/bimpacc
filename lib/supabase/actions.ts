@@ -1,6 +1,8 @@
 "use server";
 
 import { verifySession, verifyAdmin } from "@/lib/dal";
+import { randomBytes } from "node:crypto";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { logAuditEvent } from "@/app/actions/admin";
 import { revalidatePath } from "next/cache";
@@ -14,6 +16,27 @@ interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Per-admin throttle for abuse-prone/destructive actions. Fails CLOSED: if the
+ * limiter is unavailable the action is refused rather than allowed unbounded.
+ * Returns an error message, or null when the call may proceed.
+ */
+async function limitAdminAction(
+  adminId: string,
+  action: string,
+  maxPerHour: number
+): Promise<string | null> {
+  const result = await rateLimit(`admin:${action}:${adminId}`, maxPerHour, HOUR_MS, {
+    failClosed: true,
+  });
+  if (result.allowed) return null;
+  const mins = Math.max(1, Math.ceil((result.retryAfterMs ?? 60_000) / 60000));
+  return `Too many ${action.replace(/-/g, " ")} requests. Please try again in ${mins} minute(s).`;
 }
 
 export async function createUserProfile(
@@ -100,6 +123,8 @@ export async function adminCreateUser(
 ): Promise<{ error: string; success: string }> {
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
+  const limited = await limitAdminAction(session.userId, "create-user", 100);
+  if (limited) return { error: limited, success: "" };
 
   const fullName = (formData.get("fullName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
@@ -193,6 +218,8 @@ export async function adminBulkCreateUsers(
 ): Promise<{ error: string; success: string; results?: any[] }> {
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
+  const limited = await limitAdminAction(session.userId, "bulk-create-users", 10);
+  if (limited) return { error: limited, success: "", results: [] };
 
   const csvContent = (formData.get("csvContent") as string)?.trim();
   const role = (formData.get("role") as UserRole) ?? "student";
@@ -209,6 +236,14 @@ export async function adminBulkCreateUsers(
 
   // Parse CSV content
   const lines = csvContent.split("\n").filter((line) => line.trim());
+
+  if (lines.length > 500) {
+    return {
+      error: "Too many rows. Please upload at most 500 users at a time.",
+      success: "",
+      results: [],
+    };
+  }
   const results: any[] = [];
   let successCount = 0;
   let failCount = 0;
@@ -267,8 +302,11 @@ export async function adminBulkCreateUsers(
       continue;
     }
 
-    // Use a default temporary password that users must change on first login
-    const password = "TempPass123!";
+    // Random per-user password nobody knows. A shared/default password would be a
+    // publicly guessable credential on every bulk-created account (Supabase Auth
+    // accepts password grants with the public anon key). Users sign in with Google
+    // using this email address.
+    const password = `${randomBytes(24).toString("base64url")}aA1!`;
 
     try {
       const { data, error: createError } = await admin.auth.admin.createUser({
@@ -354,7 +392,7 @@ export async function adminBulkCreateUsers(
 
   return {
     error: "",
-    success: `Bulk creation complete: ${successCount} succeeded, ${failCount} failed${courseMessage}${bypassMessage}. Temporary password for all users: TempPass123!`,
+    success: `Bulk creation complete: ${successCount} succeeded, ${failCount} failed${courseMessage}${bypassMessage}. New users sign in with Google using their email address.`,
     results,
   };
 }
@@ -371,6 +409,8 @@ export async function adminDeleteUser(
 
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
+  const limited = await limitAdminAction(session.userId, "delete-user", 60);
+  if (limited) return { error: limited, success: "" };
 
   if (session.userId === userId) {
     return { error: "You cannot delete your own account.", success: "" };
@@ -431,8 +471,14 @@ export async function bulkDeleteUsers(
     return { error: "No users selected for deletion.", success: "" };
   }
 
+  if (userIds.length > 200 || !userIds.every((id) => typeof id === "string" && UUID_RE.test(id))) {
+    return { error: "Invalid user selection.", success: "" };
+  }
+
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
+  const limited = await limitAdminAction(session.userId, "bulk-delete-users", 10);
+  if (limited) return { error: limited, success: "" };
 
   // Prevent self-deletion
   if (userIds.includes(session.userId)) {
@@ -588,14 +634,25 @@ export async function bulkApproveStudents(
     return { error: "No users selected for approval.", success: "" };
   }
 
-  const userIds: string[] = JSON.parse(userIdsStr);
+  let userIds: string[];
+  try {
+    userIds = JSON.parse(userIdsStr);
+  } catch {
+    return { error: "Invalid user IDs format.", success: "" };
+  }
 
   if (!Array.isArray(userIds) || userIds.length === 0) {
     return { error: "No users selected for approval.", success: "" };
   }
 
+  if (userIds.length > 500 || !userIds.every((id) => typeof id === "string" && UUID_RE.test(id))) {
+    return { error: "Invalid user selection.", success: "" };
+  }
+
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
+  const limited = await limitAdminAction(session.userId, "bulk-approve-students", 30);
+  if (limited) return { error: limited, success: "" };
 
   const supabase = await createClient();
 

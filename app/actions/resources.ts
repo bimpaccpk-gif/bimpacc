@@ -1,6 +1,7 @@
 "use server";
 
 import { verifyAdmin, verifySession } from "@/lib/dal";
+import { hasValidSignature, validateResourceUpload } from "@/lib/upload-validation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface LessonResource {
@@ -55,15 +56,29 @@ export async function uploadLessonResource(
     return { data: null, error: "Unauthorized. Admin access required." };
   }
 
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lessonId)) {
+    return { data: null, error: "Invalid lesson." };
+  }
+
+  const check = validateResourceUpload(file);
+  if (!check.ok) {
+    return { data: null, error: check.error };
+  }
+
   const timestamp = Date.now();
-  const safeFileName = `${lessonId}/${timestamp}-${file.name}`;
+  // Server-built storage path from a sanitized name; never use the raw client file name in the path.
+  const safeFileName = `${lessonId}/${timestamp}-${check.safeName}`;
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+  if (!hasValidSignature(check.extension, fileBuffer.subarray(0, 8))) {
+    return { data: null, error: "The file contents do not match its type." };
+  }
 
   const { error: uploadError } = await supabase.storage
     .from("lesson_resources")
     .upload(safeFileName, fileBuffer, {
-      contentType: file.type,
+      contentType: check.contentType,
       upsert: false,
     });
 
@@ -79,7 +94,7 @@ export async function uploadLessonResource(
       original_name: file.name,
       file_path: safeFileName,
       file_size: file.size,
-      mime_type: file.type,
+      mime_type: check.contentType,
     } as never)
     .select("id")
     .single();

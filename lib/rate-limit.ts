@@ -22,10 +22,21 @@ interface RateLimitRow {
  * @param maxAttempts - Maximum allowed requests in the window
  * @param windowMs - Window duration in milliseconds
  */
+export interface RateLimitOptions {
+  /**
+   * What to do when the limiter itself is unavailable. Default (false) fails
+   * open so a database blip cannot lock every user out of login. Use true for
+   * abuse-prone or destructive actions, where being unable to count is worse
+   * than briefly refusing.
+   */
+  failClosed?: boolean;
+}
+
 export async function rateLimit(
   key: string,
   maxAttempts: number = 10,
-  windowMs: number = 15 * 60 * 1000
+  windowMs: number = 15 * 60 * 1000,
+  options: RateLimitOptions = {}
 ): Promise<RateLimitResult> {
   if (
     !key ||
@@ -68,12 +79,15 @@ export async function rateLimit(
       ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
     };
   } catch (error) {
-    // Supabase Auth applies its own platform limits. Fail open here so a
-    // temporary database issue does not lock every legitimate user out.
     console.error(
       "[RateLimit] Supabase limiter unavailable:",
       error instanceof Error ? error.message : "Unknown error"
     );
+    if (options.failClosed) {
+      return { allowed: false, remaining: 0, retryAfterMs: 60_000 };
+    }
+    // Supabase Auth applies its own platform limits. Fail open by default so a
+    // temporary database issue does not lock every legitimate user out.
     return { allowed: true, remaining: maxAttempts };
   }
 }

@@ -4,7 +4,25 @@ import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isFingerprintFresh } from "@/lib/fingerprint-utils";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/client-ip";
 import type { UserRole, DeviceComponents } from "@/types";
+
+
+/** Messages returned to the browser. Deliberately identical for unknown email and wrong password. */
+const GENERIC_SIGN_IN_ERROR = "Invalid email or password.";
+const GENERIC_SIGN_UP_ERROR =
+  "We couldn't create your account. If you already have one, try signing in instead.";
+
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PASSWORD_LENGTH = 1024;
+const MAX_USER_AGENT_LENGTH = 512;
+const MAX_COMPONENTS_JSON_LENGTH = 8192;
+
+/** Bound untrusted strings before they are stored (login_history is written with the service role). */
+function clip(value: string | null | undefined, max: number): string | null {
+  if (value == null) return null;
+  return value.slice(0, max);
+}
 
 export async function signIn(
   _prevState: { error: string } | undefined,
@@ -17,10 +35,20 @@ export async function signIn(
     return { error: "Email and password are required." };
   }
 
-  // Rate limit per email (5 attempts per 15 minutes)
-  const limit = await rateLimit(`signin:${email.toLowerCase()}`, 5, 15 * 60 * 1000);
+  if (email.length > MAX_EMAIL_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+    return { error: GENERIC_SIGN_IN_ERROR };
+  }
+
+  // Rate limit per email (5 attempts / 15 min) AND per IP (30 / 15 min), so one
+  // address cannot spray many accounts and one account cannot be hammered from many IPs.
+  const ip = await getClientIp();
+  const [emailLimit, ipLimit] = await Promise.all([
+    rateLimit(`signin:${email.toLowerCase()}`, 5, 15 * 60 * 1000),
+    rateLimit(`signin-ip:${ip}`, 30, 15 * 60 * 1000),
+  ]);
+  const limit = !emailLimit.allowed ? emailLimit : ipLimit;
   if (!limit.allowed) {
-    const mins = Math.ceil(limit.retryAfterMs! / 60000);
+    const mins = Math.max(1, Math.ceil((limit.retryAfterMs ?? 60_000) / 60000));
     return { error: `Too many login attempts. Please try again in ${mins} minute(s).` };
   }
 
@@ -41,7 +69,7 @@ export async function signIn(
       hardwareFingerprint = rawHardwareFingerprint;
 
       try {
-        if (componentsJson) {
+        if (componentsJson && componentsJson.length <= MAX_COMPONENTS_JSON_LENGTH) {
           components = JSON.parse(componentsJson);
         }
       } catch {
@@ -62,14 +90,15 @@ export async function signIn(
     // Log failed login (credentials)
     await admin.from("login_history").insert({
       user_id: null,
-      email,
+      email: clip(email, MAX_EMAIL_LENGTH),
       status: "failed_credentials",
       device_fingerprint: deviceFingerprint,
       hardware_fingerprint: hardwareFingerprint,
       device_components: components,
-      user_agent: formData.get("user_agent") as string | null,
+      user_agent: clip(formData.get("user_agent") as string | null, MAX_USER_AGENT_LENGTH),
     });
-    return { error: error.message };
+    // Never echo Supabase's message: it can distinguish unknown email / unconfirmed / wrong password.
+    return { error: GENERIC_SIGN_IN_ERROR };
   }
 
   const {
@@ -79,12 +108,12 @@ export async function signIn(
   if (!user) {
     await admin.from("login_history").insert({
       user_id: null,
-      email,
+      email: clip(email, MAX_EMAIL_LENGTH),
       status: "failed_credentials",
       device_fingerprint: deviceFingerprint,
       hardware_fingerprint: hardwareFingerprint,
       device_components: components,
-      user_agent: formData.get("user_agent") as string | null,
+      user_agent: clip(formData.get("user_agent") as string | null, MAX_USER_AGENT_LENGTH),
     });
     return { error: "Authentication failed." };
   }
@@ -117,12 +146,12 @@ export async function signIn(
   // Log successful login
   await admin.from("login_history").insert({
     user_id: user.id,
-    email,
+    email: clip(email, MAX_EMAIL_LENGTH) ?? "",
     status: "success",
     device_fingerprint: deviceFingerprint,
     hardware_fingerprint: hardwareFingerprint,
     device_components: components,
-    user_agent: formData.get("user_agent") as string | null,
+    user_agent: clip(formData.get("user_agent") as string | null, MAX_USER_AGENT_LENGTH),
   });
 
   if (role === "admin") {
@@ -152,9 +181,22 @@ export async function signUp(
     return { error: "All fields are required." };
   }
 
-  // Rate limit registrations per IP/email (2 per 30 minutes)
-  const limit = await rateLimit(`signup:${email.toLowerCase()}`, 2, 30 * 60 * 1000);
-  if (!limit.allowed) {
+  if (
+    email.length > MAX_EMAIL_LENGTH ||
+    password.length > MAX_PASSWORD_LENGTH ||
+    fullName.length > 100
+  ) {
+    return { error: "Please check the details you entered." };
+  }
+
+  // Rate limit registrations per email (2 / 30 min) and per IP (5 / hour).
+  // Fail closed: if we cannot count, refuse rather than allow unlimited account creation.
+  const ip = await getClientIp();
+  const [emailLimit, ipLimit] = await Promise.all([
+    rateLimit(`signup:${email.toLowerCase()}`, 2, 30 * 60 * 1000, { failClosed: true }),
+    rateLimit(`signup-ip:${ip}`, 5, 60 * 60 * 1000, { failClosed: true }),
+  ]);
+  if (!emailLimit.allowed || !ipLimit.allowed) {
     return { error: "Too many registration attempts. Please try again later." };
   }
 
@@ -197,7 +239,9 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: error.message };
+    // Generic: "User already registered" would reveal which emails have accounts.
+    console.error("[signUp] failed:", error.message);
+    return { error: GENERIC_SIGN_UP_ERROR };
   }
 
   if (data.user) {

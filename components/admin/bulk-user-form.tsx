@@ -84,14 +84,14 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
 
         if (failedList.length === 0) {
           setSuccess(
-            `Successfully created ${successList.length} user(s). Temporary password for all users: TempPass123!`
+            `Successfully created ${successList.length} user(s). They sign in with Google using their email address.`
           );
           setTimeout(() => {
             onSuccess();
           }, 2000);
         } else if (successList.length > 0) {
           setSuccess(
-            `Created ${successList.length} user(s), ${failedList.length} failed. Temporary password for all users: TempPass123!`
+            `Created ${successList.length} user(s), ${failedList.length} failed. They sign in with Google using their email address.`
           );
         } else {
           setError(`Failed to create all ${failedList.length} user(s)`);
