@@ -205,7 +205,7 @@ export async function importAttendanceCSV(
   });
 
   if (!validated.success) {
-    return { error: validated.error.errors[0]?.message ?? "Validation failed" };
+    return { error: validated.error.issues[0]?.message ?? "Validation failed" };
   }
 
   // Parse CSV
@@ -342,7 +342,7 @@ export async function markAttendance(
   });
 
   if (!validated.success) {
-    return { error: validated.error.errors[0]?.message ?? "Validation failed" };
+    return { error: validated.error.issues[0]?.message ?? "Validation failed" };
   }
 
   // Verify the enrollment exists and get the course_id

@@ -194,7 +194,7 @@ export async function updateStudentProfile(
   });
 
   if (!validation.success) {
-    return { error: validation.error.errors[0].message, success: "" };
+    return { error: validation.error.issues[0].message, success: "" };
   }
 
   const { userId, ...rest } = validation.data;
@@ -474,7 +474,7 @@ export async function toggleUserPause(
   });
 
   if (!validation.success) {
-    return { error: validation.error.errors[0].message, success: "" };
+    return { error: validation.error.issues[0].message, success: "" };
   }
 
   const { userId, isPaused } = validation.data;
@@ -516,7 +516,7 @@ export async function resetDeviceFingerprint(
   });
 
   if (!validation.success) {
-    return { error: validation.error.errors[0].message, success: "" };
+    return { error: validation.error.issues[0].message, success: "" };
   }
 
   const { userId } = validation.data;

@@ -59,7 +59,7 @@ export async function updateServiceBillingSettings(
 
   if (!validation.success) {
     return {
-      error: validation.error.errors[0]?.message ?? "Please check the billing details.",
+      error: validation.error.issues[0]?.message ?? "Please check the billing details.",
       success: "",
     };
   }

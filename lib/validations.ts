@@ -141,9 +141,7 @@ export const onboardingSchema = z.object({
   postalAddress: z.string().max(500).trim().optional().default(""),
   feeTransactionId: z.string().min(1, "Fee transaction ID is required").max(100).trim(),
   feeSubmissionDate: z.string().min(1, "Fee submission date is required"),
-  declarationAccepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the declaration" }),
-  }),
+  declarationAccepted: z.literal(true, { error: "You must accept the declaration" }),
 });
 
 // ─── Admin User Actions ───────────────────────────────────
@@ -360,6 +358,6 @@ export function validateFormData<T>(
   if (result.success) {
     return { success: true, data: result.data };
   }
-  const firstError = result.error.errors[0];
+  const firstError = result.error.issues[0];
   return { success: false, error: firstError?.message ?? "Validation failed" };
 }
