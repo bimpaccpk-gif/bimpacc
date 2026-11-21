@@ -5,7 +5,14 @@ import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { generateDeviceFingerprints } from "@/lib/device-fingerprint";
 
-export function GoogleSignInButton({ className }: { className?: string }) {
+export function GoogleSignInButton({
+  className,
+  courseId = null,
+}: {
+  className?: string;
+  /** Registration only: open course the new student chose (validated again server-side). */
+  courseId?: string | null;
+}) {
   const [pending, setPending] = useState(false);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [hardwareFingerprint, setHardwareFingerprint] = useState<string | null>(null);
@@ -28,7 +35,7 @@ export function GoogleSignInButton({ className }: { className?: string }) {
 
   const handleSignIn = async () => {
     setPending(true);
-    await signInWithGoogle(fingerprint, hardwareFingerprint, deviceComponents);
+    await signInWithGoogle(fingerprint, hardwareFingerprint, deviceComponents, courseId);
   };
 
   return (

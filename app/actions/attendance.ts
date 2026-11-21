@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { verifySession } from "@/lib/dal";
+import { verifySession, assertMfaSatisfied } from "@/lib/dal";
 import {
   importAttendanceSchema,
   markAttendanceSchema,
@@ -37,12 +37,13 @@ interface EnrollmentWithUser {
 }
 
 async function verifyAdminOrInstructor(): Promise<AdminOrInstructor> {
-  const { userId } = await verifySession();
+  const { userId, aal } = await verifySession();
   const supabase = await createClient();
   const { data: profile } = await supabase.from("users").select("role").eq("id", userId).single();
   if (!profile || (profile.role !== "admin" && profile.role !== "instructor")) {
     throw new Error("Unauthorized. Admin or Instructor access required.");
   }
+  assertMfaSatisfied(profile.role, aal);
   return { userId, role: profile.role as string };
 }
 

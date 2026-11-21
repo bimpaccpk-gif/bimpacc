@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { isFingerprintFresh } from "@/lib/fingerprint-utils";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/client-ip";
+import { PASSWORD_AUTH_DISABLED_MESSAGE, isPasswordAuthEnabled } from "@/lib/auth-config";
 import type { UserRole, DeviceComponents } from "@/types";
 
 
@@ -28,6 +29,11 @@ export async function signIn(
   _prevState: { error: string } | undefined,
   formData: FormData
 ): Promise<{ error: string }> {
+  // Production is Google-only. Enforced here because Server Actions are public endpoints.
+  if (!isPasswordAuthEnabled()) {
+    return { error: PASSWORD_AUTH_DISABLED_MESSAGE };
+  }
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -171,6 +177,10 @@ export async function signUp(
   _prevState: { error: string } | undefined,
   formData: FormData
 ): Promise<{ error: string }> {
+  if (!isPasswordAuthEnabled()) {
+    return { error: PASSWORD_AUTH_DISABLED_MESSAGE };
+  }
+
   const fullName = formData.get("fullName") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -269,7 +279,8 @@ export async function signOut() {
 export async function signInWithGoogle(
   deviceFingerprint?: string | null,
   hardwareFingerprint?: string | null,
-  deviceComponents?: string | null
+  deviceComponents?: string | null,
+  courseId?: string | null
 ) {
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -283,6 +294,11 @@ export async function signInWithGoogle(
   }
   if (deviceComponents) {
     redirectUrl.searchParams.set("dc", deviceComponents);
+  }
+  // Registration: remember the chosen course. Validated again in the callback, which only
+  // honours it for brand-new users and for courses open for registration.
+  if (courseId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+    redirectUrl.searchParams.set("course", courseId);
   }
 
   const { data, error } = await supabase.auth.signInWithOAuth({

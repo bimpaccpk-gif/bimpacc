@@ -10,6 +10,8 @@ export async function GET(request: Request) {
   // Extract device fingerprints from URL params
   const deviceFingerprint = searchParams.get("df") || null;
   const hardwareFingerprint = searchParams.get("hf") || null;
+  const rawCourseId = searchParams.get("course");
+  const requestedCourseId = rawCourseId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawCourseId) ? rawCourseId : null;
   const deviceComponentsStr = searchParams.get("dc") || null;
 
   const supabase = await createClient();
@@ -147,13 +149,26 @@ export async function GET(request: Request) {
     }
   }
 
-  // Step 3: No pre-existing user — create a new student user
+  // Step 3: No pre-existing user — create a new student user.
+  // Only honour the chosen course if it is a course that is open for registration.
+  let selectedCourseId: string | null = null;
+  if (requestedCourseId) {
+    const { data: openCourse } = await admin
+      .from("courses")
+      .select("id")
+      .eq("id", requestedCourseId)
+      .eq("registration_open", true)
+      .maybeSingle();
+    selectedCourseId = openCourse?.id ?? null;
+  }
+
   await admin.from("users").insert({
     id: googleAuthId,
     email: email,
     full_name: googleName,
     avatar_url: avatarUrl,
     role: "student",
+    selected_course_id: selectedCourseId,
     is_approved: false,
     is_paused: false,
     onboarding_completed: false,

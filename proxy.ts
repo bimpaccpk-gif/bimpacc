@@ -10,6 +10,7 @@ import {
   generateNonce,
   staticSecurityHeaders,
 } from "@/lib/security-headers";
+import { getMfaEnforcement, mfaGate } from "@/lib/mfa-policy";
 
 const protectedRoutes = [
   "/super-admin",
@@ -18,6 +19,7 @@ const protectedRoutes = [
   "/student",
   "/courses",
   "/billing",
+  "/mfa",
 ];
 const authRoutes = ["/login", "/register"];
 
@@ -70,6 +72,9 @@ export async function proxy(request: NextRequest) {
   // getUser() network call otherwise).
   const { data: claimsData } = await supabase.auth.getClaims();
   const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
+  // Authenticator assurance level from the JWT: "aal1" after Google sign-in, "aal2" after MFA.
+  const aal = (claimsData?.claims as { aal?: string } | undefined)?.aal;
+  const mfaEnforcement = getMfaEnforcement();
 
   const { pathname } = request.nextUrl;
 
@@ -92,7 +97,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/super-admin") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/instructor") ||
-    (isProtectedRoute && !!user);
+    (isProtectedRoute && !!user) ||
+    // With MFA enforced we need the role on EVERY request (including Server Action POSTs
+    // sent to arbitrary paths), so a staff session at aal1 cannot reach anything.
+    (mfaEnforcement === "enforce" && !!user);
 
   let role: string | null = null;
   let isPaused = false;
@@ -114,6 +122,14 @@ export async function proxy(request: NextRequest) {
     if (isPaused && !isAuthRoute) {
       return secure(NextResponse.redirect(new URL("/login?error=account_paused", request.url)));
     }
+  }
+
+  // Staff (admin/instructor) must have completed MFA (aal2) when enforcement is on.
+  if (
+    user &&
+    mfaGate({ enforcement: mfaEnforcement, role, aal, pathname }) === "redirect-to-mfa"
+  ) {
+    return secure(NextResponse.redirect(new URL("/mfa", request.url)));
   }
 
   // Authenticated users on auth routes → their role-specific dashboard

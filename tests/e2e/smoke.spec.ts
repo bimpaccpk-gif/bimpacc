@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 test("unauthenticated users are redirected from protected routes to /login", async ({
   page,
 }) => {
-  for (const route of ["/student", "/admin", "/instructor", "/super-admin", "/billing"]) {
+  for (const route of ["/student", "/admin", "/instructor", "/super-admin", "/billing", "/mfa"]) {
     await page.goto(route);
     await expect(page).toHaveURL(/\/login\?redirect=/);
   }

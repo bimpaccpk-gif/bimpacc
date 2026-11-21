@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { verifySession } from "@/lib/dal";
+import { verifySession, assertMfaSatisfied } from "@/lib/dal";
 
 export async function verifyInstructor() {
   const session = await verifySession();
@@ -16,6 +16,8 @@ export async function verifyInstructor() {
   if (error || !profile || (profile.role !== "instructor" && profile.role !== "admin")) {
     throw new Error("Unauthorized. Instructor access required.");
   }
+
+  assertMfaSatisfied(profile.role, session.aal);
 
   return { userId: session.userId, role: profile.role };
 }

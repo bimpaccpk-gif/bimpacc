@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getMfaEnforcement, roleRequiresMfa } from "@/lib/mfa-policy";
 import type { UserRole } from "@/types";
 
 export interface SessionUser {
@@ -53,8 +54,23 @@ export const verifySession = cache(async () => {
     redirect("/login");
   }
 
-  return { userId: claims.sub, email: (claims.email as string | undefined) ?? "" };
+  return {
+    userId: claims.sub,
+    email: (claims.email as string | undefined) ?? "",
+    /** Authenticator assurance level: "aal1" (Google only) or "aal2" (MFA completed). */
+    aal: (claims as { aal?: string }).aal ?? "aal1",
+  };
 });
+
+/**
+ * Defence in depth behind proxy.ts: when staff MFA is enforced, privileged server
+ * code refuses staff sessions that have not completed MFA.
+ */
+export function assertMfaSatisfied(role: string | null | undefined, aal: string | undefined): void {
+  if (getMfaEnforcement() === "enforce" && roleRequiresMfa(role) && aal !== "aal2") {
+    throw new Error("Unauthorized. Multi-factor authentication required.");
+  }
+}
 
 export const getCurrentUser = cache(async (): Promise<SessionUser> => {
   const session = await verifySession();
@@ -161,6 +177,8 @@ export const verifyAdmin = cache(async (): Promise<{ userId: string; role: UserR
     throw new Error("Unauthorized. Admin access required.");
   }
 
+  assertMfaSatisfied(profile.role, session.aal);
+
   return { userId: session.userId, role: profile.role as UserRole };
 });
 
@@ -171,6 +189,8 @@ export const verifySuperAdmin = cache(async (): Promise<{ userId: string; role: 
   if (user.role !== "admin" || !user.is_super_admin) {
     throw new Error("Unauthorized. Super admin access required.");
   }
+
+  assertMfaSatisfied(user.role, (await verifySession()).aal);
 
   return { userId: user.id, role: "admin" };
 });

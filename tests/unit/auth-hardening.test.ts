@@ -36,6 +36,21 @@ describe("auth actions (static checks)", () => {
   });
 });
 
+describe("Google-only production", () => {
+  const auth = read("app/actions/auth.ts");
+
+  it("signIn and signUp refuse password auth outside development", () => {
+    for (const name of ["signIn", "signUp"]) {
+      expect(fn(auth, name), name).toContain("isPasswordAuthEnabled()");
+    }
+  });
+
+  it("the OAuth callback only honours a course that is open for registration", () => {
+    const cb = read("app/auth/callback/route.ts");
+    expect(cb).toContain('.eq("registration_open", true)');
+  });
+});
+
 describe("bulk user creation", () => {
   const src = read("lib/supabase/actions.ts");
 
