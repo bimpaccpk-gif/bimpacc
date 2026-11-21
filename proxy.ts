@@ -11,6 +11,7 @@ import {
   staticSecurityHeaders,
 } from "@/lib/security-headers";
 import { getMfaEnforcement, mfaGate } from "@/lib/mfa-policy";
+import { isSessionExpired } from "@/lib/session-policy";
 
 const protectedRoutes = [
   "/super-admin",
@@ -71,7 +72,7 @@ export async function proxy(request: NextRequest) {
   // locally when the project uses asymmetric signing keys (falls back to a
   // getUser() network call otherwise).
   const { data: claimsData } = await supabase.auth.getClaims();
-  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
+  let user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
   // Authenticator assurance level from the JWT: "aal1" after Google sign-in, "aal2" after MFA.
   const aal = (claimsData?.claims as { aal?: string } | undefined)?.aal;
   const mfaEnforcement = getMfaEnforcement();
@@ -80,6 +81,24 @@ export async function proxy(request: NextRequest) {
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+
+  // Maximum session lifetime (7 hours by default): after that the user must sign in again,
+  // however active they are. /auth/callback is exempt because it is how a NEW session starts.
+  if (user && pathname !== "/auth/callback" && isSessionExpired(claimsData?.claims)) {
+    // Local scope: end only THIS session, not the user's sessions on other devices.
+    await supabase.auth.signOut({ scope: "local" });
+    user = null;
+
+    if (!isAuthRoute) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "session_expired");
+      const redirectResponse = secure(NextResponse.redirect(loginUrl));
+      // Carry over the cookie deletions signOut() just wrote onto `response`.
+      for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
+      return redirectResponse;
+    }
+    // On /login or /register: just continue as signed out (cookies are already cleared).
+  }
 
   // Unauthenticated users on protected routes → login
   if (isProtectedRoute && !user) {

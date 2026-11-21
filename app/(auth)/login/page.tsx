@@ -63,6 +63,15 @@ export default function LoginPage() {
         </Alert>
       )}
 
+      {error === "session_expired" && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Your session has expired for your security. Please sign in again.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {error === "google_auth_failed" && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getMfaEnforcement } from "@/lib/mfa-policy";
+import { isSessionExpired } from "@/lib/session-policy";
 import type { UserRole } from "@/types";
 
 export interface SessionUser {
@@ -52,6 +53,11 @@ const readSession = cache(async () => {
 
   if (error || !claims?.sub) {
     redirect("/login");
+  }
+
+  // Defence in depth behind proxy.ts: never serve a session older than the maximum lifetime.
+  if (isSessionExpired(claims)) {
+    redirect("/login?error=session_expired");
   }
 
   return {
