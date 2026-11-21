@@ -2,27 +2,22 @@ import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { MfaPanel } from "@/components/auth/mfa-panel";
-import { getCurrentUser } from "@/lib/dal";
-import { roleRequiresMfa } from "@/lib/mfa-policy";
+import { getMfaSessionUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function MfaPage() {
-  const user = await getCurrentUser();
-
-  // Only staff use this screen; everyone else goes to their dashboard.
-  if (!roleRequiresMfa(user.role)) {
-    redirect(user.is_super_admin ? "/super-admin" : `/${user.role}`);
-  }
+  const user = await getMfaSessionUser();
+  const home = user.isSuperAdmin ? "/super-admin" : `/${user.role}`;
 
   const supabase = await createClient();
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
   // Already verified for this session: nothing to do here.
   if (aal?.currentLevel === "aal2") {
-    redirect(user.is_super_admin ? "/super-admin" : `/${user.role}`);
+    redirect(home);
   }
 
   // A verified factor exists -> challenge. Otherwise -> enroll.
@@ -39,7 +34,7 @@ export default async function MfaPage() {
           <p className="text-muted-foreground text-sm">
             {mode === "challenge"
               ? `Enter the 6-digit code from your authenticator app to continue to ${APP_NAME}.`
-              : "Admin and instructor accounts must be protected with an authenticator app."}
+              : "For your security, every account must be protected with an authenticator app."}
           </p>
         </div>
 

@@ -98,8 +98,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/admin") ||
     pathname.startsWith("/instructor") ||
     (isProtectedRoute && !!user) ||
-    // With MFA enforced we need the role on EVERY request (including Server Action POSTs
-    // sent to arbitrary paths), so a staff session at aal1 cannot reach anything.
+    // Role is not needed for the MFA gate itself, but fetching it keeps the pause check
+    // working on every path, including Server Action POSTs sent to arbitrary paths.
     (mfaEnforcement === "enforce" && !!user);
 
   let role: string | null = null;
@@ -124,11 +124,8 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Staff (admin/instructor) must have completed MFA (aal2) when enforcement is on.
-  if (
-    user &&
-    mfaGate({ enforcement: mfaEnforcement, role, aal, pathname }) === "redirect-to-mfa"
-  ) {
+  // Every signed-in user must have completed MFA (aal2) when enforcement is on.
+  if (user && mfaGate({ enforcement: mfaEnforcement, aal, pathname }) === "redirect-to-mfa") {
     return secure(NextResponse.redirect(new URL("/mfa", request.url)));
   }
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { verifyAdmin } from "@/lib/dal";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import {
@@ -551,5 +552,85 @@ export async function resetDeviceFingerprint(
   return {
     error: "",
     success: "Device lock has been reset. The student can now login from a new device.",
+  };
+}
+
+/**
+ * Remove every MFA factor from a user so they can enroll a new authenticator
+ * (lost or replaced phone). Service-role, so it authorizes explicitly:
+ *  - caller must be an admin (and have completed MFA themselves);
+ *  - you cannot reset yourself (use the normal flow) or a super admin;
+ *  - resetting another ADMIN requires a super admin.
+ */
+export async function resetUserMfa(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const session = await verifyAdmin();
+
+  const validation = resetDeviceFingerprintSchema.safeParse({
+    userId: formData.get("userId"),
+  });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message, success: "" };
+  }
+  const { userId } = validation.data;
+
+  if (userId === session.userId) {
+    return { error: "You cannot reset your own MFA. Ask another admin.", success: "" };
+  }
+
+  const limit = await rateLimit(`admin:reset-mfa:${session.userId}`, 20, 60 * 60 * 1000, {
+    failClosed: true,
+  });
+  if (!limit.allowed) {
+    return { error: "Too many MFA resets. Please try again later.", success: "" };
+  }
+
+  const admin = createAdminClient();
+
+  const [{ data: target }, { data: targetSuper }, { data: callerSuper }] = await Promise.all([
+    admin.from("users").select("role, full_name").eq("id", userId).maybeSingle(),
+    admin.from("super_admins").select("user_id").eq("user_id", userId).maybeSingle(),
+    admin.from("super_admins").select("user_id").eq("user_id", session.userId).maybeSingle(),
+  ]);
+
+  if (!target) return { error: "User not found.", success: "" };
+  if (targetSuper) {
+    return { error: "A super admin's MFA can only be reset from the Supabase dashboard.", success: "" };
+  }
+  if (target.role === "admin" && !callerSuper) {
+    return { error: "Only a super admin can reset another admin's MFA.", success: "" };
+  }
+
+  const { data: factorList, error: listError } = await admin.auth.admin.mfa.listFactors({
+    userId,
+  });
+  if (listError) {
+    return { error: "Could not read this user's MFA factors.", success: "" };
+  }
+
+  const factors = factorList?.factors ?? [];
+  for (const factor of factors) {
+    const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({
+      id: factor.id,
+      userId,
+    });
+    if (deleteError) {
+      return { error: "Could not remove an MFA factor. Please try again.", success: "" };
+    }
+  }
+
+  await logAuditEvent(session.userId, userId, "user.mfa_reset", {
+    factors_removed: factors.length,
+  });
+
+  revalidatePath("/admin/users");
+  return {
+    error: "",
+    success:
+      factors.length > 0
+        ? "MFA reset. They will set up a new authenticator at their next sign-in."
+        : "This user had no MFA factors set up.",
   };
 }

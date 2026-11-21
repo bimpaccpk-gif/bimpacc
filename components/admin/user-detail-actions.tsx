@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { adminChangeUserRole } from "@/lib/supabase/actions";
-import { toggleUserPause, resetDeviceFingerprint } from "@/app/actions/admin";
-import { Loader2, Pause, Play, ChevronDown, Shield, Smartphone } from "lucide-react";
+import { toggleUserPause, resetDeviceFingerprint, resetUserMfa } from "@/app/actions/admin";
+import { Loader2, Pause, Play, ChevronDown, Shield, Smartphone, KeyRound } from "lucide-react";
 import type { UserRole } from "@/types";
 
 const roles: { value: UserRole; label: string }[] = [
@@ -38,6 +38,8 @@ export function UserDetailActions({
     resetDeviceFingerprint,
     undefined
   );
+
+  const [mfaState, mfaAction, mfaPending] = useActionState(resetUserMfa, undefined);
 
   if (isSuperAdmin) {
     return (
@@ -130,15 +132,37 @@ export function UserDetailActions({
         </form>
       )}
 
+      {/* Reset MFA (lost or replaced phone) */}
+      <form
+        action={mfaAction}
+        onSubmit={(e) => {
+          if (!window.confirm("Remove this user's authenticator? They must set up a new one at their next sign-in.")) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="userId" value={userId} />
+        <Button type="submit" variant="outline" size="sm" disabled={mfaPending} className="gap-1">
+          {mfaPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <KeyRound className="h-4 w-4" />
+              Reset MFA
+            </>
+          )}
+        </Button>
+      </form>
+
       {/* Status Messages */}
-      {(roleState?.error || pauseState?.error || deviceState?.error) && (
+      {(roleState?.error || pauseState?.error || deviceState?.error || mfaState?.error) && (
         <p className="text-destructive text-xs">
-          {roleState?.error || pauseState?.error || deviceState?.error}
+          {roleState?.error || pauseState?.error || deviceState?.error || mfaState?.error}
         </p>
       )}
-      {(roleState?.success || pauseState?.success || deviceState?.success) && (
+      {(roleState?.success || pauseState?.success || deviceState?.success || mfaState?.success) && (
         <p className="text-success text-xs">
-          {roleState?.success || pauseState?.success || deviceState?.success}
+          {roleState?.success || pauseState?.success || deviceState?.success || mfaState?.success}
         </p>
       )}
     </div>

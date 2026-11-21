@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMfaEnforcement, isMfaExemptPath, mfaGate, roleRequiresMfa } from "@/lib/mfa-policy";
+import { getMfaEnforcement, isMfaExemptPath, mfaGate } from "@/lib/mfa-policy";
 
 describe("getMfaEnforcement", () => {
   it("is off unless explicitly set to enforce", () => {
@@ -7,16 +7,6 @@ describe("getMfaEnforcement", () => {
     expect(getMfaEnforcement("")).toBe("off");
     expect(getMfaEnforcement("true")).toBe("off");
     expect(getMfaEnforcement("enforce")).toBe("enforce");
-  });
-});
-
-describe("roleRequiresMfa", () => {
-  it("covers admin and instructor only", () => {
-    expect(roleRequiresMfa("admin")).toBe(true);
-    expect(roleRequiresMfa("instructor")).toBe(true);
-    expect(roleRequiresMfa("student")).toBe(false);
-    expect(roleRequiresMfa(null)).toBe(false);
-    expect(roleRequiresMfa(undefined)).toBe(false);
   });
 });
 
@@ -30,29 +20,32 @@ describe("isMfaExemptPath", () => {
   });
 });
 
-describe("mfaGate", () => {
-  const base = { enforcement: "enforce", role: "admin", aal: "aal1", pathname: "/admin" } as const;
+describe("mfaGate (applies to every signed-in user)", () => {
+  const base = { enforcement: "enforce", aal: "aal1", pathname: "/student" } as const;
 
-  it("redirects staff at aal1 everywhere except the MFA screen", () => {
+  it("sends a user without completed MFA to /mfa from every other path", () => {
     expect(mfaGate(base)).toBe("redirect-to-mfa");
-    expect(mfaGate({ ...base, role: "instructor", pathname: "/student" })).toBe("redirect-to-mfa");
+    expect(mfaGate({ ...base, pathname: "/admin/users" })).toBe("redirect-to-mfa");
+    expect(mfaGate({ ...base, pathname: "/instructor" })).toBe("redirect-to-mfa");
     // Server Actions can be POSTed to any path, so unrelated paths must be gated too.
     expect(mfaGate({ ...base, pathname: "/" })).toBe("redirect-to-mfa");
     expect(mfaGate({ ...base, pathname: "/login" })).toBe("redirect-to-mfa");
+  });
+
+  it("lets the user reach the MFA screen to complete setup", () => {
     expect(mfaGate({ ...base, pathname: "/mfa" })).toBe("allow");
+    expect(mfaGate({ ...base, pathname: "/auth/callback" })).toBe("allow");
   });
 
-  it("treats a missing aal claim as not verified", () => {
+  it("treats a missing or unexpected aal claim as not verified (fail closed)", () => {
     expect(mfaGate({ ...base, aal: undefined })).toBe("redirect-to-mfa");
+    expect(mfaGate({ ...base, aal: null })).toBe("redirect-to-mfa");
+    expect(mfaGate({ ...base, aal: "aal3" })).toBe("redirect-to-mfa");
   });
 
-  it("allows staff who completed MFA", () => {
+  it("allows anyone who completed MFA, normal use resumes", () => {
     expect(mfaGate({ ...base, aal: "aal2" })).toBe("allow");
-  });
-
-  it("never gates students or unknown roles", () => {
-    expect(mfaGate({ ...base, role: "student" })).toBe("allow");
-    expect(mfaGate({ ...base, role: null })).toBe("allow");
+    expect(mfaGate({ ...base, aal: "aal2", pathname: "/admin" })).toBe("allow");
   });
 
   it("does nothing while enforcement is off", () => {

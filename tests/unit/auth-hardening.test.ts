@@ -68,3 +68,21 @@ describe("bulk user creation", () => {
     }
   });
 });
+
+describe("MFA recovery", () => {
+  const admin = read("app/actions/admin.ts");
+
+  it("resetUserMfa authorizes, forbids self and super-admin resets, and is audited", () => {
+    const body = fn(admin, "resetUserMfa");
+    expect(body).toContain("verifyAdmin()");
+    expect(body).toContain("userId === session.userId");
+    expect(body).toContain("targetSuper");
+    expect(body).toContain('"user.mfa_reset"');
+    expect(body).toContain("failClosed: true");
+  });
+
+  it("the MFA screen does not itself require completed MFA (no redirect loop)", () => {
+    expect(read("app/mfa/page.tsx")).toContain("getMfaSessionUser()");
+    expect(read("app/mfa/page.tsx")).not.toContain("getCurrentUser");
+  });
+});

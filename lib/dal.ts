@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { getMfaEnforcement, roleRequiresMfa } from "@/lib/mfa-policy";
+import { getMfaEnforcement } from "@/lib/mfa-policy";
 import type { UserRole } from "@/types";
 
 export interface SessionUser {
@@ -41,7 +41,7 @@ export interface FullUserProfile extends SessionUser {
   declaration_accepted: boolean | null;
 }
 
-export const verifySession = cache(async () => {
+const readSession = cache(async () => {
   const supabase = await createClient();
 
   // getClaims() verifies the JWT signature locally (asymmetric signing keys),
@@ -63,14 +63,49 @@ export const verifySession = cache(async () => {
 });
 
 /**
- * Defence in depth behind proxy.ts: when staff MFA is enforced, privileged server
- * code refuses staff sessions that have not completed MFA.
+ * The authenticated session. When MFA is enforced, a session that has not completed
+ * MFA (aal2) is sent to /mfa instead of being returned: this is defence in depth
+ * behind proxy.ts for every page and action that goes through the DAL.
  */
-export function assertMfaSatisfied(role: string | null | undefined, aal: string | undefined): void {
-  if (getMfaEnforcement() === "enforce" && roleRequiresMfa(role) && aal !== "aal2") {
+export const verifySession = cache(async () => {
+  const session = await readSession();
+
+  if (getMfaEnforcement() === "enforce" && session.aal !== "aal2") {
+    redirect("/mfa");
+  }
+
+  return session;
+});
+
+/** Explicit check for privileged code that wants a thrown error rather than a redirect. */
+export function assertMfaSatisfied(_role: string | null | undefined, aal: string | undefined): void {
+  if (getMfaEnforcement() === "enforce" && aal !== "aal2") {
     throw new Error("Unauthorized. Multi-factor authentication required.");
   }
 }
+
+/**
+ * Minimal profile for the /mfa screen. Deliberately does NOT enforce MFA (the user is
+ * here to complete it); it only needs a valid session.
+ */
+export const getMfaSessionUser = cache(async () => {
+  const session = await readSession();
+  const supabase = await createClient();
+
+  const [{ data: profile }, { data: superAdmin }] = await Promise.all([
+    supabase.from("users").select("role").eq("id", session.userId).single(),
+    supabase.from("super_admins").select("user_id").eq("user_id", session.userId).maybeSingle(),
+  ]);
+
+  const role = (profile?.role as UserRole | undefined) ?? "student";
+  return {
+    id: session.userId,
+    email: session.email,
+    role,
+    isSuperAdmin: role === "admin" && Boolean(superAdmin),
+    aal: session.aal,
+  };
+});
 
 export const getCurrentUser = cache(async (): Promise<SessionUser> => {
   const session = await verifySession();
