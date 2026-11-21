@@ -58,7 +58,8 @@ export async function adminChangeUserRole(
     return { error: "Invalid role.", success: "" };
   }
 
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   if (session.userId === userId) {
     return { error: "You cannot change your own role.", success: "" };
@@ -97,7 +98,8 @@ export async function adminCreateUser(
   _prevState: { error: string; success: string } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string }> {
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   const fullName = (formData.get("fullName") as string)?.trim();
   const email = (formData.get("email") as string)?.trim();
@@ -189,7 +191,8 @@ export async function adminBulkCreateUsers(
   _prevState: { error: string; success: string; results?: any[] } | undefined,
   formData: FormData
 ): Promise<{ error: string; success: string; results?: any[] }> {
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   const csvContent = (formData.get("csvContent") as string)?.trim();
   const role = (formData.get("role") as UserRole) ?? "student";
@@ -366,7 +369,8 @@ export async function adminDeleteUser(
     return { error: "User ID is required.", success: "" };
   }
 
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   if (session.userId === userId) {
     return { error: "You cannot delete your own account.", success: "" };
@@ -427,7 +431,8 @@ export async function bulkDeleteUsers(
     return { error: "No users selected for deletion.", success: "" };
   }
 
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   // Prevent self-deletion
   if (userIds.includes(session.userId)) {
@@ -520,7 +525,8 @@ export async function toggleStudentApproval(
     return { error: "User ID is required.", success: "" };
   }
 
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   const supabase = await createClient();
 
@@ -588,7 +594,8 @@ export async function bulkApproveStudents(
     return { error: "No users selected for approval.", success: "" };
   }
 
-  const session = await verifySession();
+  // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
+  const session = await verifyAdmin();
 
   const supabase = await createClient();
 

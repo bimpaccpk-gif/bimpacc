@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/lib/dal";
+import { verifySession, canAccessLesson } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface Quiz {
@@ -52,7 +52,12 @@ export interface QuizAnswer {
 export async function getQuizForLesson(
   lessonId: string
 ): Promise<{ data: QuizWithQuestions | null; error: string }> {
-  await verifySession();
+  const session = await verifySession();
+
+  // Service-role reads: students must be enrolled in the lesson's course.
+  if (!(await canAccessLesson(session.userId, lessonId))) {
+    return { data: null, error: "You are not enrolled in this course." };
+  }
 
   const admin = createAdminClient();
 
@@ -108,6 +113,10 @@ export async function submitQuiz(
 
   if (!quiz) {
     return { data: null, error: "Quiz not found." };
+  }
+
+  if (!(await canAccessLesson(session.userId, quiz.lesson_id as string))) {
+    return { data: null, error: "You are not enrolled in this course." };
   }
 
   const { data: questions } = await admin

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyAdmin, verifySession } from "@/lib/dal";
+import { verifyAdmin, verifySession, canAccessLesson } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface LessonComment {
@@ -25,7 +25,12 @@ export interface LessonComment {
 export async function getLessonComments(
   lessonId: string
 ): Promise<{ data: LessonComment[] | null; error: string }> {
-  await verifySession();
+  const session = await verifySession();
+
+  // Reads use the service-role client, so authorize explicitly: students must be enrolled.
+  if (!(await canAccessLesson(session.userId, lessonId))) {
+    return { data: null, error: "You are not enrolled in this course." };
+  }
 
   const admin = createAdminClient();
 
@@ -111,10 +116,11 @@ export async function createLessonComment(
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  // Get the lesson's course_id to verify enrollment
+  // Verify the lesson exists and the caller may access it (students must be enrolled).
+  // Resolves the course through subject/semester too, so subject-based lessons are covered.
   const { data: lesson } = await admin
     .from("lessons")
-    .select("course_id")
+    .select("id")
     .eq("id", lessonId)
     .single();
 
@@ -122,7 +128,12 @@ export async function createLessonComment(
     return { data: null, error: "Lesson not found." };
   }
 
-  // Verify enrollment (skip for admin/instructor — they have broad access)
+  if (!(await canAccessLesson(session.userId, lessonId))) {
+    return {
+      data: null,
+      error: "You are not enrolled in this course.",
+    };
+  }
 
   const { data: userProfile } = await admin
     .from("users")
@@ -131,22 +142,6 @@ export async function createLessonComment(
     .single();
 
   const userRole = (userProfile as { role: string } | null)?.role ?? "student";
-
-  if (userRole === "student" && lesson.course_id) {
-    const { data: enrollment } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq("user_id", session.userId)
-      .eq("course_id", lesson.course_id)
-      .single();
-
-    if (!enrollment) {
-      return {
-        data: null,
-        error: "You are not enrolled in this course.",
-      };
-    }
-  }
 
   // Validate parentId exists if provided
   if (parentId) {

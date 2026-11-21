@@ -1,6 +1,7 @@
 import { Briefcase, ClipboardList, GraduationCap, Users } from "lucide-react";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/dal";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatTile } from "@/components/layout/stat-tile";
@@ -225,6 +226,12 @@ export default async function AdminUsersPage({
 }) {
   const resolvedParams = await searchParams;
   const currentUser = await getCurrentUser();
+
+  // This page reads other users' data with the service-role client, so enforce the
+  // role here too instead of relying only on proxy.ts and the layout.
+  if (currentUser.role !== "admin") {
+    redirect(currentUser.role === "instructor" ? "/instructor" : "/student");
+  }
 
   const roleParam = firstParam(resolvedParams.role);
   const statusParam = firstParam(resolvedParams.status);

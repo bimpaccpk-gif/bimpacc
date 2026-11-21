@@ -406,3 +406,65 @@ export const verifyContentNotPaused = cache(
     }
   }
 );
+
+/**
+ * Resolve the course a lesson belongs to. Lessons may hang directly off a
+ * course, or off a subject (which belongs to a course or to a semester).
+ * Uses the service-role client, so callers MUST authorize the user separately
+ * (see canAccessLesson).
+ */
+export const resolveLessonCourseId = cache(async (lessonId: string): Promise<string | null> => {
+  const admin = createAdminClient();
+
+  const { data: lesson } = await admin
+    .from("lessons")
+    .select("course_id, subject_id")
+    .eq("id", lessonId)
+    .maybeSingle();
+  if (!lesson) return null;
+  if (lesson.course_id) return lesson.course_id as string;
+  if (!lesson.subject_id) return null;
+
+  const { data: subject } = await admin
+    .from("subjects")
+    .select("course_id, semester_id")
+    .eq("id", lesson.subject_id)
+    .maybeSingle();
+  if (subject?.course_id) return subject.course_id as string;
+  if (!subject?.semester_id) return null;
+
+  const { data: semester } = await admin
+    .from("semesters")
+    .select("course_id")
+    .eq("id", subject.semester_id)
+    .maybeSingle();
+  return (semester?.course_id as string | undefined) ?? null;
+});
+
+/**
+ * Whether a user may see a lesson's interactive content (comments, quizzes):
+ * admins/instructors always, students only when enrolled in the lesson's course.
+ * Fails closed when the lesson or its course cannot be resolved.
+ */
+export const canAccessLesson = cache(async (userId: string, lessonId: string): Promise<boolean> => {
+  const admin = createAdminClient();
+
+  const { data: profile } = await admin
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile) return false;
+  if (profile.role === "admin" || profile.role === "instructor") return true;
+
+  const courseId = await resolveLessonCourseId(lessonId);
+  if (!courseId) return false;
+
+  const { data: enrollment } = await admin
+    .from("enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .maybeSingle();
+  return !!enrollment;
+});
