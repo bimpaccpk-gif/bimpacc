@@ -103,7 +103,8 @@ export async function signIn(
   const role = (profile?.role as UserRole) ?? "student";
 
   if (role === "student" && deviceFingerprint && hardwareFingerprint) {
-    await supabase
+    // Service-role write: users cannot change their own fingerprint columns (RLS trigger).
+    await admin
       .from("users")
       .update({
         device_fingerprint: deviceFingerprint,

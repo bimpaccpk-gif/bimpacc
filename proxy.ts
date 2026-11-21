@@ -5,6 +5,11 @@ import {
   isAdminDashboardRestricted,
   type ServiceBillingSettings,
 } from "@/lib/billing-policy";
+import {
+  buildCsp,
+  generateNonce,
+  staticSecurityHeaders,
+} from "@/lib/security-headers";
 
 const protectedRoutes = [
   "/super-admin",
@@ -23,17 +28,24 @@ const DASHBOARD_MAP: Record<string, string> = {
 };
 
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  const isDev = process.env.NODE_ENV === "development";
 
-  // Security headers
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
+  // Per-request CSP nonce. Next.js reads it from the request's CSP header and
+  // applies it to framework scripts; the root layout reads x-nonce for its own.
+  const nonce = generateNonce();
+  const csp = buildCsp(nonce, isDev);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const staticHeaders = staticSecurityHeaders(isDev);
+  const secure = <T extends NextResponse>(res: T): T => {
+    for (const [name, value] of Object.entries(staticHeaders)) res.headers.set(name, value);
+    return res;
+  };
+
+  const response = secure(NextResponse.next({ request: { headers: requestHeaders } }));
+  response.headers.set("Content-Security-Policy", csp);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,7 +80,7 @@ export async function proxy(request: NextRequest) {
   if (isProtectedRoute && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    return secure(NextResponse.redirect(loginUrl));
   }
 
   // Only query DB when we actually need the role or pause status:
@@ -100,27 +112,27 @@ export async function proxy(request: NextRequest) {
 
     // Account pause/ban check — redirect paused users away from protected routes
     if (isPaused && !isAuthRoute) {
-      return NextResponse.redirect(new URL("/login?error=account_paused", request.url));
+      return secure(NextResponse.redirect(new URL("/login?error=account_paused", request.url)));
     }
   }
 
   // Authenticated users on auth routes → their role-specific dashboard
   if (isAuthRoute && user) {
     const dashboard = isSuperAdmin ? "/super-admin" : (DASHBOARD_MAP[role ?? ""] ?? "/student");
-    return NextResponse.redirect(new URL(dashboard, request.url));
+    return secure(NextResponse.redirect(new URL(dashboard, request.url)));
   }
 
   // Optimistic route check; the super-admin layout and billing RLS repeat this
   // authorization at the data boundary.
   if (pathname.startsWith("/super-admin") && !isSuperAdmin) {
     const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
-    return NextResponse.redirect(new URL(fallback, request.url));
+    return secure(NextResponse.redirect(new URL(fallback, request.url)));
   }
 
   // /admin routes → admin only
   if (pathname.startsWith("/admin") && role !== "admin") {
     const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
-    return NextResponse.redirect(new URL(fallback, request.url));
+    return secure(NextResponse.redirect(new URL(fallback, request.url)));
   }
 
   // Transparent service-billing gate. This is deliberately fail-open: the
@@ -134,14 +146,14 @@ export async function proxy(request: NextRequest) {
       .maybeSingle();
 
     if (isAdminDashboardRestricted(billingSettings as ServiceBillingSettings | null)) {
-      return NextResponse.redirect(new URL("/billing", request.url));
+      return secure(NextResponse.redirect(new URL("/billing", request.url)));
     }
   }
 
   // /instructor routes → admin or instructor
   if (pathname.startsWith("/instructor") && role !== "admin" && role !== "instructor") {
     const fallback = DASHBOARD_MAP[role ?? ""] ?? "/student";
-    return NextResponse.redirect(new URL(fallback, request.url));
+    return secure(NextResponse.redirect(new URL(fallback, request.url)));
   }
 
   return response;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DisableContextMenu } from "@/components/disable-context-menu";
@@ -22,11 +23,14 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Nonce set per request by proxy.ts (CSP). Reading headers() makes the app render dynamically.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="en"
@@ -35,6 +39,7 @@ export default function RootLayout({
     >
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -119,7 +124,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <DisableContextMenu />
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
           {children}
           <Toaster richColors closeButton />
         </ThemeProvider>
