@@ -59,7 +59,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmAction } from "@/components/ui/confirm-action";
-import { adminBypassOnboarding, adminChangeUserRole, adminDeleteUser, toggleStudentApproval } from "@/lib/supabase/actions";
+import { adminBypassOnboarding, adminChangeUserRole, adminDeleteUser } from "@/app/actions/user-management";
+import { toggleStudentApproval } from "@/app/actions/approval";
 import { StudentApplicationDialog } from "@/components/admin/student-application-dialog";
 import { EnrollStudentDialog } from "@/components/admin/enroll-student-dialog";
 import { EnrollmentCounterBadge } from "@/components/admin/enrollment-counter-badge";

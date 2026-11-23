@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import { toggleStudentApproval } from "@/lib/supabase/actions";
+import { toggleStudentApproval } from "@/app/actions/approval";
 import { Loader2 } from "lucide-react";
 
 export function ApprovalToggle({

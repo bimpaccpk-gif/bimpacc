@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { adminChangeUserRole } from "@/lib/supabase/actions";
+import { adminChangeUserRole } from "@/app/actions/user-management";
 import {
   DropdownMenu,
   DropdownMenuContent,

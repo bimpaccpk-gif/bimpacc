@@ -16,7 +16,7 @@ Design tokens: [design-tokens.md](design-tokens.md) (source of truth: `app/globa
 | `proxy.ts` | Runs on every page request: refreshes the session (`getClaims()`), sets security headers, redirects unauthenticated/paused users, enforces role-based route access and the billing gate. |
 | `app/(auth)` | Login / register. |
 | `app/(dashboard)/{student,instructor,admin,super-admin,billing,profile}` | Role dashboards. |
-| `app/actions/*.ts`, `lib/supabase/actions.ts` | Server Actions (all mutations). |
+| `app/actions/*.ts` | Server Actions (all mutations), one module per domain (`user-management`, `approval`, `courses`, `attendance`, ...). Shared limiter helpers live in `lib/admin-action-limits.ts`. |
 | `lib/dal.ts` | Data-access layer: `verifySession`, `getCurrentUser`, `verifyAdmin`, `verifySuperAdmin`, enrollment and content-pause resolution. |
 | `lib/supabase/server.ts` | `createClient()` (user-scoped, RLS applies) and `createAdminClient()` (service role, **bypasses RLS**). |
 | `lib/validations.ts` | Zod schemas for action input. |

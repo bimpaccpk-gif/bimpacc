@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { adminBypassOnboarding } from "@/lib/supabase/actions";
+import { adminBypassOnboarding } from "@/app/actions/user-management";
 import { Loader2, ShieldCheck, ShieldOff } from "lucide-react";
 
 export function BypassOnboardingToggle({

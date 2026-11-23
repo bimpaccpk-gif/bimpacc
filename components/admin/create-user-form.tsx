@@ -3,7 +3,7 @@
 import type { OpenCourse } from "@/types";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminCreateUser } from "@/lib/supabase/actions";
+import { adminCreateUser } from "@/app/actions/user-management";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

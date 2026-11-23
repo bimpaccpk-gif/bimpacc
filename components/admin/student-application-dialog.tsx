@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toggleStudentApproval, adminBypassOnboarding } from "@/lib/supabase/actions";
+import { adminBypassOnboarding } from "@/app/actions/user-management";
+import { toggleStudentApproval } from "@/app/actions/approval";
 import {
   getStudentApplication,
   updateStudentProfile,

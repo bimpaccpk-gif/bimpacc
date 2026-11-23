@@ -52,7 +52,7 @@ describe("Google-only production", () => {
 });
 
 describe("bulk user creation", () => {
-  const src = read("lib/supabase/actions.ts");
+  const src = [read("app/actions/user-management.ts"), read("app/actions/approval.ts")].join("\n");
 
   it("does not use a shared default password", () => {
     expect(src).not.toMatch(/TempPass/);

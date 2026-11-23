@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Upload, FileText, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
-import { adminBulkCreateUsers } from "@/lib/supabase/actions";
+import { adminBulkCreateUsers } from "@/app/actions/user-management";
 
 interface BulkUserFormProps {
   onSuccess: () => void;

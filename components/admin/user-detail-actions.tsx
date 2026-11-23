@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { adminChangeUserRole } from "@/lib/supabase/actions";
+import { adminChangeUserRole } from "@/app/actions/user-management";
 import { toggleUserPause, resetDeviceFingerprint, resetUserMfa } from "@/app/actions/admin";
 import { Loader2, Pause, Play, ChevronDown, Shield, Smartphone, KeyRound } from "lucide-react";
 import type { UserRole } from "@/types";

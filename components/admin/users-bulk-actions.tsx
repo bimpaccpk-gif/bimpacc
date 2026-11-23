@@ -22,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bulkApproveStudents, bulkDeleteUsers } from "@/lib/supabase/actions";
+import { bulkDeleteUsers } from "@/app/actions/user-management";
+import { bulkApproveStudents } from "@/app/actions/approval";
 import { bulkEnrollStudents } from "@/app/actions/course";
 import type { AdminCourseRow } from "@/components/admin/users-data-table";
 

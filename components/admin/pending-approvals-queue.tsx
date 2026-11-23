@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import type { AdminOverviewPendingStudent } from "@/app/actions/analytics";
-import { toggleStudentApproval } from "@/lib/supabase/actions";
+import { toggleStudentApproval } from "@/app/actions/approval";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";

@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { adminDeleteUser } from "@/lib/supabase/actions";
+import { adminDeleteUser } from "@/app/actions/user-management";
 import { Trash2, AlertCircle, Loader2 } from "lucide-react";
 
 interface DeleteUserButtonProps {

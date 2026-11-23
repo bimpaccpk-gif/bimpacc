@@ -26,7 +26,7 @@ function sourceFiles(): string[] {
   const actions = readdirSync(path.join(root, "app/actions"))
     .filter((f) => f.endsWith(".ts"))
     .map((f) => `app/actions/${f}`);
-  return [...actions, "lib/supabase/actions.ts"];
+  return actions;
 }
 
 function exportedFunctions(src: string): { name: string; body: string }[] {
