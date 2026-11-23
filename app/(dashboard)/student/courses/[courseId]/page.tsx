@@ -1,151 +1,11 @@
 import { getCurrentUser, verifyEnrollment } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  BookOpen,
-  Layers,
-  FileText,
-  PlayCircle,
-  Clock,
-  CheckCircle2,
-  ArrowLeft,
-  ChevronDown,
-  ArrowRight,
-  Pause,
-  Search,
-} from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, FileText, Layers } from "lucide-react";
 import { CourseContent } from "@/components/student/course-content";
-
-// Match hierarchy colors: each level gets its own distinct color
-// Type 1: Semester=Violet, Subject=Blue, Lesson=Amber
-// Type 2: Subject=Teal, Lesson=Amber
-// Type 3: Lesson=Amber
-const hierarchyDetailColors: Record<
-  number,
-  {
-    heroFrom: string;
-    heroVia: string;
-    heroTo: string;
-    badgeBg: string;
-    badgeText: string;
-    // Semester colors (only used in Type 1)
-    semester: {
-      numBg: string;
-      numText: string;
-      accordionBg: string;
-      accordionHoverBg: string;
-      subjectCountBg: string;
-      subjectCountText: string;
-    };
-    // Subject colors
-    subject: {
-      numBg: string;
-      numText: string;
-      accordionBg: string;
-      accordionHoverBg: string;
-      subjectCountBg: string;
-      subjectCountText: string;
-    };
-    // Lesson colors (used at all levels)
-    lesson: {
-      numBg: string;
-      numText: string;
-      lessonIcon: string;
-      lessonButton: string;
-    };
-  }
-> = {
-  1: {
-    heroFrom: "from-blue-500",
-    heroVia: "via-blue-600",
-    heroTo: "to-blue-400",
-    badgeBg: "bg-blue-100/90 dark:bg-blue-950/80",
-    badgeText: "text-blue-700 dark:text-blue-400",
-    semester: {
-      numBg: "bg-violet-100 dark:bg-violet-950/70",
-      numText: "text-violet-700 dark:text-violet-400",
-      accordionBg: "bg-violet-50/50 dark:bg-violet-950/20",
-      accordionHoverBg: "hover:bg-violet-50/80 dark:hover:bg-violet-950/30",
-      subjectCountBg: "bg-violet-100/80 dark:bg-violet-900/50",
-      subjectCountText: "text-violet-700 dark:text-violet-400",
-    },
-    subject: {
-      numBg: "bg-emerald-100 dark:bg-emerald-950/70",
-      numText: "text-emerald-700 dark:text-emerald-400",
-      accordionBg: "bg-emerald-50/50 dark:bg-emerald-950/20",
-      accordionHoverBg: "hover:bg-emerald-50/80 dark:hover:bg-emerald-950/30",
-      subjectCountBg: "bg-emerald-100/80 dark:bg-emerald-900/50",
-      subjectCountText: "text-emerald-700 dark:text-emerald-400",
-    },
-    lesson: {
-      numBg: "bg-amber-100 dark:bg-amber-950/70",
-      numText: "text-amber-700 dark:text-amber-400",
-      lessonIcon: "text-amber-600 dark:text-amber-400",
-      lessonButton: "bg-amber-600 hover:bg-amber-700",
-    },
-  },
-  2: {
-    heroFrom: "from-violet-500",
-    heroVia: "via-violet-600",
-    heroTo: "to-violet-400",
-    badgeBg: "bg-violet-100/90 dark:bg-violet-950/80",
-    badgeText: "text-violet-700 dark:text-violet-400",
-    semester: {
-      numBg: "bg-muted dark:bg-muted/50",
-      numText: "text-muted-foreground",
-      accordionBg: "bg-muted/20 dark:bg-muted/10",
-      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
-      subjectCountBg: "bg-muted/50",
-      subjectCountText: "text-muted-foreground",
-    },
-    subject: {
-      numBg: "bg-teal-100 dark:bg-teal-950/70",
-      numText: "text-teal-700 dark:text-teal-400",
-      accordionBg: "bg-teal-50/50 dark:bg-teal-950/20",
-      accordionHoverBg: "hover:bg-teal-50/80 dark:hover:bg-teal-950/30",
-      subjectCountBg: "bg-teal-100/80 dark:bg-teal-900/50",
-      subjectCountText: "text-teal-700 dark:text-teal-400",
-    },
-    lesson: {
-      numBg: "bg-amber-100 dark:bg-amber-950/70",
-      numText: "text-amber-700 dark:text-amber-400",
-      lessonIcon: "text-amber-600 dark:text-amber-400",
-      lessonButton: "bg-amber-600 hover:bg-amber-700",
-    },
-  },
-  3: {
-    heroFrom: "from-amber-500",
-    heroVia: "via-amber-600",
-    heroTo: "to-amber-400",
-    badgeBg: "bg-amber-100/90 dark:bg-amber-950/80",
-    badgeText: "text-amber-700 dark:text-amber-400",
-    semester: {
-      numBg: "bg-muted dark:bg-muted/50",
-      numText: "text-muted-foreground",
-      accordionBg: "bg-muted/20 dark:bg-muted/10",
-      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
-      subjectCountBg: "bg-muted/50",
-      subjectCountText: "text-muted-foreground",
-    },
-    subject: {
-      numBg: "bg-muted dark:bg-muted/50",
-      numText: "text-muted-foreground",
-      accordionBg: "bg-muted/20 dark:bg-muted/10",
-      accordionHoverBg: "hover:bg-muted/40 dark:hover:bg-muted/20",
-      subjectCountBg: "bg-muted/50",
-      subjectCountText: "text-muted-foreground",
-    },
-    lesson: {
-      numBg: "bg-amber-100 dark:bg-amber-950/70",
-      numText: "text-amber-700 dark:text-amber-400",
-      lessonIcon: "text-amber-600 dark:text-amber-400",
-      lessonButton: "bg-amber-600 hover:bg-amber-700",
-    },
-  },
-};
 
 // ─── Data fetchers ────────────────────────────────────────
 
@@ -472,149 +332,6 @@ async function getCompletedLessonIds(
   return new Set((progressRecords ?? []).map((p) => p.lesson_id));
 }
 
-// ─── Lesson Component ─────────────────────────────────────
-
-function LessonItem({
-  lesson,
-  index,
-  courseId,
-  isCompleted,
-}: {
-  lesson: LessonRow;
-  index: number;
-  courseId: string;
-  isCompleted: boolean;
-}) {
-  if (lesson.isPaused) {
-    return (
-      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-            <Pause className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-muted-foreground font-semibold">{lesson.title}</h4>
-            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
-              This lesson is currently paused
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-border bg-background hover:border-primary/30 overflow-hidden rounded-xl border transition-colors">
-      <div className="flex items-center gap-3 px-5 py-4">
-        <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-            isCompleted
-              ? "bg-success/10 text-success dark:text-success/80"
-              : "bg-primary/10 text-primary dark:text-primary/80"
-          }`}
-        >
-          {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="text-foreground font-semibold">{lesson.title}</h4>
-          {lesson.description && (
-            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
-              {lesson.description}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {lesson.duration_minutes && (
-            <span className="text-muted-foreground flex items-center gap-1 text-xs">
-              <Clock className="h-3 w-3" />
-              {lesson.duration_minutes} min
-            </span>
-          )}
-          {lesson.video_url && <PlayCircle className="text-primary h-5 w-5" />}
-        </div>
-        <Link href={`/student/courses/${courseId}/lessons/${lesson.id}`}>
-          <Button size="sm" variant="secondary" className="gap-1.5">
-            {lesson.video_url ? "Watch" : "View"}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ─── Subject Accordion ────────────────────────────────────
-
-function SubjectAccordion({
-  subject,
-  index,
-  courseId,
-  completedIds,
-}: {
-  subject: SubjectWithLessons;
-  index: number;
-  courseId: string;
-  completedIds: Set<string>;
-}) {
-  if (subject.isPaused) {
-    return (
-      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-            <Pause className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-muted-foreground font-semibold">{subject.title}</h4>
-            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
-              This subject is currently paused
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <details className="group border-border overflow-hidden rounded-xl border" open={index === 0}>
-      <summary className="bg-muted/30 hover:bg-muted/50 flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors [&::-webkit-details-marker]:hidden">
-        <div className="bg-primary/10 text-primary dark:text-primary/80 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
-          {index + 1}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-foreground font-semibold">{subject.title}</h3>
-          {subject.description && (
-            <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-              {subject.description}
-            </p>
-          )}
-        </div>
-        <span className="text-muted-foreground mr-2 text-xs">
-          {subject.lessons.length} lesson{subject.lessons.length !== 1 ? "s" : ""}
-        </span>
-        <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
-      </summary>
-
-      <div className="bg-background space-y-3 p-4">
-        {subject.lessons.length === 0 ? (
-          <p className="text-muted-foreground py-4 text-center text-sm">
-            No lessons in this subject yet.
-          </p>
-        ) : (
-          subject.lessons.map((lesson, i) => (
-            <LessonItem
-              key={lesson.id}
-              lesson={lesson}
-              index={i}
-              courseId={courseId}
-              isCompleted={completedIds.has(lesson.id)}
-            />
-          ))
-        )}
-      </div>
-    </details>
-  );
-}
-
 // ─── Page Component ───────────────────────────────────────
 
 export default async function CourseDetailPage({
@@ -626,7 +343,7 @@ export default async function CourseDetailPage({
   const [user, course] = await Promise.all([getCurrentUser(), getCourseDetail(courseId)]);
 
   if (!course) {
-    redirect("/student/courses");
+    redirect("/student");
   }
 
   const supabase = await createClient();
@@ -650,115 +367,115 @@ export default async function CourseDetailPage({
       : Promise.resolve<LessonRow[]>([]),
     getCompletedLessonIds(supabase, user.id, course.id),
   ]);
-  const c = hierarchyDetailColors[course.hierarchy_type] ?? hierarchyDetailColors[3];
 
-  const totalSemesterLessons = semesters.reduce(
-    (sum, sem) => sum + sem.subjects.reduce((s, sub) => s + sub.lessons.length, 0),
-    0
-  );
-  const totalSubjectLessons = subjects.reduce((sum, s) => sum + s.lessons.length, 0);
-  const totalLessons = totalSemesterLessons + totalSubjectLessons + directLessons.length;
+  // All lessons in curriculum order.
+  const allLessons = semesters
+    .flatMap((sem) => sem.subjects.flatMap((s) => s.lessons))
+    .concat(
+      subjects.flatMap((s) => s.lessons),
+      directLessons
+    );
+  const totalLessons = allLessons.length;
+  const doneCount = allLessons.filter((l) => completedIds.has(l.id)).length;
+  const progress = totalLessons > 0 ? Math.round((doneCount / totalLessons) * 100) : 0;
 
-  // Find first incomplete lesson for "Continue Learning" button
-  const allSemesterLessons = semesters.flatMap((sem) => sem.subjects.flatMap((s) => s.lessons));
-  const allLessonsFlat = allSemesterLessons.concat(
-    subjects.flatMap((s) => s.lessons),
-    directLessons
-  );
-  const firstIncomplete = allLessonsFlat.find((l) => !completedIds.has(l.id));
-  const continueLesson = firstIncomplete ?? allLessonsFlat[0];
+  // "Continue" skips paused lessons, which the student cannot open.
+  const nextLesson = allLessons.find((l) => !l.isPaused && !completedIds.has(l.id));
+  const startLesson = nextLesson ?? allLessons.find((l) => !l.isPaused);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      {/* Back nav */}
+    <div className="mx-auto max-w-4xl space-y-6">
       <Link
-        href="/student/courses"
+        href="/student#enrolled-courses"
         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Courses
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        My courses
       </Link>
 
-      {/* Course Header */}
-      <div className="border-border overflow-hidden rounded-2xl border">
-        {/* Hero */}
-        <div
-          className={`from-primary via-primary/70 to-primary/40 relative aspect-[3/1] bg-gradient-to-br ${c.heroFrom} ${c.heroVia} ${c.heroTo}`}
-        >
-          {course.thumbnail_url ? (
-            <img
-              src={course.thumbnail_url}
-              alt={course.title}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <BookOpen className="h-16 w-16 text-white/40" />
+      <header className="bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+          <div className="from-primary via-brand-500 to-primary/70 relative aspect-[16/7] w-full shrink-0 overflow-hidden rounded-lg bg-gradient-to-br sm:aspect-auto sm:h-24 sm:w-40">
+            {course.thumbnail_url ? (
+              <Image
+                src={course.thumbnail_url}
+                alt=""
+                fill
+                sizes="(min-width: 640px) 160px, 100vw"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <BookOpen className="text-primary-foreground/60 h-7 w-7" aria-hidden="true" />
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-3">
+            <div>
+              <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span>Batch {course.batch}</span>
+                <span className="text-success inline-flex items-center gap-1 font-medium">
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  Enrolled
+                </span>
+                {semesters.length > 0 && (
+                  <span className="inline-flex items-center gap-1">
+                    <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+                    {semesters.length} semester{semesters.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{course.title}</h1>
             </div>
-          )}
-          <div className="from-background/60 absolute inset-0 bg-gradient-to-t to-transparent" />
-          <div className="text-primary-foreground absolute right-0 bottom-0 left-0 p-6">
-            <div className="mb-2 flex items-center gap-2">
-              <span
-                className={`rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-sm ${c.badgeBg} ${c.badgeText}`}
+
+            {totalLessons > 0 && (
+              <div className="space-y-1.5">
+                <div
+                  className="bg-muted h-2 overflow-hidden rounded-full"
+                  role="progressbar"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${course.title} progress`}
+                >
+                  <div className="bg-success h-full rounded-full" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-muted-foreground text-xs tabular-nums">
+                  {doneCount} of {totalLessons} lessons complete · {progress}%
+                </p>
+              </div>
+            )}
+
+            {startLesson && (
+              <Link
+                href={`/student/courses/${course.id}/lessons/${startLesson.id}`}
+                className={buttonVariants({ size: "sm", className: "gap-2" })}
               >
-                Batch {course.batch}
-              </span>
-              <span className="bg-success text-primary-foreground inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-lg">
-                <CheckCircle2 className="h-3 w-3" />
-                Enrolled
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold md:text-3xl">{course.title}</h1>
+                {doneCount === 0 ? "Start course" : nextLesson ? "Continue learning" : "Review lessons"}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Course Info Bar */}
-        <div className="bg-background border-border flex flex-wrap items-center justify-between gap-4 border-t px-6 py-4">
-          <div className="text-muted-foreground flex items-center gap-6 text-sm">
-            {semesters.length > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Layers className="h-4 w-4" />
-                {semesters.length} Semester{semesters.length !== 1 ? "s" : ""}
-              </span>
-            )}
-            <span className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4" />
-              {totalLessons} Lesson{totalLessons !== 1 ? "s" : ""}
-            </span>
-            {completedIds.size > 0 && (
-              <span className="text-success flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" />
-                {completedIds.size}/{totalLessons} completed
-              </span>
-            )}
-          </div>
-          {continueLesson && (
-            <Link href={`/student/courses/${course.id}/lessons/${continueLesson.id}`}>
-              <Button size="sm" className="gap-2">
-                {firstIncomplete ? "Continue Learning" : "Review Lessons"}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Description */}
-      {course.description && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">About this Course</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
+        {course.description && (
+          <details className="group border-t">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none px-4 py-2.5 text-xs font-medium transition-colors sm:px-5 [&::-webkit-details-marker]:hidden">
+              <span className="group-open:hidden">About this course</span>
+              <span className="hidden group-open:inline">Hide description</span>
+            </summary>
+            <p className="text-muted-foreground px-4 pb-4 text-sm leading-relaxed whitespace-pre-wrap sm:px-5">
               {course.description}
             </p>
-          </CardContent>
-        </Card>
-      )}
+          </details>
+        )}
+      </header>
 
-      {/* Course Content (with search) */}
       <CourseContent
         courseId={course.id}
         hierarchyType={course.hierarchy_type}
@@ -766,7 +483,7 @@ export default async function CourseDetailPage({
         subjects={subjects}
         directLessons={directLessons}
         completedIds={completedIds}
-        colors={c}
+        nextLessonId={nextLesson?.id}
       />
     </div>
   );

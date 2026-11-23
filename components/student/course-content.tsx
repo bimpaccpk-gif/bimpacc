@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, FileText, Pause, Search } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, Clock, PlayCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  FileText,
+  Pause,
+  PlayCircle,
+  Search,
+} from "lucide-react";
 
-interface LessonRow {
+export interface LessonRow {
   id: string;
   title: string;
   description: string;
@@ -17,7 +24,7 @@ interface LessonRow {
   isPaused: boolean;
 }
 
-interface SubjectWithLessons {
+export interface SubjectWithLessons {
   id: string;
   title: string;
   description: string;
@@ -26,7 +33,7 @@ interface SubjectWithLessons {
   lessons: LessonRow[];
 }
 
-interface SemesterWithSubjects {
+export interface SemesterWithSubjects {
   id: string;
   title: string;
   description: string;
@@ -34,219 +41,228 @@ interface SemesterWithSubjects {
   subjects: SubjectWithLessons[];
 }
 
-function LessonItem({
+// ─── helpers ──────────────────────────────────────────────
+
+const has = (text: string | null | undefined, q: string) =>
+  !!text && text.toLowerCase().includes(q.toLowerCase());
+
+const lessonMatches = (l: LessonRow, q: string) => has(l.title, q) || has(l.description, q);
+
+const countLessons = (subjects: SubjectWithLessons[]) =>
+  subjects.reduce((n, s) => n + s.lessons.length, 0);
+
+function countDone(lessons: LessonRow[], done: Set<string>) {
+  return lessons.reduce((n, l) => n + (done.has(l.id) ? 1 : 0), 0);
+}
+
+function Highlight({ text, query }: { text: string; query?: string }) {
+  if (!query) return <>{text}</>;
+  const i = text.toLowerCase().indexOf(query.toLowerCase());
+  if (i === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark className="bg-warning/30 rounded px-0.5 text-inherit">{text.slice(i, i + query.length)}</mark>
+      {text.slice(i + query.length)}
+    </>
+  );
+}
+
+// ─── rows ─────────────────────────────────────────────────
+
+function LessonRowItem({
   lesson,
-  index,
+  number,
   courseId,
   isCompleted,
-  highlight,
-  colors,
+  isNext,
+  query,
 }: {
   lesson: LessonRow;
-  index: number;
+  number: number;
   courseId: string;
   isCompleted: boolean;
-  highlight?: string;
-  colors: {
-    numBg: string;
-    numText: string;
-    lessonIcon: string;
-    lessonButton: string;
-  };
+  isNext: boolean;
+  query?: string;
 }) {
-  const title = lesson.title;
-  const desc = lesson.description;
-
-  const titleMatch = highlight
-    ? title.toLowerCase().includes(highlight.toLowerCase())
-    : false;
-
   if (lesson.isPaused) {
     return (
-      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="bg-warning/10 text-warning dark:text-warning/80 h-8 w-8 shrink-0 rounded-full bg-warning/10 flex items-center justify-center">
-            <Pause className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-muted-foreground font-semibold">{title}</h4>
-            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
-              This lesson is currently paused
-            </p>
-          </div>
+      <div className="flex items-center gap-3 px-4 py-2.5 opacity-70">
+        <span className="bg-warning/10 text-warning flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+          <Pause className="h-3 w-3" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-muted-foreground truncate text-sm font-medium">{lesson.title}</p>
+          <p className="text-warning text-xs">Paused</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`border-border bg-background overflow-hidden rounded-xl border transition-colors hover:border-amber-300 dark:hover:border-amber-700`}>
-      <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3 flex-1">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors ${
-              isCompleted
-                ? "bg-success/10 text-success dark:text-success/80"
-                : `${colors.numBg} ${colors.numText}`
-            }`}
-          >
-            {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-foreground font-semibold">
-              {titleMatch && highlight ? (
-                <HighlightText text={title} query={highlight} />
-              ) : (
-                title
-              )}
-            </h4>
-            {desc && (
-              <p className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
-                {highlight
-                  ? desc.toLowerCase().includes(highlight.toLowerCase())
-                    ? desc
-                    : desc
-                  : desc}
-              </p>
-            )}
-          </div>
+    <Link
+      href={`/student/courses/${courseId}/lessons/${lesson.id}`}
+      className="group hover:bg-muted/50 focus-visible:ring-ring/50 flex items-center gap-3 px-4 py-2.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset"
+    >
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+          isCompleted
+            ? "text-success"
+            : isNext
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {isCompleted ? (
+          <CheckCircle2 className="h-5 w-5" aria-label="Completed" />
+        ) : isNext ? (
+          <PlayCircle className="h-4 w-4" aria-label="Up next" />
+        ) : (
+          number
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="group-hover:text-primary truncate text-sm font-medium transition-colors">
+          <Highlight text={lesson.title} query={query} />
+        </p>
+        {lesson.description && (
+          <p className="text-muted-foreground line-clamp-1 text-xs">{lesson.description}</p>
+        )}
+      </div>
+      {isNext && (
+        <span className="bg-primary/10 text-primary hidden shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline">
+          Up next
+        </span>
+      )}
+      {lesson.duration_minutes ? (
+        <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs tabular-nums">
+          <Clock className="h-3 w-3" aria-hidden="true" />
+          {lesson.duration_minutes} min
+        </span>
+      ) : null}
+      <ChevronRight
+        className="text-muted-foreground/50 group-hover:text-primary h-4 w-4 shrink-0 transition-colors"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+}
+
+function SectionSummary({
+  index,
+  title,
+  meta,
+  done,
+  total,
+  icon,
+}: {
+  index: number;
+  title: string;
+  meta?: string;
+  done: number;
+  total: number;
+  icon?: ReactNode;
+}) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  return (
+    <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition-colors [&::-webkit-details-marker]:hidden">
+      <span className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold">
+        {icon ?? index}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-semibold">{title}</h3>
+        {meta && <p className="text-muted-foreground truncate text-xs">{meta}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <div
+          className="bg-muted hidden h-1.5 w-16 overflow-hidden rounded-full sm:block"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${title} progress`}
+        >
+          <div className="bg-success h-full rounded-full" style={{ width: `${pct}%` }} />
         </div>
-        <div className="flex shrink-0 items-center gap-3 ml-11 sm:ml-0">
-          {lesson.duration_minutes && (
-            <span className="text-muted-foreground flex items-center gap-1 text-xs">
-              <Clock className="h-3 w-3" />
-              {lesson.duration_minutes} min
-            </span>
-          )}
-          {lesson.video_url && <PlayCircle className={`h-5 w-5 ${colors.lessonIcon}`} />}
-          <Link href={`/student/courses/${courseId}/lessons/${lesson.id}`}>
-            <Button size="sm" className={`gap-1.5 ${colors.lessonButton} transition-colors`}>
-              {lesson.video_url ? "Watch" : "View"}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {done}/{total}
+        </span>
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 transition-transform [details[open]>summary_&]:rotate-180"
+          aria-hidden="true"
+        />
+      </div>
+    </summary>
+  );
+}
+
+function PausedBlock({ title, kind }: { title: string; kind: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 opacity-70">
+      <span className="bg-warning/10 text-warning flex h-7 w-7 shrink-0 items-center justify-center rounded-md">
+        <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-muted-foreground truncate text-sm font-semibold">{title}</p>
+        <p className="text-warning text-xs">This {kind} is currently paused</p>
       </div>
     </div>
   );
 }
 
-function HighlightText({ text, query }: { text: string; query: string }) {
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-warning/30 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
-      {text.slice(idx + query.length)}
-    </>
-  );
-}
-
-function SubjectAccordion({
+function SubjectBlock({
   subject,
   index,
   courseId,
   completedIds,
-  highlight,
-  colors,
-  lessonColors,
+  nextLessonId,
+  query,
+  nested,
 }: {
   subject: SubjectWithLessons;
   index: number;
   courseId: string;
   completedIds: Set<string>;
-  highlight?: string;
-  colors: {
-    numBg: string;
-    numText: string;
-    accordionBg: string;
-    accordionHoverBg: string;
-    subjectCountBg: string;
-    subjectCountText: string;
-  };
-  lessonColors: {
-    numBg: string;
-    numText: string;
-    lessonIcon: string;
-    lessonButton: string;
-  };
+  nextLessonId?: string;
+  query?: string;
+  nested?: boolean;
 }) {
-  const filteredLessons = highlight
-    ? subject.lessons.filter(
-        (l) =>
-          l.title.toLowerCase().includes(highlight.toLowerCase()) ||
-          (l.description && l.description.toLowerCase().includes(highlight.toLowerCase()))
-      )
-    : subject.lessons;
-
-  if (filteredLessons.length === 0) return null;
-
-  if (subject.isPaused && !highlight) {
+  if (subject.isPaused && !query) {
     return (
-      <div className="border-border bg-muted/20 border-warning/30 overflow-hidden rounded-xl border">
-        <div className="flex items-center gap-3 px-5 py-4">
-          <div className="bg-warning/10 text-warning dark:text-warning/80 h-8 w-8 shrink-0 rounded-full flex items-center justify-center">
-            <Pause className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-muted-foreground font-semibold">{subject.title}</h4>
-            <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
-              This subject is currently paused
-            </p>
-          </div>
-        </div>
+      <div className={nested ? "bg-card rounded-lg ring-1 ring-foreground/10" : "bg-card rounded-xl ring-1 ring-foreground/10"}>
+        <PausedBlock title={subject.title} kind="subject" />
       </div>
     );
   }
 
-  const subjectMatch =
-    highlight &&
-    (subject.title.toLowerCase().includes(highlight.toLowerCase()) ||
-      (subject.description &&
-        subject.description.toLowerCase().includes(highlight.toLowerCase())));
+  const subjectHit = !!query && (has(subject.title, query) || has(subject.description, query));
+  const lessons = query && !subjectHit ? subject.lessons.filter((l) => lessonMatches(l, query)) : subject.lessons;
+  if (lessons.length === 0) return null;
 
-  const matchedLessons = subjectMatch ? subject.lessons : filteredLessons;
+  const containsNext = !!nextLessonId && subject.lessons.some((l) => l.id === nextLessonId);
 
   return (
     <details
-      className="group border-border overflow-hidden rounded-xl border"
+      className={`group bg-card overflow-hidden ring-1 ring-foreground/10 ${nested ? "rounded-lg" : "rounded-xl"}`}
+      open={!!query || containsNext}
     >
-      <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.numBg} ${colors.numText}`}>
-          {index + 1}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-foreground font-semibold">
-            {subjectMatch && highlight ? (
-              <HighlightText text={subject.title} query={highlight} />
-            ) : (
-              subject.title
-            )}
-          </h3>
-          {subject.description && (
-            <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-              {subject.description}
-            </p>
-          )}
-        </div>
-        <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.subjectCountBg} ${colors.subjectCountText}`}>
-          {matchedLessons.length}/{subject.lessons.length} lessons
-          {highlight ? " matching" : ""}
-        </span>
-        <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
-      </summary>
-
-      <div className={`space-y-3 p-4 ${colors.accordionBg}`}>
-        {matchedLessons.map((lesson, i) => (
-          <LessonItem
+      <SectionSummary
+        index={index + 1}
+        title={subject.title}
+        meta={query ? `${lessons.length} matching` : subject.description || undefined}
+        done={countDone(subject.lessons, completedIds)}
+        total={subject.lessons.length}
+      />
+      <div className="divide-border divide-y border-t">
+        {lessons.map((lesson, i) => (
+          <LessonRowItem
             key={lesson.id}
             lesson={lesson}
-            index={i}
+            number={subject.lessons.indexOf(lesson) + 1 || i + 1}
             courseId={courseId}
             isCompleted={completedIds.has(lesson.id)}
-            highlight={highlight}
-            colors={lessonColors}
+            isNext={lesson.id === nextLessonId}
+            query={query}
           />
         ))}
       </div>
@@ -254,14 +270,16 @@ function SubjectAccordion({
   );
 }
 
+// ─── main ─────────────────────────────────────────────────
+
 export function CourseContent({
   courseId,
   hierarchyType,
-  semesters,
+  semesters = [],
   subjects,
   directLessons,
   completedIds,
-  colors,
+  nextLessonId,
 }: {
   courseId: string;
   hierarchyType: number;
@@ -269,237 +287,138 @@ export function CourseContent({
   subjects: SubjectWithLessons[];
   directLessons: LessonRow[];
   completedIds: Set<string>;
-  colors: {
-    semester: {
-      numBg: string;
-      numText: string;
-      accordionBg: string;
-      accordionHoverBg: string;
-      subjectCountBg: string;
-      subjectCountText: string;
-    };
-    subject: {
-      numBg: string;
-      numText: string;
-      accordionBg: string;
-      accordionHoverBg: string;
-      subjectCountBg: string;
-      subjectCountText: string;
-    };
-    lesson: {
-      numBg: string;
-      numText: string;
-      lessonIcon: string;
-      lessonButton: string;
-    };
-  };
+  /** The lesson the student should do next; its section opens by default. */
+  nextLessonId?: string;
 }) {
   const [search, setSearch] = useState("");
+  const q = search.trim() || undefined;
 
-  const totalSemesterLessons = (semesters ?? []).reduce(
-    (sum, sem) => sum + sem.subjects.reduce((s, sub) => s + sub.lessons.length, 0),
-    0
-  );
-  const totalSubjectLessons = subjects.reduce((sum, s) => sum + s.lessons.length, 0);
-  const totalLessons = totalSemesterLessons + totalSubjectLessons + directLessons.length;
+  const total =
+    semesters.reduce((n, s) => n + countLessons(s.subjects), 0) +
+    countLessons(subjects) +
+    directLessons.length;
 
-  const filteredSemesters = (semesters ?? []).filter((sem) => {
-    if (!search) return true;
+  if (total === 0) {
     return (
-      sem.title.toLowerCase().includes(search.toLowerCase()) ||
-      sem.description?.toLowerCase().includes(search.toLowerCase()) ||
-      sem.subjects.some(
-        (s) =>
-          s.title.toLowerCase().includes(search.toLowerCase()) ||
-          s.description?.toLowerCase().includes(search.toLowerCase()) ||
-          s.lessons.some(
-            (l) =>
-              l.title.toLowerCase().includes(search.toLowerCase()) ||
-              l.description?.toLowerCase().includes(search.toLowerCase())
-          )
-      )
-    );
-  });
-
-  const filteredSubjects = search
-    ? subjects.filter(
-        (s) =>
-          s.title.toLowerCase().includes(search.toLowerCase()) ||
-          s.description?.toLowerCase().includes(search.toLowerCase()) ||
-          s.lessons.some(
-            (l) =>
-              l.title.toLowerCase().includes(search.toLowerCase()) ||
-              l.description?.toLowerCase().includes(search.toLowerCase())
-          )
-      )
-    : subjects;
-
-  const filteredDirectLessons = search
-    ? directLessons.filter(
-        (l) =>
-          l.title.toLowerCase().includes(search.toLowerCase()) ||
-          l.description?.toLowerCase().includes(search.toLowerCase())
-      )
-    : directLessons;
-
-  const resultsVisible = hierarchyType === 1
-    ? filteredSemesters.reduce((sum, sem) => sum + sem.subjects.reduce((s, sub) => s + (search ? sub.lessons.filter(
-        (l) =>
-          l.title.toLowerCase().includes(search.toLowerCase()) ||
-          l.description?.toLowerCase().includes(search.toLowerCase())
-      ).length : sub.lessons.length), 0), 0)
-    : hierarchyType === 2
-      ? filteredSubjects.reduce((sum, s) => {
-          const matchCount = search
-            ? s.lessons.filter(
-                (l) =>
-                  l.title.toLowerCase().includes(search.toLowerCase()) ||
-                  l.description?.toLowerCase().includes(search.toLowerCase())
-              ).length + (s.title.toLowerCase().includes(search.toLowerCase()) ? s.lessons.length : 0)
-            : s.lessons.length;
-          return sum + matchCount;
-        }, 0)
-      : filteredDirectLessons.length;
-
-  if (totalLessons === 0) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-foreground text-xl font-bold">Course Content</h2>
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-          <FileText className="text-muted-foreground/50 h-10 w-10" />
-          <p className="text-muted-foreground mt-3 text-sm">
-            No content has been added to this course yet.
-          </p>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold tracking-tight">Curriculum</h2>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-12">
+          <FileText className="text-muted-foreground/50 h-8 w-8" aria-hidden="true" />
+          <p className="text-muted-foreground mt-3 text-sm">No content has been added to this course yet.</p>
         </div>
-      </div>
+      </section>
     );
   }
 
+  const subjectVisible = (s: SubjectWithLessons) =>
+    !q || has(s.title, q) || has(s.description, q) || s.lessons.some((l) => lessonMatches(l, q));
+
+  const visibleSemesters = semesters.filter((sem) => !q || has(sem.title, q) || sem.subjects.some(subjectVisible));
+  const visibleSubjects = subjects.filter(subjectVisible);
+  const visibleDirect = q ? directLessons.filter((l) => lessonMatches(l, q)) : directLessons;
+
+  const nothingFound =
+    !!q &&
+    (hierarchyType === 1
+      ? visibleSemesters.length === 0
+      : hierarchyType === 2
+        ? visibleSubjects.length === 0
+        : visibleDirect.length === 0);
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-foreground text-xl font-bold">Course Content</h2>
-        <div className="relative max-w-sm flex-1 sm:flex-initial">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+    <section className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold tracking-tight">Curriculum</h2>
+        <div className="relative sm:w-64">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2"
+            aria-hidden="true"
+          />
           <input
-            type="text"
-            placeholder="Search lessons..."
+            type="search"
+            placeholder="Search lessons"
+            aria-label="Search lessons"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-border bg-background focus:ring-primary w-full rounded-lg border py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2"
+            className="border-border bg-background focus:ring-primary h-9 w-full rounded-lg border py-1 pr-3 pl-8 text-sm focus:ring-2 focus:outline-none"
           />
         </div>
       </div>
 
-      {search && (
-        <p className="text-muted-foreground text-sm">
-          Showing {resultsVisible} of {totalLessons} lessons
-        </p>
-      )}
-
-      {hierarchyType === 1 ? (
-        filteredSemesters.length === 0 && search ? (
-          <p className="text-muted-foreground py-4 text-center text-sm">
-            No lessons match &ldquo;{search}&rdquo;
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {filteredSemesters.map((semester, si) => (
-              <details key={semester.id} className="group border-border overflow-hidden rounded-xl border">
-                {semester.isPaused && !search ? (
-                  <div className="bg-muted/20 border-warning/30 flex items-center gap-3 px-5 py-4">
-                    <div className="bg-warning/10 text-warning dark:text-warning/80 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                      <Pause className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-muted-foreground font-semibold">{semester.title}</h4>
-                      <p className="text-warning/80 dark:text-warning/60 mt-0.5 text-xs">
-                        This semester is currently paused
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 transition-colors ${colors.semester.accordionHoverBg} [&::-webkit-details-marker]:hidden`}>
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${colors.semester.numBg} ${colors.semester.numText}`}>
-                        {si + 1}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-foreground font-semibold">
-                          {semester.title}
-                        </h3>
-                        {semester.description && (
-                          <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-                            {semester.description}
-                          </p>
-                        )}
-                      </div>
-                      <span className={`mr-2 rounded-md px-2 py-0.5 text-xs font-medium ${colors.semester.subjectCountBg} ${colors.semester.subjectCountText}`}>
-                        {semester.subjects.length} subject{semester.subjects.length !== 1 ? "s" : ""}
-                        ({semester.subjects.reduce((s, sub) => s + sub.lessons.length, 0)} lessons)
-                      </span>
-                      <ChevronDown className="text-muted-foreground h-5 w-5 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className={`space-y-3 p-4 ${colors.semester.accordionBg}`}>
-                      {semester.subjects.map((subject, subI) => (
-                        <SubjectAccordion
-                          key={subject.id}
-                          subject={subject}
-                          index={subI}
-                          courseId={courseId}
-                          completedIds={completedIds}
-                          highlight={search || undefined}
-                          colors={colors.subject}
-                          lessonColors={colors.lesson}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </details>
-            ))}
-          </div>
-        )
-      ) : hierarchyType === 2 ? (
-        filteredSubjects.length === 0 && search ? (
-          <p className="text-muted-foreground py-4 text-center text-sm">
-            No lessons match &ldquo;{search}&rdquo;
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {filteredSubjects.map((subject, i) => (
-              <SubjectAccordion
-                key={subject.id}
-                subject={subject}
-                index={i}
-                courseId={courseId}
-                completedIds={completedIds}
-                highlight={search || undefined}
-                colors={colors.subject}
-                lessonColors={colors.lesson}
-              />
-            ))}
-          </div>
-        )
-      ) : filteredDirectLessons.length === 0 && search ? (
-        <p className="text-muted-foreground py-4 text-center text-sm">
-          No lessons match &ldquo;{search}&rdquo;
-        </p>
-      ) : (
+      {nothingFound ? (
+        <p className="text-muted-foreground py-6 text-center text-sm">No lessons match &ldquo;{search}&rdquo;</p>
+      ) : hierarchyType === 1 ? (
         <div className="space-y-3">
-          {filteredDirectLessons.map((lesson, i) => (
-            <LessonItem
-              key={lesson.id}
-              lesson={lesson}
+          {visibleSemesters.map((semester, si) => {
+            if (semester.isPaused && !q) {
+              return (
+                <div key={semester.id} className="bg-card rounded-xl ring-1 ring-foreground/10">
+                  <PausedBlock title={semester.title} kind="semester" />
+                </div>
+              );
+            }
+            const all = semester.subjects.flatMap((s) => s.lessons);
+            const containsNext = !!nextLessonId && all.some((l) => l.id === nextLessonId);
+            return (
+              <details
+                key={semester.id}
+                className="group bg-card overflow-hidden rounded-xl ring-1 ring-foreground/10"
+                open={!!q || containsNext || (!nextLessonId && si === 0)}
+              >
+                <SectionSummary
+                  index={si + 1}
+                  title={semester.title}
+                  meta={`${semester.subjects.length} subject${semester.subjects.length !== 1 ? "s" : ""}`}
+                  done={countDone(all, completedIds)}
+                  total={all.length}
+                />
+                <div className="bg-muted/20 space-y-2 border-t p-3">
+                  {semester.subjects.map((subject, i) => (
+                    <SubjectBlock
+                      key={subject.id}
+                      subject={subject}
+                      index={i}
+                      courseId={courseId}
+                      completedIds={completedIds}
+                      nextLessonId={nextLessonId}
+                      query={q}
+                      nested
+                    />
+                  ))}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      ) : hierarchyType === 2 ? (
+        <div className="space-y-3">
+          {visibleSubjects.map((subject, i) => (
+            <SubjectBlock
+              key={subject.id}
+              subject={subject}
               index={i}
               courseId={courseId}
+              completedIds={completedIds}
+              nextLessonId={nextLessonId}
+              query={q}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-card divide-border divide-y overflow-hidden rounded-xl ring-1 ring-foreground/10">
+          {visibleDirect.map((lesson) => (
+            <LessonRowItem
+              key={lesson.id}
+              lesson={lesson}
+              number={directLessons.indexOf(lesson) + 1}
+              courseId={courseId}
               isCompleted={completedIds.has(lesson.id)}
-              highlight={search}
-              colors={colors.lesson}
+              isNext={lesson.id === nextLessonId}
+              query={q}
             />
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
