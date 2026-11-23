@@ -1,17 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  BookOpen,
-  CalendarDays,
-  CheckCircle,
-  Clock,
-  GraduationCap,
-} from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle, GraduationCap, PlayCircle } from "lucide-react";
 
 import { StudentAttendanceOverview } from "@/components/student/attendance-overview";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { getCurrentUser } from "@/lib/dal";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -41,23 +33,28 @@ interface EnrolledCourse extends CourseRecord {
   enrolled_at: string;
 }
 
-function clampProgress(progress: number | null) {
-  return Math.min(100, Math.max(0, progress ?? 0));
+/** The course the student should pick up next, with a hint about where they left off. */
+interface ResumeTarget {
+  course: EnrolledCourse;
+  /** Title of the lesson they completed most recently, if any. */
+  lastLessonTitle: string | null;
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+/** PostgREST returns a to-one embed as an object; the inferred type may say array. Accept both. */
+function firstOf<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function clampProgress(progress: number | null) {
+  return Math.min(100, Math.max(0, progress ?? 0));
 }
 
 async function getDashboardData(userId: string) {
   const supabase = await createClient();
   const admin = createAdminClient();
 
-  const [enrollmentResult, courseResult] = await Promise.all([
+  const [enrollmentResult, courseResult, recentResult] = await Promise.all([
     supabase
       .from("enrollments")
       .select("course_id, progress, enrolled_at")
@@ -70,6 +67,13 @@ async function getDashboardData(userId: string) {
       )
       .order("order_index", { ascending: true })
       .order("created_at", { ascending: false }),
+    // Most recently completed lesson (RLS limits this to the student's own progress).
+    supabase
+      .from("lesson_progress")
+      .select("completed_at, lessons(title), enrollments(course_id)")
+      .eq("completed", true)
+      .order("completed_at", { ascending: false })
+      .limit(1),
   ]);
 
   if (enrollmentResult.error || courseResult.error) {
@@ -107,12 +111,32 @@ async function getDashboardData(userId: string) {
       !enrolledIds.has(course.id)
   );
 
+  // Pick the course to resume: the one with the latest completed lesson (if unfinished),
+  // else the first course in progress, else the first enrolled course. A failure to read
+  // recent progress must never break the dashboard, so errors are ignored here.
+  const recent = recentResult.error ? null : (recentResult.data?.[0] ?? null);
+  const recentCourseId = firstOf(recent?.enrollments)?.course_id as string | undefined;
+  const recentLessonTitle = (firstOf(recent?.lessons)?.title as string | undefined) ?? null;
+  const recentCourse = enrolledCourses.find(
+    (course) => course.id === recentCourseId && course.progress < 100
+  );
+
+  let resume: ResumeTarget | null = null;
+  if (recentCourse) {
+    resume = { course: recentCourse, lastLessonTitle: recentLessonTitle };
+  } else {
+    const fallback =
+      enrolledCourses.find((course) => course.progress > 0 && course.progress < 100) ??
+      enrolledCourses.find((course) => course.progress < 100);
+    if (fallback) resume = { course: fallback, lastLessonTitle: null };
+  }
+
   return {
     enrolledCourses,
     availableCourses,
+    resume,
     stats: {
       enrolled: enrolledCourses.length,
-      available: availableCourses.length,
       inProgress: enrolledCourses.filter((course) => course.progress > 0 && course.progress < 100)
         .length,
       completed: enrolledCourses.filter((course) => course.progress >= 100).length,
@@ -120,9 +144,14 @@ async function getDashboardData(userId: string) {
   };
 }
 
-function CourseCover({ course }: { course: CourseRecord }) {
+function CourseCover({ course, className }: { course: CourseRecord; className?: string }) {
   return (
-    <div className="from-primary via-brand-500 to-primary/70 relative aspect-video overflow-hidden bg-gradient-to-br">
+    <div
+      className={
+        "from-primary via-brand-500 to-primary/70 relative overflow-hidden bg-gradient-to-br " +
+        (className ?? "aspect-video")
+      }
+    >
       {course.thumbnail_url ? (
         <Image
           src={course.thumbnail_url}
@@ -133,155 +162,132 @@ function CourseCover({ course }: { course: CourseRecord }) {
         />
       ) : (
         <div className="flex h-full items-center justify-center">
-          <BookOpen className="text-primary-foreground/60 h-12 w-12" aria-hidden="true" />
+          <BookOpen className="text-primary-foreground/60 h-8 w-8" aria-hidden="true" />
         </div>
-      )}
-
-      {course.batch && (
-        <span className="bg-background/85 text-foreground absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur-sm">
-          Batch {course.batch}
-        </span>
       )}
     </div>
   );
 }
 
+function ProgressBar({ value, label }: { value: number; label: string }) {
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+      className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
+    >
+      <div className="bg-primary h-full rounded-full" style={{ width: `${value}%` }} />
+    </div>
+  );
+}
+
+function ContinueCard({ resume }: { resume: ResumeTarget }) {
+  const { course, lastLessonTitle } = resume;
+  const started = course.progress > 0;
+
+  return (
+    <section
+      aria-labelledby="continue-heading"
+      className="bg-primary/5 ring-primary/20 flex flex-col gap-4 rounded-xl p-4 ring-1 sm:flex-row sm:items-center sm:p-5"
+    >
+      <CourseCover course={course} className="aspect-video w-full shrink-0 rounded-lg sm:w-44" />
+
+      <div className="min-w-0 flex-1 space-y-2">
+        <p id="continue-heading" className="text-primary text-xs font-medium">
+          {started ? "Continue where you left off" : "Start learning"}
+        </p>
+        <h2 className="truncate text-lg font-semibold tracking-tight">{course.title}</h2>
+        {lastLessonTitle && (
+          <p className="text-muted-foreground truncate text-sm">
+            Last completed: {lastLessonTitle}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <ProgressBar value={course.progress} label={`${course.title} progress`} />
+          <span className="text-muted-foreground text-xs font-medium tabular-nums">
+            {course.progress}%
+          </span>
+        </div>
+      </div>
+
+      <Link
+        href={`/student/courses/${course.id}`}
+        className={buttonVariants({ className: "w-full shrink-0 gap-2 sm:w-auto" })}
+      >
+        <PlayCircle className="h-4 w-4" aria-hidden="true" />
+        {started ? "Resume" : "Start"}
+      </Link>
+    </section>
+  );
+}
+
 export default async function StudentDashboardPage() {
   const user = await getCurrentUser();
-  const { enrolledCourses, availableCourses, stats } = await getDashboardData(user.id);
+  const { enrolledCourses, availableCourses, resume, stats } = await getDashboardData(user.id);
 
-  const statCards = [
-    {
-      title: "Enrolled Courses",
-      value: stats.enrolled,
-      icon: GraduationCap,
-      iconClassName: "text-brand-600 dark:text-brand-400",
-      iconBackground: "bg-brand-50 dark:bg-brand-950",
-    },
-    {
-      title: "Available Courses",
-      value: stats.available,
-      icon: BookOpen,
-      iconClassName: "text-info",
-      iconBackground: "bg-info/10",
-    },
-    {
-      title: "In Progress",
-      value: stats.inProgress,
-      icon: Clock,
-      iconClassName: "text-warning",
-      iconBackground: "bg-warning/10",
-    },
-    {
-      title: "Completed",
-      value: stats.completed,
-      icon: CheckCircle,
-      iconClassName: "text-success",
-      iconBackground: "bg-success/10",
-    },
-  ];
+  const summary = [
+    `${stats.enrolled} enrolled`,
+    `${stats.inProgress} in progress`,
+    `${stats.completed} completed`,
+  ].join(" · ");
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-foreground text-2xl font-bold">
-          Welcome back, {user.full_name?.split(" ")[0] || "Student"}!
+      <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">
+          Welcome back, {user.full_name?.split(" ")[0] || "Student"}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          View your enrolled courses and discover every course currently open for enrollment.
-        </p>
+        {stats.enrolled > 0 && <p className="text-muted-foreground text-sm">{summary}</p>}
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <Card
-            key={stat.title}
-            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <div className={`rounded-lg p-2 ${stat.iconBackground}`}>
-                <stat.icon className={`h-5 w-5 ${stat.iconClassName}`} aria-hidden="true" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {resume && <ContinueCard resume={resume} />}
 
       <section id="enrolled-courses" className="scroll-mt-24 space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold">Enrolled Courses</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {enrolledCourses.length === 0
-              ? "You are not enrolled in a course yet."
-              : `${enrolledCourses.length} course${enrolledCourses.length === 1 ? "" : "s"} ready to continue.`}
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold tracking-tight">My courses</h2>
 
         {enrolledCourses.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-12 text-center">
             <GraduationCap className="text-muted-foreground/50 h-12 w-12" aria-hidden="true" />
             <h3 className="mt-4 text-lg font-semibold">Start your learning journey</h3>
             <p className="text-muted-foreground mt-1 max-w-md text-sm">
-              Browse the courses currently accepting enrollments and contact the team to join.
+              Browse the courses open for enrollment and contact the team to join.
             </p>
-            <a href="#available-courses" className={buttonVariants({ className: "mt-4 gap-2" })}>
-              Browse Available Courses
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
+            {availableCourses.length > 0 && (
+              <a href="#available-courses" className={buttonVariants({ className: "mt-4 gap-2" })}>
+                Browse courses
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            )}
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {enrolledCourses.map((course) => (
-              <Card
+              <Link
                 key={course.id}
-                className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                href={`/student/courses/${course.id}`}
+                className="group bg-card ring-foreground/10 hover:ring-primary/40 focus-visible:ring-ring/50 flex flex-col overflow-hidden rounded-xl ring-1 transition-shadow outline-none focus-visible:ring-3"
               >
-                <CourseCover course={course} />
-                <CardHeader className="pb-2">
-                  <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
-                    {course.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {course.description && (
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {course.description}
-                    </p>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-semibold">{course.progress}%</span>
-                    </div>
-                    <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
-                      <div
-                        className="from-primary to-primary/70 h-full rounded-full bg-gradient-to-r"
-                        style={{ width: `${course.progress}%` }}
-                      />
-                    </div>
+                <CourseCover course={course} className="aspect-[16/7]" />
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <h3 className="group-hover:text-primary line-clamp-2 font-semibold transition-colors">
+                      {course.title}
+                    </h3>
+                    {course.batch && (
+                      <p className="text-muted-foreground mt-0.5 text-xs">Batch {course.batch}</p>
+                    )}
                   </div>
-
-                  <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                    Enrolled {formatDate(course.enrolled_at)}
-                  </p>
-
-                  <Link
-                    href={`/student/courses/${course.id}`}
-                    className={buttonVariants({ size: "sm", className: "w-full gap-2" })}
-                  >
-                    Continue Learning
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </CardContent>
-              </Card>
+                  <div className="mt-auto space-y-1.5">
+                    <ProgressBar value={course.progress} label={`${course.title} progress`} />
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      {course.progress >= 100 ? "Completed" : `${course.progress}% complete`}
+                    </p>
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
         )}
@@ -290,58 +296,43 @@ export default async function StudentDashboardPage() {
       <StudentAttendanceOverview />
 
       <section id="available-courses" className="scroll-mt-24 space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold">Available Courses</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Published courses with registration open that are not already in your enrolled list.
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold tracking-tight">Explore more courses</h2>
 
         {availableCourses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-12 text-center">
-            <CheckCircle className="text-success/70 h-12 w-12" aria-hidden="true" />
-            <h3 className="mt-4 text-lg font-semibold">No additional courses available</h3>
-            <p className="text-muted-foreground mt-1 text-sm">
-              You are enrolled in every course currently accepting registrations.
-            </p>
+          <div className="text-muted-foreground flex items-center gap-3 rounded-xl border border-dashed px-4 py-5 text-sm">
+            <CheckCircle className="text-success/70 h-5 w-5 shrink-0" aria-hidden="true" />
+            You are enrolled in every course currently accepting registrations.
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {availableCourses.map((course) => (
-              <Card
+              <div
                 key={course.id}
-                className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-xl ring-1"
               >
-                <CourseCover course={course} />
-                <CardHeader className="pb-2">
-                  <div className="mb-2">
-                    <span className="bg-success/10 text-success inline-flex rounded-full px-2.5 py-1 text-xs font-semibold">
-                      Available
-                    </span>
+                <CourseCover course={course} className="aspect-[16/7]" />
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <h3 className="line-clamp-2 font-semibold">{course.title}</h3>
+                    <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                      {course.description || "Contact the BIMPACC team for course details."}
+                    </p>
                   </div>
-                  <CardTitle className="group-hover:text-primary line-clamp-2 text-lg transition-colors">
-                    {course.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-muted-foreground line-clamp-3 min-h-15 text-sm">
-                    {course.description || "Contact the BIMPACC team for course details."}
-                  </p>
-
                   <a
                     href="https://wa.me/923230191737"
                     target="_blank"
                     rel="noopener noreferrer"
                     className={buttonVariants({
                       size: "sm",
-                      className: "w-full bg-green-600 hover:bg-green-700",
+                      variant: "outline",
+                      className: "mt-auto w-full gap-2",
                     })}
                   >
                     <WhatsAppIcon className="h-4 w-4" />
-                    Contact for Enrollment
+                    Contact to enroll
                   </a>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
