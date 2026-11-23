@@ -86,3 +86,13 @@ describe("MFA recovery", () => {
     expect(read("app/mfa/page.tsx")).not.toContain("getCurrentUser");
   });
 });
+
+describe("quiz answers stay on the server", () => {
+  it("the browser-side quiz component never references the correct answer field", () => {
+    expect(read("components/student/lesson-quiz.tsx")).not.toContain("correct_option");
+  });
+
+  it("the quiz action never uses select(*) on questions", () => {
+    expect(read("app/actions/quiz.ts")).not.toMatch(/from\("quiz_questions"\)\s*\.select\("\*"\)/);
+  });
+});

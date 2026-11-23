@@ -13,7 +13,6 @@ export interface QuizQuestion {
   option_b: string
   option_c: string
   option_d: string
-  correct_option: string // "a", "b", "c", or "d"
   points: number
 }
 
@@ -32,7 +31,10 @@ export interface PreviousAttempt {
 export interface LessonQuizProps {
   quiz: QuizData | null
   previousAttempt: PreviousAttempt | null
-  onSubmit?: (answers: Record<string, string>, score: number, passed: boolean) => void
+  /** Scores on the server; resolves with the result (incl. correct answers) or an error. */
+  onSubmit?: (
+    answers: Record<string, string>
+  ) => Promise<{ result: QuizSubmissionView | null; error: string }>
 }
 
 const optionLabels = ["a", "b", "c", "d"] as const
@@ -47,31 +49,47 @@ function getOptionText(question: QuizQuestion, opt: string): string {
   }
 }
 
-type ScoreInfo = { earned: number; total: number; percentage: number }
-
-function calculateScore(
-  answers: Record<string, string>,
-  questions: QuizQuestion[]
-): ScoreInfo {
-  let earned = 0
-  let total = 0
-  for (const q of questions) {
-    total += q.points
-    if (answers[q.id] === q.correct_option) {
-      earned += q.points
-    }
-  }
-  return {
-    earned,
-    total,
-    percentage: total > 0 ? Math.round((earned / total) * 100) : 0,
-  }
+/** What the server returns after scoring a submission (correct answers are revealed here only). */
+export interface QuizSubmissionView {
+  score: number
+  passed: boolean
+  earnedPoints: number
+  totalPoints: number
+  /** question id -> correct option ("a".."d") */
+  correctAnswers: Record<string, string>
 }
 
 export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [showResults, setShowResults] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [result, setResult] = useState<QuizSubmissionView | null>(null)
+  const [retaking, setRetaking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  function startRetake() {
+    setAnswers({})
+    setResult(null)
+    setError("")
+    setRetaking(true)
+  }
+
+  async function handleSubmit() {
+    if (!onSubmit || !quiz || submitting) return
+    setSubmitting(true)
+    setError("")
+    try {
+      const response = await onSubmit(answers)
+      if (response.error || !response.result) {
+        setError(response.error || "Could not submit your quiz. Please try again.")
+        return
+      }
+      setResult(response.result)
+    } catch {
+      setError("Could not submit your quiz. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (!quiz) {
     return (
@@ -87,7 +105,7 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
   }
 
   // If a previous attempt exists and user hasn't started a retake yet, show it
-  if (previousAttempt && !submitted && !showResults) {
+  if (previousAttempt && !retaking && !result) {
     return (
       <Card>
         <CardHeader>
@@ -116,11 +134,7 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
               {` · Passing score: ${quiz.passing_score}%`}
             </p>
 
-            <Button variant="outline" size="sm" onClick={() => {
-              setAnswers({})
-              setShowResults(false)
-              setSubmitted(false)
-            }}>
+            <Button variant="outline" size="sm" onClick={startRetake}>
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
               Retake Quiz
             </Button>
@@ -131,9 +145,8 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
   }
 
   // Results mode
-  if (showResults && submitted) {
-    const scoreInfo = calculateScore(answers, quiz.questions)
-    const passed = scoreInfo.percentage >= quiz.passing_score
+  if (result) {
+    const passed = result.passed
 
     return (
       <Card>
@@ -166,10 +179,10 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
           {/* Score summary */}
           <div className="flex flex-col items-center gap-2 rounded-lg border border-border/50 bg-muted/50 p-4">
             <div className="text-3xl font-bold">
-              {scoreInfo.percentage}%
+              {result.score}%
             </div>
             <p className="text-sm text-muted-foreground">
-              {scoreInfo.earned}/{scoreInfo.total} points
+              {result.earnedPoints}/{result.totalPoints} points
               {` · Passing: ${quiz.passing_score}%`}
             </p>
             {passed && (
@@ -183,7 +196,8 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
           {/* Question-by-question breakdown */}
           {quiz.questions.map((q, i) => {
             const userAnswer = answers[q.id]
-            const isCorrect = userAnswer === q.correct_option
+            const correctOption = result.correctAnswers[q.id]
+            const isCorrect = userAnswer === correctOption
 
             return (
               <div key={q.id} className="rounded-lg border border-border/30 p-4">
@@ -203,7 +217,7 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
                       {optionLabels.map((opt) => {
                         const optionText = getOptionText(q, opt)
                         const isUserChoice = userAnswer === opt
-                        const isCorrectOption = q.correct_option === opt
+                        const isCorrectOption = correctOption === opt
 
                         return (
                           <div
@@ -241,11 +255,7 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
             variant="outline"
             size="sm"
             className="self-start"
-            onClick={() => {
-              setAnswers({})
-              setShowResults(false)
-              setSubmitted(false)
-            }}
+            onClick={startRetake}
           >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
             Retake Quiz
@@ -322,22 +332,18 @@ export function LessonQuiz({ quiz, previousAttempt, onSubmit }: LessonQuizProps)
           </div>
         ))}
 
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {Object.keys(answers).length}/{quiz.questions.length} answered
           </p>
-          <Button
-            size="sm"
-            disabled={!allAnswered}
-            onClick={() => {
-              const scoreInfo = calculateScore(answers, quiz.questions)
-              const passed = scoreInfo.percentage >= quiz.passing_score
-              setSubmitted(true)
-              setShowResults(true)
-              onSubmit?.(answers, scoreInfo.percentage, passed)
-            }}
-          >
-            Submit Quiz
+          <Button size="sm" disabled={!allAnswered || submitting} onClick={handleSubmit}>
+            {submitting ? "Submitting…" : "Submit Quiz"}
           </Button>
         </div>
       </CardContent>

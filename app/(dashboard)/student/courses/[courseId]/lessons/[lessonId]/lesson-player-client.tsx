@@ -202,17 +202,19 @@ export function LessonPlayerClient({
   const completedCount = allLessons.filter((l) => liveCompletedIds.has(l.id)).length;
   const percent = allLessons.length > 0 ? Math.round((completedCount / allLessons.length) * 100) : 0;
 
-  async function handleQuizSubmit(
-    answers: Record<string, string>,
-    _score: number,
-    _passed: boolean
-  ) {
-    if (!quiz?.id) return;
+  async function handleQuizSubmit(answers: Record<string, string>) {
+    if (!quiz?.id) return { result: null, error: "Quiz not found." };
     const answerArray = Object.entries(answers).map(([questionId, selectedOption]) => ({
       question_id: questionId,
       selected_option: selectedOption,
     }));
-    await submitQuiz(quiz.id, answerArray);
+    // Scoring happens on the server; the correct answers come back only in this response.
+    const response = await submitQuiz(quiz.id, answerArray);
+    if (response.error || !response.data) {
+      return { result: null, error: response.error || "Could not submit your quiz." };
+    }
+    const { score, passed, earnedPoints, totalPoints, correctAnswers } = response.data;
+    return { result: { score, passed, earnedPoints, totalPoints, correctAnswers }, error: "" };
   }
 
   const hasResources = resources.length > 0;

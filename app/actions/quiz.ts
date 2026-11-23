@@ -1,7 +1,20 @@
 "use server";
 
 import { verifySession, canAccessLesson } from "@/lib/dal";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+
+/**
+ * Quiz integrity model:
+ *  - Correct answers NEVER leave the server before a submission. The questions sent to the
+ *    browser have no `correct_option`, and the database revokes column SELECT on it for
+ *    signed-in users (see migration 20261123120000_protect_quiz_integrity.sql), so a student
+ *    cannot read it through the public API either.
+ *  - Scoring happens here, and attempts/answers are written with the service role after
+ *    scoring. Students have no INSERT policy on quiz_attempts, so a passing attempt (which
+ *    feeds certificate issuance) cannot be forged from the browser.
+ *  - The correct options are returned only in the response to a submission.
+ */
 
 export interface Quiz {
   id: string;
@@ -12,7 +25,8 @@ export interface Quiz {
   updated_at: string;
 }
 
-export interface QuizQuestion {
+/** A question as sent to the browser: no correct answer. */
+export interface PublicQuizQuestion {
   id: string;
   quiz_id: string;
   question_text: string;
@@ -20,7 +34,6 @@ export interface QuizQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
-  correct_option: string;
   points: number;
   order_index: number;
 }
@@ -29,7 +42,7 @@ export interface QuizWithQuestions {
   id: string;
   title: string;
   passing_score: number;
-  questions: QuizQuestion[];
+  questions: PublicQuizQuestion[];
 }
 
 export interface QuizAttempt {
@@ -46,8 +59,26 @@ export interface QuizAnswer {
   selected_option: string;
 }
 
+/** Result of a submission, including the answers revealed after scoring. */
+export interface QuizSubmissionResult {
+  attempt: QuizAttempt;
+  score: number;
+  passed: boolean;
+  earnedPoints: number;
+  totalPoints: number;
+  /** question id -> correct option ("a".."d"); revealed only after submitting. */
+  correctAnswers: Record<string, string>;
+}
+
+const OPTIONS = ["a", "b", "c", "d"] as const;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_ANSWERS = 200;
+
+const PUBLIC_QUESTION_COLUMNS =
+  "id, quiz_id, question_text, option_a, option_b, option_c, option_d, points, order_index";
+
 /**
- * Get a quiz with its questions for a lesson.
+ * Get a quiz with its questions for a lesson (without the correct answers).
  */
 export async function getQuizForLesson(
   lessonId: string
@@ -61,10 +92,9 @@ export async function getQuizForLesson(
 
   const admin = createAdminClient();
 
-  // Get quiz for this lesson
   const { data: quiz, error: quizError } = await admin
     .from("quizzes")
-    .select("*")
+    .select("id, title, passing_score")
     .eq("lesson_id", lessonId)
     .single();
 
@@ -72,10 +102,10 @@ export async function getQuizForLesson(
     return { data: null, error: quizError?.message ?? "" };
   }
 
-  // Get questions
+  // Explicit column list: never `select("*")`, which would include correct_option.
   const { data: questions, error: questionsError } = await admin
     .from("quiz_questions")
-    .select("*")
+    .select(PUBLIC_QUESTION_COLUMNS)
     .eq("quiz_id", quiz.id)
     .order("order_index", { ascending: true });
 
@@ -88,26 +118,54 @@ export async function getQuizForLesson(
       id: quiz.id,
       title: quiz.title,
       passing_score: quiz.passing_score,
-      questions: (questions ?? []) as unknown as QuizQuestion[],
+      questions: (questions ?? []) as unknown as PublicQuizQuestion[],
     },
     error: "",
   };
 }
 
 /**
- * Submit a quiz attempt.
+ * Submit a quiz attempt. Scores on the server and returns the correct answers.
  */
 export async function submitQuiz(
   quizId: string,
   answers: QuizAnswer[]
-): Promise<{ data: QuizAttempt | null; error: string }> {
+): Promise<{ data: QuizSubmissionResult | null; error: string }> {
   const session = await verifySession();
+
+  if (typeof quizId !== "string" || !UUID_RE.test(quizId)) {
+    return { data: null, error: "Quiz not found." };
+  }
+  if (!Array.isArray(answers) || answers.length > MAX_ANSWERS) {
+    return { data: null, error: "Invalid answers." };
+  }
+
+  // Each answer must be well-formed; keep only the first answer per question.
+  const chosen = new Map<string, string>();
+  for (const answer of answers) {
+    if (
+      !answer ||
+      typeof answer.question_id !== "string" ||
+      !UUID_RE.test(answer.question_id) ||
+      !(OPTIONS as readonly string[]).includes(answer.selected_option)
+    ) {
+      return { data: null, error: "Invalid answers." };
+    }
+    if (!chosen.has(answer.question_id)) chosen.set(answer.question_id, answer.selected_option);
+  }
+
+  // Limit rapid-fire attempts (a retake reveals the answers, so unlimited tries are guessable).
+  const limit = await rateLimit(`quiz:${session.userId}:${quizId}`, 10, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    const mins = Math.max(1, Math.ceil((limit.retryAfterMs ?? 60_000) / 60000));
+    return { data: null, error: `Too many attempts. Try again in ${mins} minute(s).` };
+  }
+
   const admin = createAdminClient();
 
-  // Get quiz with correct answers
   const { data: quiz } = await admin
     .from("quizzes")
-    .select("*")
+    .select("id, lesson_id, passing_score")
     .eq("id", quizId)
     .single();
 
@@ -121,56 +179,63 @@ export async function submitQuiz(
 
   const { data: questions } = await admin
     .from("quiz_questions")
-    .select("*")
+    .select("id, correct_option, points")
     .eq("quiz_id", quizId);
 
   if (!questions || questions.length === 0) {
     return { data: null, error: "No questions found for this quiz." };
   }
 
-  // Calculate score
-  const correctQuestions = questions as unknown as QuizQuestion[];
-  let earnedPoints = 0;
-  const totalPoints = correctQuestions.reduce((sum, q) => sum + q.points, 0);
-
-  for (const q of correctQuestions) {
-    const userAnswer = answers.find((a) => a.question_id === q.id);
-    if (userAnswer && userAnswer.selected_option === q.correct_option) {
-      earnedPoints += q.points;
+  const rows = questions as { id: string; correct_option: string; points: number }[];
+  const validIds = new Set(rows.map((q) => q.id));
+  for (const questionId of chosen.keys()) {
+    if (!validIds.has(questionId)) {
+      return { data: null, error: "Invalid answers." };
     }
   }
 
-  const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-  const passed = score >= quiz.passing_score;
+  // Score
+  let earnedPoints = 0;
+  let totalPoints = 0;
+  const correctAnswers: Record<string, string> = {};
+  for (const q of rows) {
+    totalPoints += q.points;
+    correctAnswers[q.id] = q.correct_option;
+    if (chosen.get(q.id) === q.correct_option) earnedPoints += q.points;
+  }
 
-  // Save attempt
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+  const passed = score >= (quiz.passing_score as number);
+
+  // Write with the service role: students cannot insert attempts themselves.
+  const { data: attempt, error: attemptError } = await admin
     .from("quiz_attempts")
-    .insert({
-      quiz_id: quizId,
-      user_id: session.userId,
-      score,
-      passed,
-    } as never)
+    .insert({ quiz_id: quizId, user_id: session.userId, score, passed } as never)
     .select("*")
     .single();
 
-  if (error) {
-    return { data: null, error: error.message };
+  if (attemptError || !attempt) {
+    return { data: null, error: attemptError?.message ?? "Could not save your attempt." };
   }
 
-  // Save individual answers
-  const answerRows = answers.map((a) => ({
-    attempt_id: (data as { id: string }).id,
-    question_id: a.question_id,
-    selected_option: a.selected_option,
+  const answerRows = [...chosen.entries()].map(([question_id, selected_option]) => ({
+    attempt_id: (attempt as { id: string }).id,
+    question_id,
+    selected_option,
   }));
-
-  await supabase.from("quiz_answers").insert(answerRows as never);
+  if (answerRows.length > 0) {
+    await admin.from("quiz_answers").insert(answerRows as never);
+  }
 
   return {
-    data: data as unknown as QuizAttempt,
+    data: {
+      attempt: attempt as unknown as QuizAttempt,
+      score,
+      passed,
+      earnedPoints,
+      totalPoints,
+      correctAnswers,
+    },
     error: "",
   };
 }

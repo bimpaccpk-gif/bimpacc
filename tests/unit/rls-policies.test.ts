@@ -149,3 +149,22 @@ describe("lesson_comments", () => {
     for (const p of inserts) expect(p.expr).toMatch(/user_id\s*=\s*auth\.uid\(\)/);
   });
 });
+
+describe("quiz integrity", () => {
+  it("allows no client-side INSERT into quiz_attempts or quiz_answers (certificate forgery)", () => {
+    const bad = policies.filter(
+      (p) =>
+        ["quiz_attempts", "quiz_answers"].includes(p.table) &&
+        (p.cmd === "INSERT" || p.cmd === "ALL")
+    );
+    expect(bad.map((p) => p.name)).toEqual([]);
+  });
+
+  it("revokes client SELECT on quiz_questions and re-grants only non-answer columns", () => {
+    const sql = files.map((f) => strip(readFileSync(path.join(dir, f), "utf8"))).join("\n");
+    expect(sql).toMatch(/revoke select on public\.quiz_questions from anon, authenticated/i);
+    const grant = /grant select \(([\s\S]*?)\) on public\.quiz_questions to authenticated/i.exec(sql)?.[1] ?? "";
+    expect(grant).toContain("question_text");
+    expect(grant).not.toContain("correct_option");
+  });
+});
