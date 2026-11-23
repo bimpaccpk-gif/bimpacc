@@ -1,6 +1,6 @@
 import { getCurrentUser, verifyEnrollment } from "@/lib/dal";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
