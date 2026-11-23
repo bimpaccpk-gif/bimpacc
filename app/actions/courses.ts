@@ -4,6 +4,7 @@ import type { HierarchyRow } from "@/types";
 import { verifyAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { invalidateContentCache } from "@/lib/cache";
 import { HierarchyType } from "@/types";
 
 /**
@@ -90,6 +91,7 @@ export async function createCourse(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath("/admin/courses");
   return { error: "", success: `Course "${title}" created.` };
 }
@@ -132,6 +134,7 @@ export async function updateCourse(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath("/admin/courses");
   return { error: "", success: `Course updated.` };
 }
@@ -166,6 +169,7 @@ export async function deleteCourse(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath("/admin/courses");
   return {
     error: "",
@@ -211,6 +215,7 @@ export async function createSemester(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath(`/admin/courses/${courseId}/semesters`);
   return { error: "", success: `Semester "${title}" created.`, semester: data };
 }
@@ -245,6 +250,7 @@ export async function updateSemester(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   return { error: "", success: "Semester updated." };
 }
 
@@ -279,6 +285,7 @@ export async function deleteSemester(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath(`/admin/courses/${courseId}/semesters`);
   return {
     error: "",
@@ -303,6 +310,7 @@ export async function reorderSemesters(
   );
 
   await Promise.all(promises);
+  await invalidateContentCache();
   revalidatePath(`/admin/courses/${courseId}/semesters`);
   return { error: "", success: true };
 }
@@ -366,6 +374,7 @@ export async function createSubject(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath(revalPath);
   return { error: "", success: `Subject "${title}" created.`, subject: data };
 }
@@ -400,6 +409,7 @@ export async function updateSubject(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   return { error: "", success: "Subject updated." };
 }
 
@@ -434,6 +444,7 @@ export async function deleteSubject(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath(`/admin/courses/${courseId}/subjects`);
   return {
     error: "",
@@ -459,6 +470,7 @@ export async function reorderSubjects(
   );
 
   await Promise.all(promises);
+  await invalidateContentCache();
   if (semesterId) {
     revalidatePath(`/admin/courses/${courseId}/semesters/${semesterId}/subjects`);
   } else {
@@ -485,6 +497,7 @@ export async function reorderCourses(
   );
 
   await Promise.all(promises);
+  await invalidateContentCache();
   revalidatePath(`/admin/courses`);
   return { error: "", success: true };
 }
@@ -576,6 +589,7 @@ export async function createLesson(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   revalidatePath(revalidateUrl);
   return { error: "", success: `Lesson "${title}" created.`, lesson: data };
 }
@@ -620,6 +634,7 @@ export async function updateLesson(
     return { error: error.message, success: "" };
   }
 
+  await invalidateContentCache();
   return { error: "", success: "Lesson updated." };
 }
 
@@ -663,6 +678,7 @@ export async function deleteLesson(
     revalidateUrl = `/admin/courses/${courseId}/lessons`;
   }
 
+  await invalidateContentCache();
   revalidatePath(revalidateUrl);
   return {
     error: "",
@@ -687,6 +703,7 @@ export async function reorderLessons(
   );
 
   await Promise.all(promises);
+  await invalidateContentCache();
   revalidatePath(revalidateUrl);
   return { error: "", success: true };
 }

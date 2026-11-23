@@ -20,30 +20,14 @@ function StatTileSkeleton() {
 
 function CourseCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div className="overflow-hidden rounded-lg bg-card ring-1 ring-foreground/10">
       {/* Thumbnail cover */}
-      <Skeleton className="aspect-video w-full rounded-none" />
+      <Skeleton className="aspect-[16/6] w-full rounded-none" />
 
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-5 w-3/4" />
-
-        {/* Description */}
-        <div className="space-y-2">
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-2/3" />
-        </div>
-
-        {/* Progress */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-3 w-8" />
-          </div>
-          <Skeleton className="h-2.5 w-full rounded-full" />
-        </div>
-
-        {/* Action button */}
-        <Skeleton className="h-7 w-full rounded-lg" />
+      <div className="space-y-2 p-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-2 w-full rounded-full" />
+        <Skeleton className="h-3 w-16" />
       </div>
     </div>
   );
@@ -72,8 +56,8 @@ export default function Loading() {
           <Skeleton className="h-4 w-64" />
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
             <CourseCardSkeleton key={index} />
           ))}
         </div>

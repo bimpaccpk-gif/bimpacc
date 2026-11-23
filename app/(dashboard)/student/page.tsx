@@ -157,12 +157,12 @@ function CourseCover({ course, className }: { course: CourseRecord; className?: 
           src={course.thumbnail_url}
           alt=""
           fill
-          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
         <div className="flex h-full items-center justify-center">
-          <BookOpen className="text-primary-foreground/60 h-8 w-8" aria-hidden="true" />
+          <BookOpen className="text-primary-foreground/60 h-6 w-6" aria-hidden="true" />
         </div>
       )}
     </div>
@@ -263,17 +263,17 @@ export default async function StudentDashboardPage() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {enrolledCourses.map((course) => (
               <Link
                 key={course.id}
                 href={`/student/courses/${course.id}`}
-                className="group bg-card ring-foreground/10 hover:ring-primary/40 focus-visible:ring-ring/50 flex flex-col overflow-hidden rounded-xl ring-1 transition-shadow outline-none focus-visible:ring-3"
+                className="group bg-card ring-foreground/10 hover:ring-primary/40 focus-visible:ring-ring/50 flex flex-col overflow-hidden rounded-lg ring-1 transition-shadow outline-none focus-visible:ring-3"
               >
-                <CourseCover course={course} className="aspect-[16/7]" />
-                <div className="flex flex-1 flex-col gap-3 p-4">
+                <CourseCover course={course} className="aspect-[16/6]" />
+                <div className="flex flex-1 flex-col gap-2 p-3">
                   <div className="min-w-0">
-                    <h3 className="group-hover:text-primary line-clamp-2 font-semibold transition-colors">
+                    <h3 className="group-hover:text-primary line-clamp-2 text-sm font-semibold transition-colors">
                       {course.title}
                     </h3>
                     {course.batch && (
@@ -304,17 +304,17 @@ export default async function StudentDashboardPage() {
             You are enrolled in every course currently accepting registrations.
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {availableCourses.map((course) => (
               <div
                 key={course.id}
-                className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-xl ring-1"
+                className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-lg ring-1"
               >
-                <CourseCover course={course} className="aspect-[16/7]" />
-                <div className="flex flex-1 flex-col gap-3 p-4">
+                <CourseCover course={course} className="aspect-[16/6]" />
+                <div className="flex flex-1 flex-col gap-2 p-3">
                   <div className="min-w-0">
-                    <h3 className="line-clamp-2 font-semibold">{course.title}</h3>
-                    <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                    <h3 className="line-clamp-2 text-sm font-semibold">{course.title}</h3>
+                    <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                       {course.description || "Contact the BIMPACC team for course details."}
                     </p>
                   </div>

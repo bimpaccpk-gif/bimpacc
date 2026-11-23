@@ -11,6 +11,7 @@ import { LessonPlayerClient } from "./lesson-player-client";
 import { ContentPausedBanner } from "@/components/student/content-paused-banner";
 import { getQuizForLesson, getBestQuizAttempt } from "@/app/actions/quiz";
 import { getLessonComments } from "@/app/actions/lesson-comments";
+import { getCourseLessons, type CourseLessonRow } from "@/lib/course-content";
 import { createClient as createStorageClient } from "@/lib/supabase/server";
 
 // ─── YouTube video ID extractor ───────────────────────────
@@ -20,16 +21,6 @@ import { createClient as createStorageClient } from "@/lib/supabase/server";
  * Supported: watch URLs, short URLs, embed/nocookie URLs, Shorts URLs,
  * bare video IDs (11 chars alphanumeric + dash/underscore).
  */
-interface SubjectQueryRow {
-  id: string;
-  title: string;
-  description?: string | null;
-  order_index?: number | null;
-  semester_id?: string | null;
-  course_id?: string | null;
-  is_paused?: boolean | null;
-}
-
 function getYouTubeVideoId(url: string): string | null {
   if (!url) return null;
 
@@ -72,17 +63,7 @@ interface CourseInfo {
   hierarchy_type: number;
 }
 
-interface LessonRow {
-  id: string;
-  title: string;
-  description: string | null;
-  video_url: string | null;
-  content: string | null;
-  order_index: number;
-  duration_minutes: number | null;
-  subject_id?: string | null;
-  subject_title?: string | null;
-}
+type LessonRow = CourseLessonRow;
 
 // ─── Data Fetchers ────────────────────────────────────────
 
@@ -109,141 +90,30 @@ async function getLessonWithSiblings(
   completedIds: Set<string>;
 }> {
   const supabase = await createClient();
-  const admin = createAdminClient();
 
-  let lessons: LessonRow[] = [];
-
-  if (hierarchyType === 3) {
-    const { data: rawLessons } = await admin
-      .from("lessons")
-      .select("id, title, description, video_url, content, order_index, duration_minutes")
-      .eq("course_id", courseId)
-      .order("order_index", { ascending: true });
-
-    lessons = (rawLessons ?? []) as LessonRow[];
-  } else {
-    // Hierarchy 1 and 2 are subject-based; keep loading compatible with both
-    // semester-linked and legacy direct-to-course subjects.
-    const semesterOrder = new Map<string, number>();
-    let subjects: SubjectQueryRow[] = [];
-
-    if (hierarchyType === 1) {
-      const [{ data: semesters }, { data: legacySubjects }] = await Promise.all([
-        admin
-          .from("semesters")
-          .select("id, order_index")
-          .eq("course_id", courseId)
-          .order("order_index", { ascending: true }),
-        admin
-          .from("subjects")
-          .select("id, title, semester_id, order_index")
-          .eq("course_id", courseId)
-          .is("semester_id", null)
-          .order("order_index", { ascending: true }),
-      ]);
-
-      const semesterIds = (semesters ?? []).map((s) => s.id);
-      (semesters ?? []).forEach((s) => {
-        semesterOrder.set(s.id, s.order_index ?? 0);
-      });
-
-      let semesterSubjects: SubjectQueryRow[] = [];
-      if (semesterIds.length > 0) {
-        const { data } = await admin
-          .from("subjects")
-          .select("id, title, semester_id, order_index")
-          .in("semester_id", semesterIds)
-          .order("order_index", { ascending: true });
-        semesterSubjects = data ?? [];
-      }
-
-      subjects = [...semesterSubjects, ...(legacySubjects ?? [])];
-    } else {
-      const { data } = await admin
-        .from("subjects")
-        .select("id, title, semester_id, order_index")
+  // The lesson list is the same for every student, so it comes from the shared cache. Progress is
+  // per student and is never cached. The two are independent, so they load together.
+  const [lessons, completedIds] = await Promise.all([
+    getCourseLessons(courseId, hierarchyType),
+    (async () => {
+      const { data: enrollment } = await supabase
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", userId)
         .eq("course_id", courseId)
-        .order("order_index", { ascending: true });
-      subjects = data ?? [];
-    }
+        .single();
+      if (!enrollment) return new Set<string>();
 
-    if (subjects && subjects.length > 0) {
-      const subjectIds = subjects.map((s) => s.id);
-      const { data: rawLessons } = await admin
-        .from("lessons")
-        .select(
-          "id, title, description, video_url, content, order_index, duration_minutes, subject_id"
-        )
-        .in("subject_id", subjectIds)
-        .order("order_index", { ascending: true });
-
-      const subjectMeta = new Map<
-        string,
-        { title: string; order_index: number; semester_id?: string | null }
-      >();
-      subjects.forEach((s) => {
-        subjectMeta.set(s.id, {
-          title: s.title,
-          order_index: s.order_index ?? 0,
-          semester_id: s.semester_id,
-        });
-      });
-
-      lessons = (rawLessons ?? [])
-        .map((l) => ({
-          id: l.id,
-          title: l.title,
-          description: l.description,
-          video_url: l.video_url,
-          content: l.content,
-          order_index: l.order_index,
-          duration_minutes: l.duration_minutes,
-          subject_id: l.subject_id,
-          subject_title: subjectMeta.get(l.subject_id)?.title ?? null,
-        }))
-        .sort((a, b) => {
-          const aMeta = a.subject_id ? subjectMeta.get(a.subject_id) : undefined;
-          const bMeta = b.subject_id ? subjectMeta.get(b.subject_id) : undefined;
-
-          if (hierarchyType === 1) {
-            const aSemOrder = aMeta?.semester_id
-              ? (semesterOrder.get(aMeta.semester_id) ?? Number.MAX_SAFE_INTEGER)
-              : Number.MAX_SAFE_INTEGER;
-            const bSemOrder = bMeta?.semester_id
-              ? (semesterOrder.get(bMeta.semester_id) ?? Number.MAX_SAFE_INTEGER)
-              : Number.MAX_SAFE_INTEGER;
-            if (aSemOrder !== bSemOrder) return aSemOrder - bSemOrder;
-          }
-
-          const aSubjectOrder = aMeta?.order_index ?? Number.MAX_SAFE_INTEGER;
-          const bSubjectOrder = bMeta?.order_index ?? Number.MAX_SAFE_INTEGER;
-          if (aSubjectOrder !== bSubjectOrder) return aSubjectOrder - bSubjectOrder;
-
-          return (a.order_index ?? 0) - (b.order_index ?? 0);
-        });
-    }
-  }
+      const { data: progressRecords } = await supabase
+        .from("lesson_progress")
+        .select("lesson_id, completed")
+        .eq("enrollment_id", enrollment.id)
+        .eq("completed", true);
+      return new Set((progressRecords ?? []).map((p) => p.lesson_id));
+    })(),
+  ]);
 
   const current = lessons.find((l) => l.id === lessonId) ?? null;
-
-  const { data: enrollment } = await supabase
-    .from("enrollments")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("course_id", courseId)
-    .single();
-
-  let completedIds = new Set<string>();
-  if (enrollment) {
-    const { data: progressRecords } = await supabase
-      .from("lesson_progress")
-      .select("lesson_id, completed")
-      .eq("enrollment_id", enrollment.id)
-      .eq("completed", true);
-
-    completedIds = new Set((progressRecords ?? []).map((p) => p.lesson_id));
-  }
-
   return { current, allLessons: lessons, completedIds };
 }
 
