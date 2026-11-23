@@ -93,7 +93,8 @@ export function InlineLessonManager({ courseId, subjectId }: InlineLessonManager
     const result = await createLesson(undefined, formData);
     
     if (result.success && result.lesson) {
-      setLessons([...lessons, result.lesson as Lesson]);
+      // The action returns the inserted lessons row.
+      setLessons([...lessons, result.lesson as unknown as Lesson]);
       setNewTitle("");
       setNewVideoUrl("");
       setNewDuration("");

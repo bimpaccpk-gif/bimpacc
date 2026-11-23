@@ -1,5 +1,6 @@
 "use client";
 
+import type { StudentProfileFields } from "@/types";
 import { useActionState, useEffect } from "react";
 import { completeOnboarding } from "@/app/actions/student";
 import { signOut } from "@/app/actions/auth";
@@ -9,7 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, AlertCircle, Lock, BookOpen, LogOut } from "lucide-react";
 
-export function OnboardingModal({ user, selectedCourse }: { user: any; selectedCourse: any }) {
+export function OnboardingModal({
+  user,
+  selectedCourse,
+}: {
+  user: StudentProfileFields;
+  selectedCourse: { title: string; batch?: string | null } | null;
+}) {
   const [state, action, pending] = useActionState(completeOnboarding, undefined);
 
   const formActionWrapper = async (formData: FormData) => {
@@ -80,7 +87,7 @@ export function OnboardingModal({ user, selectedCourse }: { user: any; selectedC
             </div>
 
             <div className="space-y-3 pt-4 border-t border-border">
-               <h3 className="font-bold">Let's Connect</h3>
+               <h3 className="font-bold">Let&apos;s Connect</h3>
                <ul className="text-sm space-y-2 text-primary dark:text-primary">
                   <li><a href="https://whatsapp.com/channel/0029Vb3iNAvCcW4rqotpiw01" target="_blank" className="hover:underline">WhatsApp Channel</a></li>
                   <li><a href="https://www.youtube.com/BIMPakPK" target="_blank" className="hover:underline">YouTube (BIMPakPK)</a></li>

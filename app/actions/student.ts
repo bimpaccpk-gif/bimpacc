@@ -1,5 +1,6 @@
 "use server";
 
+import { errorMessage } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { verifySession } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
@@ -77,7 +78,7 @@ export async function completeOnboarding(
 
     revalidatePath("/student");
     return { error: "", success: "Onboarding completed successfully!" };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Onboarding Exception:", error);
     return { error: "An unexpected error occurred." };
   }
@@ -111,7 +112,7 @@ export async function completeBypassedProfile(
     }
 
     // Build update object with only provided fields (all optional)
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     
     // Text fields (optional)
     const fatherName = formData.get("father_name") as string;
@@ -154,7 +155,7 @@ export async function completeBypassedProfile(
 
     revalidatePath("/profile");
     return { error: "", success: "Profile updated successfully!" };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Profile Completion Exception:", error);
     return { error: "An unexpected error occurred.", success: "" };
   }

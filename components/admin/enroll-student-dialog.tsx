@@ -1,5 +1,6 @@
 "use client";
 
+import { errorMessage } from "@/lib/errors";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -107,8 +108,8 @@ export function EnrollStudentDialog({
           });
         }
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      setError(errorMessage(err, "An error occurred"));
     } finally {
       setPending(false);
     }

@@ -31,7 +31,7 @@ async function verifyAdmin(): Promise<boolean> {
     .select("role")
     .eq("id", session.userId)
     .single();
-  return (data as any)?.role === "admin";
+  return data?.role === "admin";
 }
 
 // ─── Grant Access to Content ────────────────────────────────────────────────
@@ -147,7 +147,7 @@ export async function grantAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const sem of (semesters as any[]) ?? []) {
+    for (const sem of semesters ?? []) {
       items.push({ contentType: "semester", contentId: sem.id });
 
       const { data: subjects } = await admin
@@ -155,7 +155,7 @@ export async function grantAccessCascade(
         .select("id")
         .eq("semester_id", sem.id);
 
-      for (const subj of (subjects as any[]) ?? []) {
+      for (const subj of subjects ?? []) {
         items.push({ contentType: "subject", contentId: subj.id });
 
         const { data: lessons } = await admin
@@ -163,7 +163,7 @@ export async function grantAccessCascade(
           .select("id")
           .eq("subject_id", subj.id);
 
-        for (const lesson of (lessons as any[]) ?? []) {
+        for (const lesson of lessons ?? []) {
           items.push({ contentType: "lesson", contentId: lesson.id });
         }
       }
@@ -174,7 +174,7 @@ export async function grantAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const subj of (subjects as any[]) ?? []) {
+    for (const subj of subjects ?? []) {
       items.push({ contentType: "subject", contentId: subj.id });
 
       const { data: lessons } = await admin
@@ -182,7 +182,7 @@ export async function grantAccessCascade(
         .select("id")
         .eq("subject_id", subj.id);
 
-      for (const lesson of (lessons as any[]) ?? []) {
+      for (const lesson of lessons ?? []) {
         items.push({ contentType: "lesson", contentId: lesson.id });
       }
     }
@@ -192,7 +192,7 @@ export async function grantAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       items.push({ contentType: "lesson", contentId: lesson.id });
     }
   }
@@ -236,7 +236,7 @@ export async function revokeAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const sem of (semesters as any[]) ?? []) {
+    for (const sem of semesters ?? []) {
       items.push({ contentType: "semester", contentId: sem.id });
 
       const { data: subjects } = await admin
@@ -244,7 +244,7 @@ export async function revokeAccessCascade(
         .select("id")
         .eq("semester_id", sem.id);
 
-      for (const subj of (subjects as any[]) ?? []) {
+      for (const subj of subjects ?? []) {
         items.push({ contentType: "subject", contentId: subj.id });
 
         const { data: lessons } = await admin
@@ -252,7 +252,7 @@ export async function revokeAccessCascade(
           .select("id")
           .eq("subject_id", subj.id);
 
-        for (const lesson of (lessons as any[]) ?? []) {
+        for (const lesson of lessons ?? []) {
           items.push({ contentType: "lesson", contentId: lesson.id });
         }
       }
@@ -263,7 +263,7 @@ export async function revokeAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const subj of (subjects as any[]) ?? []) {
+    for (const subj of subjects ?? []) {
       items.push({ contentType: "subject", contentId: subj.id });
 
       const { data: lessons } = await admin
@@ -271,7 +271,7 @@ export async function revokeAccessCascade(
         .select("id")
         .eq("subject_id", subj.id);
 
-      for (const lesson of (lessons as any[]) ?? []) {
+      for (const lesson of lessons ?? []) {
         items.push({ contentType: "lesson", contentId: lesson.id });
       }
     }
@@ -281,7 +281,7 @@ export async function revokeAccessCascade(
       .select("id")
       .eq("course_id", courseId);
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       items.push({ contentType: "lesson", contentId: lesson.id });
     }
   }
@@ -323,7 +323,7 @@ export async function grantSemesterAccess(
     .select("id")
     .eq("semester_id", semesterId);
 
-  for (const subj of (subjects as any[]) ?? []) {
+  for (const subj of subjects ?? []) {
     items.push({ contentType: "subject", contentId: subj.id });
 
     const { data: lessons } = await admin
@@ -331,7 +331,7 @@ export async function grantSemesterAccess(
       .select("id")
       .eq("subject_id", subj.id);
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       items.push({ contentType: "lesson", contentId: lesson.id });
     }
   }
@@ -373,7 +373,7 @@ export async function revokeSemesterAccess(
     .select("id")
     .eq("semester_id", semesterId);
 
-  for (const subj of (subjects as any[]) ?? []) {
+  for (const subj of subjects ?? []) {
     items.push({ contentType: "subject", contentId: subj.id });
 
     const { data: lessons } = await admin
@@ -381,7 +381,7 @@ export async function revokeSemesterAccess(
       .select("id")
       .eq("subject_id", subj.id);
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       items.push({ contentType: "lesson", contentId: lesson.id });
     }
   }
@@ -423,7 +423,7 @@ export async function grantSubjectAccess(
     .select("id")
     .eq("subject_id", subjectId);
 
-  for (const lesson of (lessons as any[]) ?? []) {
+  for (const lesson of lessons ?? []) {
     items.push({ contentType: "lesson", contentId: lesson.id });
   }
 
@@ -464,7 +464,7 @@ export async function revokeSubjectAccess(
     .select("id")
     .eq("subject_id", subjectId);
 
-  for (const lesson of (lessons as any[]) ?? []) {
+  for (const lesson of lessons ?? []) {
     items.push({ contentType: "lesson", contentId: lesson.id });
   }
 
@@ -506,7 +506,7 @@ export async function getSimplifiedAccessTree(
     .eq("user_id", userId);
 
   const overrideMap = new Map<string, boolean>();
-  for (const o of (overrides as any[]) ?? []) {
+  for (const o of overrides ?? []) {
     overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
   }
 
@@ -520,7 +520,7 @@ export async function getSimplifiedAccessTree(
     return { data: null, error: "Course not found." };
   }
 
-  const c = course as any;
+  const c = course;
   const courseAccess = overrideMap.get(`course:${courseId}`);
 
   const courseNode: AccessTreeNode = {
@@ -540,7 +540,7 @@ export async function getSimplifiedAccessTree(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const sem of (semesters as any[]) ?? []) {
+    for (const sem of semesters ?? []) {
       const semAccess = overrideMap.get(`semester:${sem.id}`);
       const semNode: AccessTreeNode = {
         id: sem.id,
@@ -559,7 +559,7 @@ export async function getSimplifiedAccessTree(
         .eq("semester_id", sem.id)
         .order("order_index", { ascending: true });
 
-      for (const subj of (subjects as any[]) ?? []) {
+      for (const subj of subjects ?? []) {
         const subjAccess = overrideMap.get(`subject:${subj.id}`);
         const subjNode: AccessTreeNode = {
           id: subj.id,
@@ -578,7 +578,7 @@ export async function getSimplifiedAccessTree(
           .eq("subject_id", subj.id)
           .order("order_index", { ascending: true });
 
-        for (const lesson of (lessons as any[]) ?? []) {
+        for (const lesson of lessons ?? []) {
           const lessonAccess = overrideMap.get(`lesson:${lesson.id}`);
           subjNode.children!.push({
             id: lesson.id,
@@ -603,7 +603,7 @@ export async function getSimplifiedAccessTree(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const subj of (subjects as any[]) ?? []) {
+    for (const subj of subjects ?? []) {
       const subjAccess = overrideMap.get(`subject:${subj.id}`);
       const subjNode: AccessTreeNode = {
         id: subj.id,
@@ -622,7 +622,7 @@ export async function getSimplifiedAccessTree(
         .eq("subject_id", subj.id)
         .order("order_index", { ascending: true });
 
-      for (const lesson of (lessons as any[]) ?? []) {
+      for (const lesson of lessons ?? []) {
         const lessonAccess = overrideMap.get(`lesson:${lesson.id}`);
         subjNode.children!.push({
           id: lesson.id,
@@ -644,7 +644,7 @@ export async function getSimplifiedAccessTree(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       const lessonAccess = overrideMap.get(`lesson:${lesson.id}`);
       courseNode.children!.push({
         id: lesson.id,
@@ -681,12 +681,19 @@ export async function getStudentEnrolledCourses(
     return { data: [], error: "" };
   }
 
-  const courseIds = enrollments.map((e: any) => e.course_id);
+  const courseIds = enrollments.map((e) => e.course_id);
 
   const { data: courses } = await admin
     .from("courses")
     .select("id, title, hierarchy_type")
     .in("id", courseIds);
 
-  return { data: (courses as any[]) ?? [], error: "" };
+  // Map the DB column (hierarchy_type) to the camelCase shape the admin panel expects.
+  const mapped = (courses ?? []).map((c) => ({
+    id: c.id as string,
+    title: c.title as string,
+    hierarchyType: Number(c.hierarchy_type ?? 1),
+  }));
+
+  return { data: mapped, error: "" };
 }

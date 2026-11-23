@@ -1,5 +1,6 @@
 "use client";
 
+import type { StudentProfileFields } from "@/types";
 import { useActionState } from "react";
 import { completeBypassedProfile } from "@/app/actions/student";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
-export function ProfileCompletionForm({ user }: { user: any }) {
+export function ProfileCompletionForm({ user }: { user: StudentProfileFields }) {
   const [state, action, pending] = useActionState(completeBypassedProfile, undefined);
 
   if (state?.success) {

@@ -1,5 +1,7 @@
 "use server";
 
+import type { BulkCreateResult } from "@/types";
+import { errorMessage } from "@/lib/errors";
 import { verifySession, verifyAdmin } from "@/lib/dal";
 import { randomBytes } from "node:crypto";
 import { rateLimit } from "@/lib/rate-limit";
@@ -96,7 +98,7 @@ export async function adminChangeUserRole(
     .select("role")
     .eq("id", userId)
     .single();
-  const oldRole = (currentUser as any)?.role;
+  const oldRole = currentUser?.role;
 
   const { error } = await supabase
     .from("users")
@@ -170,7 +172,7 @@ export async function adminCreateUser(
   }
 
   if (data.user) {
-    const userRecord: Record<string, any> = {
+    const userRecord: Record<string, unknown> = {
       id: data.user.id,
       email,
       full_name: fullName,
@@ -213,9 +215,9 @@ export async function adminCreateUser(
 }
 
 export async function adminBulkCreateUsers(
-  _prevState: { error: string; success: string; results?: any[] } | undefined,
+  _prevState: { error: string; success: string; results?: BulkCreateResult[] } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string; results?: any[] }> {
+): Promise<{ error: string; success: string; results?: BulkCreateResult[] }> {
   // Service-role/admin-only action: enforce the admin role BEFORE any work or side effect.
   const session = await verifyAdmin();
   const limited = await limitAdminAction(session.userId, "bulk-create-users", 10);
@@ -244,7 +246,7 @@ export async function adminBulkCreateUsers(
       results: [],
     };
   }
-  const results: any[] = [];
+  const results: BulkCreateResult[] = [];
   let successCount = 0;
   let failCount = 0;
 
@@ -331,7 +333,7 @@ export async function adminBulkCreateUsers(
       }
 
       if (data.user) {
-        const userRecord: Record<string, any> = {
+        const userRecord: Record<string, unknown> = {
           id: data.user.id,
           email,
           full_name: fullName,
@@ -372,12 +374,12 @@ export async function adminBulkCreateUsers(
         });
         successCount++;
       }
-    } catch (err: any) {
+    } catch (err) {
       results.push({
         line: i + 1,
         email,
         success: false,
-        error: err.message || "Unknown error occurred",
+        error: errorMessage(err, "Unknown error occurred"),
       });
       failCount++;
     }
@@ -426,7 +428,7 @@ export async function adminDeleteUser(
 
   // Log audit event before deletion (target_user_id will be set to NULL by ON DELETE SET NULL)
   await logAuditEvent(session.userId, userId, "user.deleted", {
-    full_name: (profile as any)?.full_name ?? userId,
+    full_name: profile?.full_name ?? userId,
   });
 
   const { error: dbError } = await supabase.from("users").delete().eq("id", userId);
@@ -446,7 +448,7 @@ export async function adminDeleteUser(
 
   return {
     error: "",
-    success: `User "${(profile as any)?.full_name ?? userId}" deleted from database and auth.`,
+    success: `User "${profile?.full_name ?? userId}" deleted from database and auth.`,
   };
 }
 
@@ -501,7 +503,7 @@ export async function bulkDeleteUsers(
 
       // Log audit event before deletion
       await logAuditEvent(session.userId, userId, "user.deleted", {
-        full_name: (profile as any)?.full_name ?? userId,
+        full_name: profile?.full_name ?? userId,
         action: "bulk_delete",
       });
 
@@ -524,8 +526,8 @@ export async function bulkDeleteUsers(
       }
 
       successCount++;
-    } catch (err: any) {
-      errors.push(`Error deleting user ${userId}: ${err.message}`);
+    } catch (err) {
+      errors.push(`Error deleting user ${userId}: ${errorMessage(err)}`);
     }
   }
 
@@ -585,13 +587,13 @@ export async function toggleStudentApproval(
       .eq("id", userId)
       .single();
 
-    if ((user as any)?.selected_course_id) {
+    if (user?.selected_course_id) {
       // Check if already enrolled
       const { data: existingEnrollment } = await supabase
         .from("enrollments")
         .select("id")
         .eq("user_id", userId)
-        .eq("course_id", (user as any).selected_course_id)
+        .eq("course_id", user.selected_course_id)
         .single();
 
       // Only enroll if not already enrolled
@@ -599,7 +601,7 @@ export async function toggleStudentApproval(
         const admin = createAdminClient();
         await admin.from("enrollments").insert({
           user_id: userId,
-          course_id: (user as any).selected_course_id,
+          course_id: user.selected_course_id,
           enrolled_by: session.userId,
         } as never);
       }
@@ -740,7 +742,7 @@ export async function adminBypassOnboarding(
     return { error: "User not found.", success: "" };
   }
 
-  if ((targetUser as any).role !== "student") {
+  if (targetUser.role !== "student") {
     return { error: "Onboarding bypass is only applicable to students.", success: "" };
   }
 

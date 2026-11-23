@@ -149,6 +149,16 @@ const hierarchyDetailColors: Record<
 
 // ─── Data fetchers ────────────────────────────────────────
 
+interface SubjectQueryRow {
+  id: string;
+  title: string;
+  description?: string | null;
+  order_index?: number | null;
+  semester_id?: string | null;
+  course_id?: string | null;
+  is_paused?: boolean | null;
+}
+
 interface CourseDetail {
   id: string;
   title: string;
@@ -209,7 +219,7 @@ async function getOverrideMap(
     .eq("user_id", userId);
 
   const overrideMap = new Map<string, boolean>();
-  for (const o of (overrides as any[]) ?? []) {
+  for (const o of overrides ?? []) {
     overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
   }
   return overrideMap;
@@ -234,7 +244,7 @@ async function getSubjectsWithLessons(
   if (!subjects || subjects.length === 0) return [];
 
   const subjectPauseState = new Map<string, boolean>();
-  (subjects as any[]).forEach((s) => {
+  subjects.forEach((s) => {
     const override = overrideMap.get(`subject:${s.id}`);
     subjectPauseState.set(s.id, override !== undefined ? override : (s.is_paused ?? false));
   });
@@ -249,7 +259,7 @@ async function getSubjectsWithLessons(
     .order("order_index", { ascending: true });
 
   const lessonsBySubject = new Map<string, LessonRow[]>();
-  (lessons ?? []).forEach((l: any) => {
+  (lessons ?? []).forEach((l) => {
     const list = lessonsBySubject.get(l.subject_id) ?? [];
     const lessonOverride = overrideMap.get(`lesson:${l.id}`);
     const parentPaused = l.subject_id ? (subjectPauseState.get(l.subject_id) ?? false) : false;
@@ -266,7 +276,7 @@ async function getSubjectsWithLessons(
     lessonsBySubject.set(l.subject_id, list);
   });
 
-  return (subjects as any[]).map((s) => {
+  return subjects.map((s) => {
     return {
       id: s.id,
       title: s.title,
@@ -304,7 +314,7 @@ async function getSemestersWithSubjectsWithLessons(
 
   // Calculate semester pause states
   const semesterPauseState = new Map<string, boolean>();
-  semesters.forEach((s: any) => {
+  semesters.forEach((s) => {
     const override = overrideMap.get(`semester:${s.id}`);
     semesterPauseState.set(s.id, override !== undefined ? override : (s.is_paused ?? false));
   });
@@ -315,7 +325,7 @@ async function getSemestersWithSubjectsWithLessons(
   const semesterIds = semesters.map((s) => s.id);
   const semesterIdSet = new Set(semesterIds);
 
-  let semesterSubjects: any[] = [];
+  let semesterSubjects: SubjectQueryRow[] = [];
   if (semesterIds.length > 0) {
     const { data } = await admin
       .from("subjects")
@@ -329,7 +339,7 @@ async function getSemestersWithSubjectsWithLessons(
 
   // Calculate subject pause states
   const subjectPauseState = new Map<string, boolean>();
-  (subjects ?? []).forEach((s: any) => {
+  (subjects ?? []).forEach((s) => {
     const override = overrideMap.get(`subject:${s.id}`);
     const parentPaused = s.semester_id ? (semesterPauseState.get(s.semester_id) ?? false) : false;
     subjectPauseState.set(
@@ -339,8 +349,8 @@ async function getSemestersWithSubjectsWithLessons(
   });
 
   // Fetch lessons for these subjects
-  const subjectIds = (subjects ?? []).map((s: any) => s.id);
-  let lessonsBySubject = new Map<string, LessonRow[]>();
+  const subjectIds = (subjects ?? []).map((s) => s.id);
+  const lessonsBySubject = new Map<string, LessonRow[]>();
   if (subjectIds.length > 0) {
     const { data: lessons } = await admin
       .from("lessons")
@@ -350,7 +360,7 @@ async function getSemestersWithSubjectsWithLessons(
       .in("subject_id", subjectIds)
       .order("order_index", { ascending: true });
 
-    (lessons ?? []).forEach((l: any) => {
+    (lessons ?? []).forEach((l) => {
       const list = lessonsBySubject.get(l.subject_id) ?? [];
       const lessonOverride = overrideMap.get(`lesson:${l.id}`);
       const parentPaused = l.subject_id ? (subjectPauseState.get(l.subject_id) ?? false) : false;
@@ -370,7 +380,7 @@ async function getSemestersWithSubjectsWithLessons(
 
   const subjectsBySemester = new Map<string, SubjectWithLessons[]>();
   const unassignedSubjects: SubjectWithLessons[] = [];
-  (subjects ?? []).forEach((s: any) => {
+  (subjects ?? []).forEach((s) => {
     const subjectNode = {
       id: s.id,
       title: s.title,
@@ -389,7 +399,7 @@ async function getSemestersWithSubjectsWithLessons(
     }
   });
 
-  const semesterNodes: SemesterWithSubjectsWithLessons[] = semesters.map((s: any) => {
+  const semesterNodes: SemesterWithSubjectsWithLessons[] = semesters.map((s) => {
     return {
       id: s.id,
       title: s.title,
@@ -425,7 +435,7 @@ async function getDirectLessons(courseId: string, userId: string): Promise<Lesso
       .order("order_index", { ascending: true }),
   ]);
 
-  return ((data as any[]) ?? []).map((l) => {
+  return (data ?? []).map((l) => {
     const lessonOverride = overrideMap.get(`lesson:${l.id}`);
     return {
       id: l.id,

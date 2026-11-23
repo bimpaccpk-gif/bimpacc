@@ -230,7 +230,7 @@ export async function logAuditEvent(
   adminId: string,
   targetUserId: string | null,
   action: string,
-  details: Record<string, any> = {}
+  details: Record<string, unknown> = {}
 ) {
   try {
     await verifyAdmin();
@@ -313,7 +313,7 @@ export async function getUserDetail(
         .select("full_name")
         .eq("id", row.enrolled_by)
         .single();
-      enrolledByName = (adminUser as any)?.full_name ?? null;
+      enrolledByName = adminUser?.full_name ?? null;
     }
 
     // Get lesson progress for this enrollment
@@ -359,7 +359,7 @@ export async function getUserDetail(
     .limit(50);
 
   // Enrich audit log with admin names
-  const adminIds = [...new Set(((auditData as any[]) ?? []).map((a: any) => a.admin_id))];
+  const adminIds = [...new Set((auditData ?? []).map((a) => a.admin_id))];
   const adminNameMap: Record<string, string> = {};
   if (adminIds.length > 0) {
     const { data: adminUsers } = await admin
@@ -376,7 +376,7 @@ export async function getUserDetail(
     admin_id: a.admin_id,
     target_user_id: a.target_user_id,
     action: a.action,
-    details: (a.details as Record<string, unknown>) ?? {},
+    details: (a.details as AuditLogEntry["details"] | null) ?? {},
     created_at: a.created_at,
     admin_name: adminNameMap[a.admin_id] ?? "Unknown Admin",
   }));

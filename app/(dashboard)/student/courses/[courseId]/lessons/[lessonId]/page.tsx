@@ -20,6 +20,16 @@ import { createClient as createStorageClient } from "@/lib/supabase/server";
  * Supported: watch URLs, short URLs, embed/nocookie URLs, Shorts URLs,
  * bare video IDs (11 chars alphanumeric + dash/underscore).
  */
+interface SubjectQueryRow {
+  id: string;
+  title: string;
+  description?: string | null;
+  order_index?: number | null;
+  semester_id?: string | null;
+  course_id?: string | null;
+  is_paused?: boolean | null;
+}
+
 function getYouTubeVideoId(url: string): string | null {
   if (!url) return null;
 
@@ -115,7 +125,7 @@ async function getLessonWithSiblings(
     // Hierarchy 1 and 2 are subject-based; keep loading compatible with both
     // semester-linked and legacy direct-to-course subjects.
     const semesterOrder = new Map<string, number>();
-    let subjects: any[] = [];
+    let subjects: SubjectQueryRow[] = [];
 
     if (hierarchyType === 1) {
       const [{ data: semesters }, { data: legacySubjects }] = await Promise.all([
@@ -132,12 +142,12 @@ async function getLessonWithSiblings(
           .order("order_index", { ascending: true }),
       ]);
 
-      const semesterIds = (semesters ?? []).map((s: any) => s.id);
-      (semesters ?? []).forEach((s: any) => {
+      const semesterIds = (semesters ?? []).map((s) => s.id);
+      (semesters ?? []).forEach((s) => {
         semesterOrder.set(s.id, s.order_index ?? 0);
       });
 
-      let semesterSubjects: any[] = [];
+      let semesterSubjects: SubjectQueryRow[] = [];
       if (semesterIds.length > 0) {
         const { data } = await admin
           .from("subjects")
@@ -171,7 +181,7 @@ async function getLessonWithSiblings(
         string,
         { title: string; order_index: number; semester_id?: string | null }
       >();
-      subjects.forEach((s: any) => {
+      subjects.forEach((s) => {
         subjectMeta.set(s.id, {
           title: s.title,
           order_index: s.order_index ?? 0,
@@ -180,7 +190,7 @@ async function getLessonWithSiblings(
       });
 
       lessons = (rawLessons ?? [])
-        .map((l: any) => ({
+        .map((l) => ({
           id: l.id,
           title: l.title,
           description: l.description,

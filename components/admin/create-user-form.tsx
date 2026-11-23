@@ -1,5 +1,6 @@
 "use client";
 
+import type { OpenCourse } from "@/types";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminCreateUser } from "@/lib/supabase/actions";
@@ -37,7 +38,7 @@ const roles: { value: UserRole; label: string }[] = [
 export function CreateUserForm({
   onSuccess,
   courses,
-}: { onSuccess?: () => void; courses?: any[] } = {}) {
+}: { onSuccess?: () => void; courses?: OpenCourse[] } = {}) {
   const router = useRouter();
   const [state, action, pending] = useActionState(adminCreateUser, undefined);
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");

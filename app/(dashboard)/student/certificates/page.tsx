@@ -24,16 +24,16 @@ async function getCertificates(userId: string): Promise<CertificateRow[]> {
 
   if (error || !certs || certs.length === 0) return [];
 
-  const courseIds = certs.map((c: any) => c.course_id);
+  const courseIds = certs.map((c) => c.course_id);
   const { data: courses } = await admin
     .from("courses")
     .select("id, title, batch")
     .in("id", courseIds);
 
-  const courseMap = new Map<string, any>();
-  (courses ?? []).forEach((c: any) => courseMap.set(c.id, c));
+  const courseMap = new Map<string, { id: string; title: string; batch: string | null }>();
+  (courses ?? []).forEach((c) => courseMap.set(c.id, c));
 
-  return (certs as any[]).map((c) => ({
+  return certs.map((c) => ({
     id: c.id,
     course_id: c.course_id,
     certificate_number: c.certificate_number,

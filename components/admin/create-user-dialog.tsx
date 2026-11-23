@@ -1,5 +1,6 @@
 "use client";
 
+import type { OpenCourse } from "@/types";
 import { useState, useEffect } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -18,7 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export function CreateUserDialog() {
   const [open, setOpen] = useState(false);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<OpenCourse[]>([]);
 
   useEffect(() => {
     if (open) {

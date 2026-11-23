@@ -269,7 +269,7 @@ export const resolveContentAccess = cache(
       .eq("id", userId)
       .single();
 
-    if ((userRow as any)?.is_paused) {
+    if (userRow?.is_paused) {
       return { isPaused: true, blockedAt: "account" };
     }
 
@@ -280,7 +280,7 @@ export const resolveContentAccess = cache(
       .eq("user_id", userId);
 
     const overrideMap = new Map<string, boolean>();
-    for (const o of (overrides as any[]) ?? []) {
+    for (const o of overrides ?? []) {
       overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
     }
 
@@ -293,7 +293,7 @@ export const resolveContentAccess = cache(
       .single();
 
     const coursePaused =
-      courseOverride !== undefined ? courseOverride : ((course as any)?.is_paused ?? false);
+      courseOverride !== undefined ? courseOverride : (course?.is_paused ?? false);
     if (coursePaused) {
       return { isPaused: true, blockedAt: "course" };
     }
@@ -314,7 +314,7 @@ export const resolveContentAccess = cache(
       // Check lesson-level override first (most specific)
       const lessonOverride = overrideMap.get(`lesson:${lessonId}`);
       const lessonPaused =
-        lessonOverride !== undefined ? lessonOverride : ((lesson as any)?.is_paused ?? false);
+        lessonOverride !== undefined ? lessonOverride : (lesson?.is_paused ?? false);
       if (lessonPaused) {
         return { isPaused: true, blockedAt: "lesson" };
       }
@@ -334,24 +334,24 @@ export const resolveContentAccess = cache(
           const subjectPaused =
             subjectOverride !== undefined
               ? subjectOverride
-              : ((subject as any)?.is_paused ?? false);
+              : (subject?.is_paused ?? false);
           if (subjectPaused) {
             return { isPaused: true, blockedAt: "subject" };
           }
 
           // For hierarchy type 1, check semester level
-          if ((subject as any)?.semester_id) {
-            const semesterOverride = overrideMap.get(`semester:${(subject as any).semester_id}`);
+          if (subject?.semester_id) {
+            const semesterOverride = overrideMap.get(`semester:${subject.semester_id}`);
             const { data: semester } = await admin
               .from("semesters")
               .select("is_paused")
-              .eq("id", (subject as any).semester_id)
+              .eq("id", subject.semester_id)
               .single();
 
             const semesterPaused =
               semesterOverride !== undefined
                 ? semesterOverride
-                : ((semester as any)?.is_paused ?? false);
+                : (semester?.is_paused ?? false);
             if (semesterPaused) {
               return { isPaused: true, blockedAt: "semester" };
             }
@@ -387,7 +387,7 @@ export const resolveSubjectAccess = cache(
       .eq("id", userId)
       .single();
 
-    if ((userRow as any)?.is_paused) {
+    if (userRow?.is_paused) {
       return { isPaused: true, blockedAt: "account" };
     }
 
@@ -398,7 +398,7 @@ export const resolveSubjectAccess = cache(
       .eq("user_id", userId);
 
     const overrideMap = new Map<string, boolean>();
-    for (const o of (overrides as any[]) ?? []) {
+    for (const o of overrides ?? []) {
       overrideMap.set(`${o.content_type}:${o.content_id}`, o.is_paused);
     }
 
@@ -411,7 +411,7 @@ export const resolveSubjectAccess = cache(
       .single();
 
     const coursePaused =
-      courseOverride !== undefined ? courseOverride : ((course as any)?.is_paused ?? false);
+      courseOverride !== undefined ? courseOverride : (course?.is_paused ?? false);
     if (coursePaused) {
       return { isPaused: true, blockedAt: "course" };
     }
@@ -425,22 +425,22 @@ export const resolveSubjectAccess = cache(
       .single();
 
     const subjectPaused =
-      subjectOverride !== undefined ? subjectOverride : ((subject as any)?.is_paused ?? false);
+      subjectOverride !== undefined ? subjectOverride : (subject?.is_paused ?? false);
     if (subjectPaused) {
       return { isPaused: true, blockedAt: "subject" };
     }
 
     // 5. For hierarchy type 1, check semester level
-    if ((subject as any)?.semester_id) {
-      const semesterOverride = overrideMap.get(`semester:${(subject as any).semester_id}`);
+    if (subject?.semester_id) {
+      const semesterOverride = overrideMap.get(`semester:${subject.semester_id}`);
       const { data: semester } = await admin
         .from("semesters")
         .select("is_paused")
-        .eq("id", (subject as any).semester_id)
+        .eq("id", subject.semester_id)
         .single();
 
       const semesterPaused =
-        semesterOverride !== undefined ? semesterOverride : ((semester as any)?.is_paused ?? false);
+        semesterOverride !== undefined ? semesterOverride : (semester?.is_paused ?? false);
       if (semesterPaused) {
         return { isPaused: true, blockedAt: "semester" };
       }

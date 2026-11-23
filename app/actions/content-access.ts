@@ -33,7 +33,7 @@ export async function setStudentContentAccess(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
 
@@ -86,7 +86,7 @@ export async function removeStudentContentAccess(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
 
@@ -127,7 +127,7 @@ export async function getStudentAccessOverrides(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { data: [], error: "Unauthorized." };
   }
 
@@ -159,7 +159,7 @@ export async function getCourseAccessForStudent(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { data: null, error: "Unauthorized." };
   }
 
@@ -187,7 +187,7 @@ export async function getCourseAccessForStudent(
     return { data: null, error: "Course not found." };
   }
 
-  const c = course as any;
+  const c = course;
   const tree: CourseAccessTree = {
     courseId: c.id,
     courseTitle: c.title,
@@ -206,7 +206,7 @@ export async function getCourseAccessForStudent(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const sem of (semesters as any[]) ?? []) {
+    for (const sem of semesters ?? []) {
       const semesterNode: SemesterAccessNode = {
         id: sem.id,
         title: sem.title,
@@ -221,7 +221,7 @@ export async function getCourseAccessForStudent(
         .eq("semester_id", sem.id)
         .order("order_index", { ascending: true });
 
-      for (const subj of (subjects as any[]) ?? []) {
+      for (const subj of subjects ?? []) {
         const subjectNode: SubjectAccessNode = {
           id: subj.id,
           title: subj.title,
@@ -236,7 +236,7 @@ export async function getCourseAccessForStudent(
           .eq("subject_id", subj.id)
           .order("order_index", { ascending: true });
 
-        for (const lesson of (lessons as any[]) ?? []) {
+        for (const lesson of lessons ?? []) {
           subjectNode.lessons.push({
             id: lesson.id,
             title: lesson.title,
@@ -258,7 +258,7 @@ export async function getCourseAccessForStudent(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const subj of (subjects as any[]) ?? []) {
+    for (const subj of subjects ?? []) {
       const subjectNode: SubjectAccessNode = {
         id: subj.id,
         title: subj.title,
@@ -273,7 +273,7 @@ export async function getCourseAccessForStudent(
         .eq("subject_id", subj.id)
         .order("order_index", { ascending: true });
 
-      for (const lesson of (lessons as any[]) ?? []) {
+      for (const lesson of lessons ?? []) {
         subjectNode.lessons.push({
           id: lesson.id,
           title: lesson.title,
@@ -292,7 +292,7 @@ export async function getCourseAccessForStudent(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const lesson of (lessons as any[]) ?? []) {
+    for (const lesson of lessons ?? []) {
       tree.directLessons.push({
         id: lesson.id,
         title: lesson.title,
@@ -326,7 +326,7 @@ export async function getCourseAccessTargets(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { data: { semesters: [], subjects: [], lessons: [] }, error: "Unauthorized." };
   }
 
@@ -338,7 +338,7 @@ export async function getCourseAccessTargets(
     .eq("id", courseId)
     .single();
 
-  const hierarchyType = (course as any)?.hierarchy_type as number | undefined;
+  const hierarchyType = course?.hierarchy_type as number | undefined;
   const semesters: Array<{ id: string; title: string }> = [];
   const subjectTargets: Array<{ id: string; title: string; subtitle: string }> = [];
   const lessons: Array<{ id: string; title: string; subtitle: string }> = [];
@@ -350,7 +350,7 @@ export async function getCourseAccessTargets(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const sem of (semRows as any[]) ?? []) {
+    for (const sem of semRows ?? []) {
       semesters.push({ id: sem.id, title: sem.title });
 
       const { data: subjectRows } = await admin
@@ -359,7 +359,7 @@ export async function getCourseAccessTargets(
         .eq("semester_id", sem.id)
         .order("order_index", { ascending: true });
 
-      for (const subj of (subjectRows as any[]) ?? []) {
+      for (const subj of subjectRows ?? []) {
         subjectTargets.push({
           id: subj.id,
           title: subj.title,
@@ -372,7 +372,7 @@ export async function getCourseAccessTargets(
           .eq("subject_id", subj.id)
           .order("order_index", { ascending: true });
 
-        for (const lesson of (lessonRows as any[]) ?? []) {
+        for (const lesson of lessonRows ?? []) {
           lessons.push({
             id: lesson.id,
             title: lesson.title,
@@ -388,7 +388,7 @@ export async function getCourseAccessTargets(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const subj of (subjectRows as any[]) ?? []) {
+    for (const subj of subjectRows ?? []) {
       subjectTargets.push({
         id: subj.id,
         title: subj.title,
@@ -401,7 +401,7 @@ export async function getCourseAccessTargets(
         .eq("subject_id", subj.id)
         .order("order_index", { ascending: true });
 
-      for (const lesson of (lessonRows as any[]) ?? []) {
+      for (const lesson of lessonRows ?? []) {
         lessons.push({
           id: lesson.id,
           title: lesson.title,
@@ -416,7 +416,7 @@ export async function getCourseAccessTargets(
       .eq("course_id", courseId)
       .order("order_index", { ascending: true });
 
-    for (const lesson of (lessonRows as any[]) ?? []) {
+    for (const lesson of lessonRows ?? []) {
       lessons.push({
         id: lesson.id,
         title: lesson.title,
@@ -460,7 +460,7 @@ export async function getCourseStudentAccessList(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { data: [], error: "Unauthorized." };
   }
 
@@ -474,7 +474,7 @@ export async function getCourseStudentAccessList(
     .order("enrolled_at", { ascending: false });
 
   // Get all course-level overrides for these students
-  const userIds = ((enrollments as any[]) ?? []).map((e: any) => e.user_id);
+  const userIds = (enrollments ?? []).map((e) => e.user_id);
   const overridesMap = new Map<string, StudentContentAccess>();
 
   if (userIds.length > 0) {
@@ -501,9 +501,9 @@ export async function getCourseStudentAccessList(
           : "lessons";
   const { data: target } = await admin.from(table).select("is_paused").eq("id", targetId).single();
 
-  const globalPaused = (target as any)?.is_paused ?? false;
+  const globalPaused = target?.is_paused ?? false;
 
-  const result = ((enrollments as any[]) ?? []).map((e: any) => {
+  const result = (enrollments ?? []).map((e) => {
     const user = Array.isArray(e.users) ? e.users[0] : e.users;
     const override = overridesMap.get(e.user_id);
     const isPaused = override ? override.is_paused : globalPaused;
@@ -538,7 +538,7 @@ export async function bulkPauseForStudents(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
 
@@ -596,7 +596,7 @@ export async function pauseCourseCascade(
     .eq("id", session.userId)
     .single();
 
-  if ((caller as any)?.role !== "admin") {
+  if (caller?.role !== "admin") {
     return { error: "Unauthorized. Admin access required.", success: "" };
   }
 
@@ -609,7 +609,14 @@ export async function pauseCourseCascade(
     .eq("id", courseId)
     .single();
 
-  const rows: any[] = [
+  const rows: Array<{
+    user_id: string;
+    content_type: string;
+    content_id: string;
+    is_paused: boolean;
+    paused_by: string;
+    reason?: string;
+  }> = [
     {
       user_id: userId,
       content_type: "course",
@@ -619,11 +626,11 @@ export async function pauseCourseCascade(
     },
   ];
 
-  if ((course as any)?.hierarchy_type === 1) {
+  if (course?.hierarchy_type === 1) {
     // Type 1: Get semesters -> subjects -> lessons
     const { data: semesters } = await admin.from("semesters").select("id").eq("course_id", courseId);
 
-    for (const sem of (semesters as any[]) ?? []) {
+    for (const sem of semesters ?? []) {
       rows.push({
         user_id: userId,
         content_type: "semester",
@@ -634,7 +641,7 @@ export async function pauseCourseCascade(
 
       const { data: subjects } = await admin.from("subjects").select("id").eq("semester_id", sem.id);
 
-      for (const s of (subjects as any[]) ?? []) {
+      for (const s of subjects ?? []) {
         rows.push({
           user_id: userId,
           content_type: "subject",
@@ -645,7 +652,7 @@ export async function pauseCourseCascade(
 
         const { data: lessons } = await admin.from("lessons").select("id").eq("subject_id", s.id);
 
-        for (const l of (lessons as any[]) ?? []) {
+        for (const l of lessons ?? []) {
           rows.push({
             user_id: userId,
             content_type: "lesson",
@@ -660,7 +667,7 @@ export async function pauseCourseCascade(
     // Get direct lessons
     const { data: lessons } = await admin.from("lessons").select("id").eq("course_id", courseId);
 
-    for (const l of (lessons as any[]) ?? []) {
+    for (const l of lessons ?? []) {
       rows.push({
         user_id: userId,
         content_type: "lesson",
@@ -724,7 +731,7 @@ export async function resolveEffectiveAccess(
     .maybeSingle();
 
   if (override) {
-    return { isPaused: (override as any).is_paused, source: "student_override" };
+    return { isPaused: override.is_paused, source: "student_override" };
   }
 
   // Fall back to global
@@ -742,5 +749,5 @@ export async function resolveEffectiveAccess(
     .eq("id", contentId)
     .single();
 
-  return { isPaused: (content as any)?.is_paused ?? false, source: "global" };
+  return { isPaused: content?.is_paused ?? false, source: "global" };
 }

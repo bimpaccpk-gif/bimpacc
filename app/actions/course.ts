@@ -1,5 +1,6 @@
 "use server";
 
+import { errorMessage } from "@/lib/errors";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { verifyAdmin } from "@/lib/dal";
 import { revalidatePath } from "next/cache";
@@ -24,7 +25,7 @@ export async function enrollStudentInCourse(
       .eq("id", authUser.id)
       .single();
 
-    if ((callerProfile as any)?.role !== "admin") {
+    if (callerProfile?.role !== "admin") {
       return { error: "Unauthorized. Admin access required.", success: "" };
     }
 
@@ -46,7 +47,7 @@ export async function enrollStudentInCourse(
       return { error: "Student not found.", success: "" };
     }
 
-    if ((student as any).role !== "student") {
+    if (student.role !== "student") {
       return { error: "Can only enroll students in courses.", success: "" };
     }
 
@@ -73,7 +74,7 @@ export async function enrollStudentInCourse(
       return { error: "Course not found.", success: "" };
     }
 
-    if ((course as any).status !== "published") {
+    if (course.status !== "published") {
       return { error: "Cannot enroll in unpublished courses.", success: "" };
     }
 
@@ -91,7 +92,7 @@ export async function enrollStudentInCourse(
     // Audit log
     await logAuditEvent(authUser.id, studentId, "enrollment.created", {
       course_id: courseId,
-      course_title: (course as any).title,
+      course_title: course.title,
     });
 
     revalidatePath("/admin/users");
@@ -101,10 +102,10 @@ export async function enrollStudentInCourse(
 
     return {
       error: "",
-      success: `Successfully enrolled ${(student as any).full_name} in "${(course as any).title}".`,
+      success: `Successfully enrolled ${student.full_name} in "${course.title}".`,
     };
-  } catch (err: any) {
-    return { error: err.message || "An unexpected error occurred.", success: "" };
+  } catch (err) {
+    return { error: errorMessage(err), success: "" };
   }
 }
 
@@ -127,7 +128,7 @@ export async function bulkEnrollStudents(
       .eq("id", authUser.id)
       .single();
 
-    if ((callerProfile as any)?.role !== "admin") {
+    if (callerProfile?.role !== "admin") {
       return { error: "Unauthorized. Admin access required.", success: "" };
     }
 
@@ -160,7 +161,7 @@ export async function bulkEnrollStudents(
       return { error: "Course not found.", success: "" };
     }
 
-    if ((course as any).status !== "published") {
+    if (course.status !== "published") {
       return { error: "Cannot enroll in unpublished courses.", success: "" };
     }
 
@@ -183,8 +184,8 @@ export async function bulkEnrollStudents(
           continue;
         }
 
-        if ((student as any).role !== "student") {
-          errors.push(`${(student as any).full_name} is not a student`);
+        if (student.role !== "student") {
+          errors.push(`${student.full_name} is not a student`);
           continue;
         }
 
@@ -209,25 +210,25 @@ export async function bulkEnrollStudents(
         } as never);
 
         if (insertError) {
-          errors.push(`Failed to enroll ${(student as any).full_name}: ${insertError.message}`);
+          errors.push(`Failed to enroll ${student.full_name}: ${insertError.message}`);
           continue;
         }
 
         // Audit log
         await logAuditEvent(authUser.id, studentId, "enrollment.created", {
           course_id: courseId,
-          course_title: (course as any).title,
+          course_title: course.title,
           action: "bulk_enroll",
         });
 
         successCount++;
-      } catch (err: any) {
-        errors.push(`Error enrolling student ${studentId}: ${err.message}`);
+      } catch (err) {
+        errors.push(`Error enrolling student ${studentId}: ${errorMessage(err)}`);
       }
     }
 
     const errorMsg = errors.length > 0 ? ` Errors: ${errors.slice(0, 3).join("; ")}` : "";
-    let message = `Enrolled ${successCount} student(s) in "${(course as any).title}".`;
+    let message = `Enrolled ${successCount} student(s) in "${course.title}".`;
     if (skippedCount > 0) {
       message += ` ${skippedCount} already enrolled.`;
     }
@@ -244,8 +245,8 @@ export async function bulkEnrollStudents(
       error: errors.length > 0 ? `${errors.length} enrollment(s) failed.${errorMsg}` : "",
       success: message,
     };
-  } catch (err: any) {
-    return { error: err.message || "An unexpected error occurred.", success: "" };
+  } catch (err) {
+    return { error: errorMessage(err), success: "" };
   }
 }
 

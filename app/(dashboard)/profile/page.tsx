@@ -1,4 +1,5 @@
 import { getFullUserProfile } from "@/lib/dal";
+import type { StudentProfileFields } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -52,7 +53,7 @@ function formatDate(date: string | null) {
   });
 }
 
-function hasProfileData(user: any): boolean {
+function hasProfileData(user: StudentProfileFields): boolean {
   return !!(
     user.father_name ||
     user.cnic_number ||

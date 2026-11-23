@@ -120,7 +120,8 @@ export interface AuditLogEntry {
   admin_id: string;
   target_user_id: string | null;
   action: string;
-  details: Record<string, any>;
+  /** Free-form audit metadata; values are rendered as text in the admin UI. */
+  details: Record<string, string | number | boolean | null | undefined>;
   created_at: string;
   admin_name?: string;
 }
@@ -358,4 +359,51 @@ export interface AttendanceRecord {
 export interface CourseAttendanceDetail extends AttendanceRecord {
   student_name: string;
   student_email: string;
+}
+
+/** A course shown in registration / enrollment pickers. */
+export interface OpenCourse {
+  id: string;
+  title: string;
+  description?: string | null;
+  batch?: string | null;
+}
+
+/** Per-row outcome of a bulk user creation. */
+export interface BulkCreateResult {
+  line: number;
+  email: string;
+  fullName?: string;
+  success: boolean;
+  error?: string;
+}
+
+/** Student profile fields shown/edited in the student UI (all optional, may be null). */
+export interface StudentProfileFields {
+  email?: string;
+  full_name?: string;
+  father_name?: string | null;
+  cnic_number?: string | null;
+  dob?: string | null;
+  education_level?: string | null;
+  degree_title?: string | null;
+  profession?: string | null;
+  whatsapp_number?: string | null;
+  postal_address?: string | null;
+  fee_transaction_id?: string | null;
+  fee_submission_date?: string | null;
+  bank_name?: string | null;
+  cnic_file_path?: string | null;
+  degree_file_path?: string | null;
+  fee_receipt_file_path?: string | null;
+  avatar_file_path?: string | null;
+}
+
+/** A created hierarchy item (semester / subject / lesson) returned to the admin UI. */
+export interface HierarchyRow {
+  id: string;
+  title?: string;
+  description?: string | null;
+  order_index?: number | null;
+  [key: string]: unknown;
 }

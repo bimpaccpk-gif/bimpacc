@@ -1,5 +1,7 @@
 "use client";
 
+import type { OpenCourse } from "@/types";
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +13,7 @@ import { adminBulkCreateUsers } from "@/lib/supabase/actions";
 
 interface BulkUserFormProps {
   onSuccess: () => void;
-  courses: any[];
+  courses: OpenCourse[];
 }
 
 export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
@@ -97,8 +99,8 @@ export function BulkUserForm({ onSuccess, courses }: BulkUserFormProps) {
           setError(`Failed to create all ${failedList.length} user(s)`);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      setError(errorMessage(err, "An error occurred"));
     } finally {
       setLoading(false);
     }

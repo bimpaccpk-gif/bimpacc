@@ -1,12 +1,13 @@
 "use client";
 
+import type { StudentProfileFields } from "@/types";
 import { useEffect } from "react";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Clock, ShieldAlert, LogOut } from "lucide-react";
 
 interface ApprovalModalProps {
-  user: any;
+  user: StudentProfileFields;
 }
 
 export function ApprovalPendingModal({ user }: ApprovalModalProps) {

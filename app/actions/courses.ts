@@ -1,5 +1,6 @@
 "use server";
 
+import type { HierarchyRow } from "@/types";
 import { verifyAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -117,7 +118,7 @@ export async function updateCourse(
 
   const supabase = await createClient();
 
-  const updatePayload: any = { title, description, batch, status, registration_open };
+  const updatePayload: Record<string, unknown> = { title, description, batch, status, registration_open };
   if (hierarchyTypeStr) {
     updatePayload.hierarchy_type = parseInt(hierarchyTypeStr, 10);
   }
@@ -168,16 +169,16 @@ export async function deleteCourse(
   revalidatePath("/admin/courses");
   return {
     error: "",
-    success: `Course "${(course as any)?.title ?? id}" deleted.`,
+    success: `Course "${course?.title ?? id}" deleted.`,
   };
 }
 
 // ─── Semesters ──────────────────────────────────────────────
 
 export async function createSemester(
-  _prevState: { error: string; success: string; semester?: any } | undefined,
+  _prevState: { error: string; success: string; semester?: HierarchyRow } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string; semester?: any }> {
+): Promise<{ error: string; success: string; semester?: HierarchyRow }> {
   try {
     await verifyAdmin();
   } catch {
@@ -281,7 +282,7 @@ export async function deleteSemester(
   revalidatePath(`/admin/courses/${courseId}/semesters`);
   return {
     error: "",
-    success: `Semester "${(semester as any)?.title ?? id}" deleted.`,
+    success: `Semester "${semester?.title ?? id}" deleted.`,
   };
 }
 
@@ -309,9 +310,9 @@ export async function reorderSemesters(
 // ─── Subjects ──────────────────────────────────────────────
 
 export async function createSubject(
-  _prevState: { error: string; success: string; subject?: any } | undefined,
+  _prevState: { error: string; success: string; subject?: HierarchyRow } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string; subject?: any }> {
+): Promise<{ error: string; success: string; subject?: HierarchyRow }> {
   try {
     await verifyAdmin();
   } catch {
@@ -346,7 +347,7 @@ export async function createSubject(
 
   const { count } = await countQuery;
 
-  const insertData: Record<string, any> = {
+  const insertData: Record<string, unknown> = {
     title,
     description,
     order_index: (count ?? 0) + 1,
@@ -436,7 +437,7 @@ export async function deleteSubject(
   revalidatePath(`/admin/courses/${courseId}/subjects`);
   return {
     error: "",
-    success: `Subject "${(subject as any)?.title ?? id}" deleted.`,
+    success: `Subject "${subject?.title ?? id}" deleted.`,
   };
 }
 
@@ -491,9 +492,9 @@ export async function reorderCourses(
 // ─── Lessons ───────────────────────────────────────────────
 
 export async function createLesson(
-  _prevState: { error: string; success: string; lesson?: any } | undefined,
+  _prevState: { error: string; success: string; lesson?: HierarchyRow } | undefined,
   formData: FormData
-): Promise<{ error: string; success: string; lesson?: any }> {
+): Promise<{ error: string; success: string; lesson?: HierarchyRow }> {
   try {
     await verifyAdmin();
   } catch {
@@ -553,7 +554,7 @@ export async function createLesson(
     .select("*", { count: "exact", head: true })
     .eq(parentField, parentId);
 
-  const lessonData: any = {
+  const lessonData: Record<string, unknown> = {
     title,
     description,
     content,
@@ -665,7 +666,7 @@ export async function deleteLesson(
   revalidatePath(revalidateUrl);
   return {
     error: "",
-    success: `Lesson "${(lesson as any)?.title ?? id}" deleted.`,
+    success: `Lesson "${lesson?.title ?? id}" deleted.`,
   };
 }
 

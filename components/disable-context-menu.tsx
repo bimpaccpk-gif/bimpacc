@@ -24,7 +24,7 @@ export function DisableContextMenu() {
       e.preventDefault();
       e.stopPropagation();
       _stopImmediate.call(e);
-      (e as any).returnValue = false;
+      e.returnValue = false;
       return false;
     };
 
@@ -33,7 +33,7 @@ export function DisableContextMenu() {
       e.preventDefault();
       e.stopPropagation();
       _stopImmediate.call(e);
-      (e as any).returnValue = false;
+      e.returnValue = false;
       return false;
     };
 

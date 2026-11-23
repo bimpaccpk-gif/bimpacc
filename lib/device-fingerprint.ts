@@ -94,7 +94,7 @@ async function collectComponents(): Promise<DeviceComponents> {
     devicePixelRatio: Math.round(window.devicePixelRatio * 100) / 100,
 
     // Hardware
-    deviceMemory: (navigator as any).deviceMemory ?? null,
+    deviceMemory: (navigator as NavigatorExtras).deviceMemory ?? null,
     hardwareConcurrency: navigator.hardwareConcurrency ?? null,
     maxTouchPoints: navigator.maxTouchPoints ?? 0,
 
@@ -116,9 +116,17 @@ async function collectComponents(): Promise<DeviceComponents> {
 // Chrome returns "macOS" via userAgentData, Safari returns "MacIntel" via
 // navigator.platform. We normalize to a single short string per OS.
 
+/** Non-standard browser APIs this module feature-detects at runtime. */
+interface NavigatorExtras extends Navigator {
+  deviceMemory?: number;
+  userAgentData?: { platform?: string; platformVersion?: string };
+}
+
+type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
+
 function normalizePlatform(): string {
   // Gather all available platform indicators
-  const uaData = (navigator as any).userAgentData;
+  const uaData = (navigator as NavigatorExtras).userAgentData;
   const uaPlatform = uaData?.platform?.toLowerCase() ?? "";
   const navPlatform = (navigator.platform ?? "").toLowerCase();
   const ua = navigator.userAgent.toLowerCase();
@@ -148,7 +156,7 @@ function normalizePlatform(): string {
 }
 
 function getPlatformVersion(): string | null {
-  const uaData = (navigator as any).userAgentData;
+  const uaData = (navigator as NavigatorExtras).userAgentData;
   if (uaData?.platformVersion) {
     return uaData.platformVersion;
   }
@@ -264,7 +272,7 @@ async function getCanvasFingerprint(): Promise<string> {
 async function getAudioFingerprint(): Promise<string> {
   try {
     const AudioCtx =
-      window.AudioContext || (window as any).webkitAudioContext;
+      window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
     if (!AudioCtx) return "unsupported";
 
     const context = new AudioCtx();
