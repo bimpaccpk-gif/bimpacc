@@ -1,4 +1,6 @@
-import { History, Settings2, ShieldCheck } from "lucide-react";
+import { History, Settings2 } from "lucide-react";
+
+import { PageHeader } from "@/components/layout/page-header";
 
 import { AdminAccessControl } from "@/components/super-admin/admin-access-control";
 import { BillingSettingsForm } from "@/components/super-admin/billing-settings-form";
@@ -57,15 +59,11 @@ export default async function SuperAdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="text-primary h-7 w-7" aria-hidden="true" />
-          <h1 className="text-2xl font-bold">Super Admin Dashboard</h1>
-        </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Control normal admin access and service billing.
-        </p>
-      </header>
+      <PageHeader
+        title="Super admin"
+        description="Control normal admin access and service billing."
+        className="mb-0"
+      />
 
       {settings && (
         <AdminAccessControl
@@ -76,13 +74,13 @@ export default async function SuperAdminDashboardPage() {
         />
       )}
 
-      <details className="border-border bg-card rounded-xl border shadow-sm">
-        <summary className="flex cursor-pointer list-none items-center gap-3 p-5 font-semibold sm:p-6">
+      <details className="group bg-card ring-foreground/10 rounded-xl ring-1">
+        <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-3 rounded-xl px-5 py-4 text-sm font-semibold transition-colors [&::-webkit-details-marker]:hidden">
           <Settings2 className="text-primary h-5 w-5" aria-hidden="true" />
           Billing and bank details
-          <span className="text-muted-foreground ml-auto text-xs font-normal">Click to open</span>
+          <span className="text-muted-foreground ml-auto text-xs font-normal group-open:hidden">Show</span>
         </summary>
-        <div className="border-border border-t p-5 sm:p-6">
+        <div className="border-t p-5 sm:p-6">
           {settings ? (
             <BillingSettingsForm
               settings={settings}
@@ -101,15 +99,15 @@ export default async function SuperAdminDashboardPage() {
         </div>
       </details>
 
-      <details className="border-border bg-card rounded-xl border shadow-sm">
-        <summary className="flex cursor-pointer list-none items-center gap-3 p-5 font-semibold sm:p-6">
+      <details className="group bg-card ring-foreground/10 rounded-xl ring-1">
+        <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center gap-3 rounded-xl px-5 py-4 text-sm font-semibold transition-colors [&::-webkit-details-marker]:hidden">
           <History className="text-primary h-5 w-5" aria-hidden="true" />
           Activity history
           <span className="text-muted-foreground ml-auto text-xs font-normal">
             {auditLog.length} updates
           </span>
         </summary>
-        <div className="border-border border-t p-5 sm:p-6">
+        <div className="border-t p-5 sm:p-6">
           {auditLog.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               No billing updates have been recorded yet.

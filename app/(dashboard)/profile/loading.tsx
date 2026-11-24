@@ -1,95 +1,46 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * Skeleton for the profile page (see profile/page.tsx): page header, then the
- * three-column grid — a centered identity card, a wide account-details card
- * with bordered info fields, full-width detail sections, and a stats card.
- */
-
-function InfoFieldSkeleton() {
-  return (
-    <div className="flex items-start gap-3 rounded-lg border p-4">
-      <Skeleton className="size-5 shrink-0" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-4 w-28" />
-      </div>
-    </div>
-  );
-}
-
-function DetailSectionSkeleton({ fields }: { fields: number }) {
-  return (
-    <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 md:col-span-3">
-      <div className="space-y-2">
-        <Skeleton className="h-5 w-40" />
-      </div>
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: fields }).map((_, index) => (
-          <InfoFieldSkeleton key={index} />
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-function StatsCardSkeleton() {
-  return (
-    <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 md:col-span-3">
-      <div className="space-y-2">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-4 w-52" />
-      </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="rounded-lg border p-4">
-            <Skeleton className="mx-auto h-8 w-12" />
-            <Skeleton className="mx-auto mt-2 h-3 w-24" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+/** Skeleton for profile/page.tsx: header, identity card, stat row, details card. */
 export default function Loading() {
   return (
-    <div className="animate-in fade-in space-y-8 duration-300">
-      {/* Page header */}
+    <div className="animate-in fade-in mx-auto w-full max-w-4xl space-y-6 duration-300">
       <div className="space-y-2">
         <Skeleton className="h-8 w-32 rounded-lg" />
-        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-4 w-64 max-w-full" />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Identity card */}
-        <div className="flex flex-col items-center rounded-xl bg-card px-6 py-8 ring-1 ring-foreground/10 md:col-span-1">
-          <Skeleton className="size-24 rounded-full" />
-          <Skeleton className="mt-4 h-5 w-36" />
-          <Skeleton className="mt-2 h-4 w-48" />
-          <Skeleton className="mt-3 h-6 w-20 rounded-full" />
+      <div className="bg-card ring-foreground/10 flex items-center gap-4 rounded-xl p-5 ring-1">
+        <Skeleton className="h-16 w-16 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-60 max-w-full" />
+          <Skeleton className="h-5 w-32 rounded-full" />
         </div>
+      </div>
 
-        {/* Account details card */}
-        <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 md:col-span-2">
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-36" />
-            <Skeleton className="h-4 w-64" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card ring-foreground/10 space-y-3 rounded-xl p-5 ring-1">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-7 w-12" />
           </div>
-          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <InfoFieldSkeleton key={index} />
-            ))}
-          </dl>
-        </div>
+        ))}
+      </div>
 
-        {/* Full-width detail sections (personal / academic / contact / fees) */}
-        <DetailSectionSkeleton fields={3} />
-        <DetailSectionSkeleton fields={3} />
-
-        {/* Role stats */}
-        <StatsCardSkeleton />
+      <div className="bg-card ring-foreground/10 divide-border divide-y rounded-xl ring-1">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-3 px-5 py-4">
+            <Skeleton className="h-3 w-20" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((__, j) => (
+                <div key={j} className="space-y-1.5">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-4 w-40 max-w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

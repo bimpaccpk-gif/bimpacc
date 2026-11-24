@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/dal";
-import { ArrowLeft, Layers } from "lucide-react";
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCourseBreadcrumbs } from "@/components/admin/hierarchy-breadcrumbs";
 import { HierarchyIndicator } from "@/components/admin/hierarchy-indicator";
 import { InlineSubjectManager } from "@/components/admin/inline-subject-manager";
-import { HierarchyType } from "@/types";
-import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/layout/page-header";
+import { getCurrentUser } from "@/lib/dal";
+import { createClient } from "@/lib/supabase/server";
+import type { HierarchyType } from "@/types";
 
 interface SubjectRow {
   id: string;
@@ -46,55 +46,28 @@ export default async function AdminSubjectsPage({
 }) {
   await getCurrentUser();
   const { courseId } = await params;
-  const course = await getCourse(courseId);
-  const subjects = await getSubjects(courseId);
+  const [course, subjects] = await Promise.all([getCourse(courseId), getSubjects(courseId)]);
 
   if (!course) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <h2 className="text-lg font-semibold">Course not found</h2>
-        <Link href="/admin/courses" className="mt-2 text-sm text-primary hover:underline">
-          Back to courses
-        </Link>
-      </div>
-    );
+    redirect("/admin/courses");
   }
 
   // Type 1 courses manage subjects through semesters — redirect there
   if (course.hierarchy_type === 1) {
-    return redirect(`/admin/courses/${courseId}/semesters`);
+    redirect(`/admin/courses/${courseId}/semesters`);
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <Link
-          href="/admin/courses"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Courses
-        </Link>
-        <div className="mt-4 flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Layers className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {course.title}
-            </h1>
-            <p className="mt-1 text-muted-foreground">
-              Add and manage subjects and lessons
-            </p>
-          </div>
-        </div>
-        <div className="mt-5">
-          <HierarchyIndicator hierarchyType={course.hierarchy_type} />
-        </div>
-      </div>
+  const count = `${subjects.length} subject${subjects.length === 1 ? "" : "s"}`;
 
-      {/* Content */}
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <PageHeader
+        title="Subjects"
+        description={`${course.title} · ${count}`}
+        breadcrumbs={getCourseBreadcrumbs({ courseId, courseTitle: course.title, current: "Subjects" })}
+        actions={<HierarchyIndicator hierarchyType={course.hierarchy_type} compact />}
+      />
+
       <InlineSubjectManager courseId={courseId} initialSubjects={subjects} />
     </div>
   );

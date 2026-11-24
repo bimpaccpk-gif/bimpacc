@@ -1,56 +1,51 @@
+import Link from "next/link";
+import { AwardIcon, BookOpenIcon, CheckCircle2, CircleCheckIcon, Clock } from "lucide-react";
+
 import { getFullUserProfile } from "@/lib/dal";
-import type { StudentProfileFields } from "@/types";
 import { createClient } from "@/lib/supabase/server";
+import type { StudentProfileFields } from "@/types";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatTile } from "@/components/layout/stat-tile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import {
-  Mail,
-  User as UserIcon,
-  Shield,
-  Calendar,
-  Clock,
-  Phone,
-  MapPin,
-  GraduationCap,
-  Briefcase,
-  CreditCard,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Download,
-  Image as ImageIcon,
-} from "lucide-react";
 import { ProfileCompletionForm } from "@/components/student/profile-completion-form";
+import { cn } from "@/lib/utils";
 
-async function getUserStats(userId: string, role: string) {
+/** Real learning numbers for the signed-in student (COUNT queries, own rows only via RLS). */
+async function getStudentStats(userId: string) {
   const supabase = await createClient();
-
-  const { count: enrollmentCount } = await supabase
-    .from("enrollments")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
+  const [enrollments, lessons, certificates] = await Promise.all([
+    supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase
+      .from("lesson_progress")
+      .select("id, enrollments!inner(user_id)", { count: "exact", head: true })
+      .eq("completed", true)
+      .eq("enrollments.user_id", userId),
+    supabase.from("certificates").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ]);
   return {
-    enrollments: enrollmentCount ?? 0,
+    enrollments: enrollments.count ?? 0,
+    lessonsCompleted: lessons.count ?? 0,
+    certificates: certificates.count ?? 0,
   };
 }
 
 function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return (
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .filter(Boolean)
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?"
+  );
 }
 
-function formatDate(date: string | null) {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function formatDate(date: string | null | undefined) {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 function hasProfileData(user: StudentProfileFields): boolean {
@@ -73,307 +68,183 @@ function hasProfileData(user: StudentProfileFields): boolean {
   );
 }
 
-function InfoField({
-  icon: Icon,
-  label,
-  value,
+function Badge({ tone, children }: { tone: "success" | "warning" | "info" | "muted"; children: React.ReactNode }) {
+  const tones = {
+    success: "bg-success/10 text-success",
+    warning: "bg-warning/10 text-warning",
+    info: "bg-primary/10 text-primary",
+    muted: "bg-muted text-muted-foreground",
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", tones[tone])}>
+      {children}
+    </span>
+  );
+}
+
+/** A titled group of label/value pairs. */
+function Section({
+  title,
+  fields,
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: string | null | undefined;
+  title: string;
+  fields: Array<{ label: string; value: string | null | undefined; wide?: boolean }>;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border p-4">
-      <Icon className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
-      <div className="min-w-0">
-        <dt className="text-muted-foreground text-sm font-medium">{label}</dt>
-        <dd className="truncate text-sm font-semibold">{value || "—"}</dd>
-      </div>
-    </div>
+    <section className="px-5 py-4">
+      <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">{title}</h2>
+      <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        {fields.map((f) => (
+          <div key={f.label} className={cn("min-w-0", f.wide && "sm:col-span-2")}>
+            <dt className="text-muted-foreground text-xs">{f.label}</dt>
+            <dd className="mt-0.5 text-sm font-medium break-words">{f.value || "—"}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
 export default async function ProfilePage() {
   const user = await getFullUserProfile();
-  const stats = await getUserStats(user.id, user.role);
 
   const isStudent = user.role === "student";
   const hasOnboarded = user.onboarding_completed;
-  const showProfileData =
-    isStudent && (hasOnboarded || (user.onboarding_bypassed && hasProfileData(user)));
+  const showProfileData = isStudent && (hasOnboarded || (user.onboarding_bypassed && hasProfileData(user)));
+  const stats = isStudent ? await getStudentStats(user.id) : null;
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-
-  const roleBadgeColor: Record<string, string> = {
-    admin: "bg-destructive/10 text-destructive",
-    instructor: "bg-info/10 text-info",
-    student: "bg-success/10 text-success",
-  };
+  const memberSince = formatDate(user.created_at);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-          <p className="text-muted-foreground">View your account information</p>
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <PageHeader title="Profile" description="Your account and learning details." className="mb-0" />
+
+      {/* Identity */}
+      <div className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-xl p-5 ring-1 sm:flex-row sm:items-center">
+        <Avatar className="h-16 w-16">
+          {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
+          <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+            {getInitials(user.full_name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-lg font-semibold">{user.full_name}</h2>
+          <p className="text-muted-foreground truncate text-sm">{user.email}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge tone="info">{roleLabel}</Badge>
+            {isStudent &&
+              (!hasOnboarded ? (
+                <Badge tone="warning">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  Onboarding pending
+                </Badge>
+              ) : user.is_approved ? (
+                <Badge tone="success">
+                  <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                  Approved
+                </Badge>
+              ) : (
+                <Badge tone="warning">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  Under review
+                </Badge>
+              ))}
+            {memberSince && <span className="text-muted-foreground text-xs">Member since {memberSince}</span>}
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Profile Card */}
-        <Card className="md:col-span-1">
-          <CardContent className="flex flex-col items-center pt-6">
-            <Avatar className="h-24 w-24">
-              {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.full_name} />}
-              <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300 text-2xl font-semibold">
-                {getInitials(user.full_name)}
-              </AvatarFallback>
-            </Avatar>
-            <h2 className="mt-4 text-xl font-semibold">{user.full_name}</h2>
-            <p className="text-muted-foreground text-sm">{user.email}</p>
-            <span
-              className={`mt-2 rounded-full px-3 py-1 text-xs font-medium ${
-                roleBadgeColor[user.role] ?? roleBadgeColor.student
-              }`}
-            >
-              {roleLabel}
-            </span>
+      {/* Learning numbers (students only; real counts) */}
+      {stats && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatTile label="Courses enrolled" value={stats.enrollments} icon={BookOpenIcon} />
+          <StatTile label="Lessons completed" value={stats.lessonsCompleted} icon={CircleCheckIcon} />
+          <Link
+            href="/student/certificates"
+            className="focus-visible:ring-ring/50 group block rounded-xl outline-none focus-visible:ring-3"
+          >
+            <StatTile
+              label="Certificates"
+              value={stats.certificates}
+              icon={AwardIcon}
+              hint="View certificates"
+              className="group-hover:ring-primary/40 transition-shadow"
+            />
+          </Link>
+        </div>
+      )}
 
-            {/* Approval / Onboarding status for students */}
-            {isStudent && (
-              <div className="mt-3">
-                {hasOnboarded ? (
-                  user.is_approved ? (
-                    <span className="bg-success/10 text-success ring-success/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Approved
-                    </span>
-                  ) : (
-                    <span className="bg-warning/10 text-warning ring-warning/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
-                      <Clock className="h-3 w-3" />
-                      Under Review
-                    </span>
-                  )
-                ) : (
-                  <span className="bg-warning/10 text-warning ring-warning/20 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1">
-                    <Clock className="h-3 w-3" />
-                    Onboarding Pending
-                  </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Onboarding bypassed by an admin: optional completion form */}
+      {isStudent && user.onboarding_bypassed && !hasOnboarded && (
+        <section className="bg-card ring-foreground/10 rounded-xl p-5 ring-1">
+          <h2 className="text-sm font-semibold">Complete your profile</h2>
+          <p className="text-muted-foreground mt-1 mb-4 text-sm">
+            An admin let you skip onboarding. You can add your details at any time; every field is optional.
+          </p>
+          <ProfileCompletionForm user={user} />
+        </section>
+      )}
 
-        {/* Account Details Card */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Account Details</CardTitle>
-            <CardDescription>Your personal information and account status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-2">
-              <InfoField icon={UserIcon} label="Full Name" value={user.full_name} />
-              <InfoField icon={Mail} label="Email" value={user.email} />
-              <InfoField icon={Shield} label="Role" value={roleLabel} />
-              <InfoField icon={Calendar} label="Member Since" value={formatDate(user.created_at)} />
-              <InfoField icon={Clock} label="Last Updated" value={formatDate(user.updated_at)} />
-              <InfoField
-                icon={Mail}
-                label="User ID"
-                value={`${user.id.slice(0, 8)}...${user.id.slice(-4)}`}
-              />
-            </dl>
-          </CardContent>
-        </Card>
+      {/* Details */}
+      <div className="bg-card ring-foreground/10 divide-border divide-y rounded-xl ring-1">
+        <Section
+          title="Account"
+          fields={[
+            { label: "Full name", value: user.full_name },
+            { label: "Email", value: user.email },
+            { label: "Role", value: roleLabel },
+            { label: "Last updated", value: formatDate(user.updated_at) },
+          ]}
+        />
 
-        {/* Profile Completion for Bypassed Students */}
-        {isStudent && user.onboarding_bypassed && !hasOnboarded && (
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserIcon className="text-primary h-5 w-5" />
-                Complete Your Profile
-              </CardTitle>
-              <CardDescription>
-                Your onboarding was bypassed by an admin. You can complete your profile at any time
-                to provide additional information. All fields are optional.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProfileCompletionForm user={user} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ─── Student Profile Details (Text Only) ─── */}
         {showProfileData && (
           <>
-            {/* Personal Information */}
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserIcon className="text-primary h-5 w-5" />
-                  Personal Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoField icon={UserIcon} label="Full Name" value={user.full_name} />
-                  <InfoField icon={UserIcon} label="Father's Name" value={user.father_name} />
-                  <InfoField
-                    icon={CreditCard}
-                    label="CNIC / Passport Number"
-                    value={user.cnic_number}
-                  />
-                  <InfoField icon={Calendar} label="Date of Birth" value={formatDate(user.dob)} />
-                </dl>
-                {/* NO DocumentField for CNIC or avatar - students cannot see documents */}
-              </CardContent>
-            </Card>
-
-            {/* Academic Background */}
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="text-primary h-5 w-5" />
-                  Academic Background
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoField
-                    icon={GraduationCap}
-                    label="Education Level"
-                    value={user.education_level}
-                  />
-                  <InfoField icon={GraduationCap} label="Degree Title" value={user.degree_title} />
-                  <InfoField icon={Briefcase} label="Profession" value={user.profession} />
-                </dl>
-                {/* NO DocumentField for degree - students cannot see documents */}
-              </CardContent>
-            </Card>
-
-            {/* Contact Details */}
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Phone className="text-primary h-5 w-5" />
-                  Contact Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <InfoField icon={Phone} label="WhatsApp Number" value={user.whatsapp_number} />
-                  <InfoField icon={MapPin} label="Postal Address" value={user.postal_address} />
-                </dl>
-              </CardContent>
-            </Card>
-
-            {/* Fee Verification */}
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="text-primary h-5 w-5" />
-                  Fee Verification
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <InfoField
-                    icon={CreditCard}
-                    label="Transaction ID"
-                    value={user.fee_transaction_id}
-                  />
-                  <InfoField
-                    icon={Calendar}
-                    label="Payment Date"
-                    value={formatDate(user.fee_submission_date)}
-                  />
-                  <InfoField icon={CreditCard} label="Bank Name" value={user.bank_name} />
-                </dl>
-                {/* NO DocumentField for receipt - students cannot see documents */}
-              </CardContent>
-            </Card>
+            <Section
+              title="Personal"
+              fields={[
+                { label: "Father's name", value: user.father_name },
+                { label: "CNIC / passport number", value: user.cnic_number },
+                { label: "Date of birth", value: formatDate(user.dob) },
+              ]}
+            />
+            <Section
+              title="Education"
+              fields={[
+                { label: "Education level", value: user.education_level },
+                { label: "Degree title", value: user.degree_title },
+                { label: "Profession", value: user.profession },
+              ]}
+            />
+            <Section
+              title="Contact"
+              fields={[
+                { label: "WhatsApp number", value: user.whatsapp_number },
+                { label: "Postal address", value: user.postal_address, wide: true },
+              ]}
+            />
+            {/* Uploaded documents are intentionally not shown to students. */}
+            <Section
+              title="Fee"
+              fields={[
+                { label: "Transaction ID", value: user.fee_transaction_id },
+                { label: "Payment date", value: formatDate(user.fee_submission_date) },
+                { label: "Bank", value: user.bank_name },
+              ]}
+            />
           </>
         )}
-
-        {/* Stats Cards — existing role-based stats remain unchanged */}
-        {user.role === "student" && (
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle>Learning Stats</CardTitle>
-              <CardDescription>Your course progress at a glance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">{stats.enrollments}</p>
-                  <p className="text-muted-foreground text-sm">Enrolled Courses</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Completed Courses</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0h</p>
-                  <p className="text-muted-foreground text-sm">Total Learning Time</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {user.role === "instructor" && (
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle>Teaching Stats</CardTitle>
-              <CardDescription>Your teaching activity overview</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Courses Created</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Total Students</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Published Courses</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {user.role === "admin" && (
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle>Platform Stats</CardTitle>
-              <CardDescription>Overview of the platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">{stats.enrollments}</p>
-                  <p className="text-muted-foreground text-sm">Total Enrollments</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Total Users</p>
-                </div>
-                <div className="rounded-lg border p-4 text-center">
-                  <p className="text-3xl font-bold">0</p>
-                  <p className="text-muted-foreground text-sm">Total Courses</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
+
+      {!isStudent && (
+        <p className="text-muted-foreground text-sm">
+          Your activity is on your{" "}
+          <Link href={user.role === "admin" ? "/admin" : "/instructor"} className="text-primary font-medium hover:underline">
+            dashboard
+          </Link>
+          .
+        </p>
+      )}
     </div>
   );
 }
