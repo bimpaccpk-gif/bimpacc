@@ -40,6 +40,8 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "user.unpaused": "Account unpaused",
   "user.onboarding_bypassed": "Onboarding bypassed",
   "user.onboarding_restored": "Onboarding restored",
+  "user.mfa_reset": "MFA reset",
+  "user.sessions_revoked": "Signed out of devices",
   "enrollment.created": "Enrolled in course",
   "content_access.paused": "Content paused for student",
   "content_access.unpaused": "Content resumed for student",

@@ -9,6 +9,7 @@ import {
   AccessPanel,
   ActivityPanel,
   DetailTabs,
+  DevicesPanel,
   EnrollmentsPanel,
   LockedAccountAlert,
   OverviewPanel,
@@ -30,7 +31,7 @@ export default async function UserDetailPage({
     notFound();
   }
 
-  const { user, enrollments, auditLog, loginHistory, stats } = data;
+  const { user, enrollments, auditLog, loginHistory, sessions, stats } = data;
 
   // Panels are rendered here on the server and handed to the client tab shell
   // as plain nodes — the shell only controls visibility.
@@ -54,6 +55,18 @@ export default async function UserDetailPage({
           } satisfies DetailTab,
         ]
       : []),
+    {
+      id: "devices",
+      label: "Devices",
+      content: (
+        <DevicesPanel
+          userId={user.id}
+          role={user.role}
+          sessions={sessions}
+          readOnly={user.is_super_admin}
+        />
+      ),
+    },
     {
       id: "security",
       label: "Login History",

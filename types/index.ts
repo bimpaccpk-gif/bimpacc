@@ -144,6 +144,18 @@ export interface DeviceComponents {
   audioFingerprint: string;
 }
 
+/** A tracked sign-in session (device) for the device/session limit. */
+export interface UserSessionEntry {
+  session_id: string;
+  created_at: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  revoked_at: string | null;
+  revoked_reason: "limit" | "admin" | "signed_out" | null;
+  /** Not revoked and younger than the maximum session lifetime. */
+  is_active: boolean;
+}
+
 export interface LoginHistoryEntry {
   id: string;
   email: string;
@@ -328,6 +340,7 @@ export interface UserDetailData {
   enrollments: UserEnrollmentDetail[];
   auditLog: AuditLogEntry[];
   loginHistory: LoginHistoryEntry[];
+  sessions: UserSessionEntry[];
   stats: {
     totalEnrollments: number;
     completedCourses: number;

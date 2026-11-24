@@ -14,7 +14,10 @@ import type {
   UserEnrollmentDetail,
   UserDetailData,
   LoginHistoryEntry,
+  UserSessionEntry,
 } from "@/types";
+import { revokeSessions } from "@/lib/session-tracking";
+import { getSessionMaxSeconds } from "@/lib/session-policy";
 
 export interface StudentApplication {
   // Identity
@@ -412,6 +415,21 @@ export async function getUserDetail(
     created_at: l.created_at,
   }));
 
+  // Tracked sessions (devices). Empty until the user_sessions migration is applied.
+  const { data: sessionData } = await admin
+    .from("user_sessions")
+    .select("session_id, created_at, user_agent, ip_address, revoked_at, revoked_reason")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const sessionCutoff = Date.now() - getSessionMaxSeconds() * 1000;
+  const sessions: UserSessionEntry[] = (
+    (sessionData ?? []) as Omit<UserSessionEntry, "is_active">[]
+  ).map((s) => ({
+    ...s,
+    is_active: !s.revoked_at && Date.parse(s.created_at) > sessionCutoff,
+  }));
+
   return {
     data: {
       user: {
@@ -451,6 +469,7 @@ export async function getUserDetail(
       enrollments,
       auditLog,
       loginHistory,
+      sessions,
       stats: {
         totalEnrollments: enrollments.length,
         completedCourses,
@@ -632,5 +651,71 @@ export async function resetUserMfa(
       factors.length > 0
         ? "MFA reset. They will set up a new authenticator at their next sign-in."
         : "This user had no MFA factors set up.",
+  };
+}
+
+/**
+ * Signs a user out of every device (or one session). Same protection rules as the MFA reset:
+ * not yourself, never a super admin, and only a super admin may do it to another admin.
+ */
+export async function signOutUserDevices(
+  _prevState: { error: string; success: string } | undefined,
+  formData: FormData
+): Promise<{ error: string; success: string }> {
+  const session = await verifyAdmin();
+
+  const validation = resetDeviceFingerprintSchema.safeParse({ userId: formData.get("userId") });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message, success: "" };
+  }
+  const { userId } = validation.data;
+  const rawSessionId = formData.get("sessionId");
+  const sessionId =
+    typeof rawSessionId === "string" && /^[0-9a-f-]{36}$/i.test(rawSessionId) ? rawSessionId : null;
+
+  if (userId === session.userId) {
+    return { error: "Use Sign out on your own device instead.", success: "" };
+  }
+
+  const limit = await rateLimit(`admin:revoke-sessions:${session.userId}`, 30, 60 * 60 * 1000, {
+    failClosed: true,
+  });
+  if (!limit.allowed) {
+    return { error: "Too many sign-outs. Please try again later.", success: "" };
+  }
+
+  const admin = createAdminClient();
+  const [{ data: target }, { data: targetSuper }, { data: callerSuper }] = await Promise.all([
+    admin.from("users").select("role").eq("id", userId).maybeSingle(),
+    admin.from("super_admins").select("user_id").eq("user_id", userId).maybeSingle(),
+    admin.from("super_admins").select("user_id").eq("user_id", session.userId).maybeSingle(),
+  ]);
+  if (!target) return { error: "User not found.", success: "" };
+  if (targetSuper) return { error: "A super admin cannot be signed out from here.", success: "" };
+  if (target.role === "admin" && !callerSuper) {
+    return { error: "Only a super admin can sign out another admin.", success: "" };
+  }
+
+  let query = admin.from("user_sessions").select("session_id").eq("user_id", userId).is("revoked_at", null);
+  if (sessionId) query = query.eq("session_id", sessionId);
+  const { data: active, error } = await query;
+  if (error) return { error: "Device tracking is not available yet.", success: "" };
+
+  let revoked: number;
+  try {
+    revoked = await revokeSessions((active ?? []).map((r) => r.session_id as string), "admin");
+  } catch {
+    return { error: "Could not sign the user out. Please try again.", success: "" };
+  }
+
+  await logAuditEvent(session.userId, userId, "user.sessions_revoked", {
+    sessions_revoked: revoked,
+    single_session: Boolean(sessionId),
+  });
+
+  revalidatePath(`/admin/users/${userId}`);
+  return {
+    error: "",
+    success: revoked > 0 ? `Signed out of ${revoked} device${revoked === 1 ? "" : "s"}.` : "No active devices to sign out.",
   };
 }

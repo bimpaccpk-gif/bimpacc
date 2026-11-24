@@ -82,22 +82,29 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
+  /**
+   * Signs THIS session out (local scope: other devices are untouched). Off auth routes it returns a
+   * redirect to /login?error=<code>; on /login or /register it returns null and the request
+   * continues as signed out, so the page can show the message without a redirect loop.
+   */
+  const endSession = async (code: string): Promise<NextResponse | null> => {
+    await supabase.auth.signOut({ scope: "local" });
+    user = null;
+    if (isAuthRoute) return null;
+
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("error", code);
+    const redirectResponse = secure(NextResponse.redirect(loginUrl));
+    // Carry over the cookie deletions signOut() just wrote onto `response`.
+    for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
+    return redirectResponse;
+  };
+
   // Maximum session lifetime (7 hours by default): after that the user must sign in again,
   // however active they are. /auth/callback is exempt because it is how a NEW session starts.
   if (user && pathname !== "/auth/callback" && isSessionExpired(claimsData?.claims)) {
-    // Local scope: end only THIS session, not the user's sessions on other devices.
-    await supabase.auth.signOut({ scope: "local" });
-    user = null;
-
-    if (!isAuthRoute) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("error", "session_expired");
-      const redirectResponse = secure(NextResponse.redirect(loginUrl));
-      // Carry over the cookie deletions signOut() just wrote onto `response`.
-      for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
-      return redirectResponse;
-    }
-    // On /login or /register: just continue as signed out (cookies are already cleared).
+    const redirect = await endSession("session_expired");
+    if (redirect) return redirect;
   }
 
   // Unauthenticated users on protected routes → login
@@ -128,9 +135,15 @@ export async function proxy(request: NextRequest) {
   if (needsRoleCheck) {
     // Fetch the profile and super-admin capability together; the capability
     // only counts for admins.
-    const [{ data: profile }, { data: capability }] = await Promise.all([
+    const sessionId = (claimsData?.claims as { session_id?: string } | undefined)?.session_id;
+    const [{ data: profile }, { data: capability }, sessionRow] = await Promise.all([
       supabase.from("users").select("role, is_paused").eq("id", user!.id).single(),
       supabase.from("super_admins").select("user_id").eq("user_id", user!.id).maybeSingle(),
+      // Device/session limit: a session revoked elsewhere (newer sign-in, admin, sign-out) is
+      // refused here. A missing row (session from before tracking) or a query error is allowed.
+      sessionId
+        ? supabase.from("user_sessions").select("revoked_at").eq("session_id", sessionId).maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
     role = profile?.role ?? null;
@@ -141,18 +154,14 @@ export async function proxy(request: NextRequest) {
     // /login with a message. Without the sign-out, /login would send the still-signed-in user
     // back to their dashboard, which sends them to /login again: an endless redirect loop.
     if (isPaused) {
-      await supabase.auth.signOut({ scope: "local" });
-      user = null;
-
-      if (!isAuthRoute) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("error", "account_paused");
-        const redirectResponse = secure(NextResponse.redirect(loginUrl));
-        // Carry over the cookie deletions signOut() just wrote onto `response`.
-        for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
-        return redirectResponse;
-      }
-      // On /login or /register: continue as signed out so the message can be shown.
+      const redirect = await endSession("account_paused");
+      if (redirect) return redirect;
+    } else if (
+      pathname !== "/auth/callback" &&
+      (sessionRow.data as { revoked_at?: string | null } | null)?.revoked_at
+    ) {
+      const redirect = await endSession("session_revoked");
+      if (redirect) return redirect;
     }
   }
 

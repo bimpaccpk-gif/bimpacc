@@ -2,6 +2,8 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import type { DeviceComponents } from "@/types";
+import { getClientIp } from "@/lib/client-ip";
+import { registerSession, sessionIdFromAccessToken } from "@/lib/session-tracking";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -82,6 +84,19 @@ export async function GET(request: Request) {
     });
   };
 
+  // Every successful sign-in: record login history, register the session and enforce the
+  // device/session limit (oldest sessions beyond the limit are signed out).
+  const completeLogin = async (role: string) => {
+    await logLogin(googleAuthId, "success");
+    await registerSession({
+      userId: googleAuthId,
+      role,
+      sessionId: sessionIdFromAccessToken(session.access_token),
+      userAgent,
+      ip: await getClientIp(),
+    });
+  };
+
   // Step 1: Check if a users row already exists with this auth ID
   const { data: existingUser } = await admin
     .from("users")
@@ -108,8 +123,7 @@ export async function GET(request: Request) {
         .eq("id", googleAuthId);
     }
 
-    // Log successful Google login
-    await logLogin(googleAuthId, "success");
+    await completeLogin(existingUser.role);
     return NextResponse.redirect(
       new URL(await getDashboardPath(googleAuthId, existingUser.role), request.url)
     );
@@ -141,8 +155,7 @@ export async function GET(request: Request) {
         })
         .eq("id", emailMatch.id);
 
-      // Log successful Google login for pre-created user
-      await logLogin(googleAuthId, "success");
+      await completeLogin(emailMatch.role);
       return NextResponse.redirect(
         new URL(await getDashboardPath(googleAuthId, emailMatch.role), request.url)
       );
@@ -178,7 +191,6 @@ export async function GET(request: Request) {
     device_components: deviceComponents,
   });
 
-  // Log first Google login for new user
-  await logLogin(googleAuthId, "success");
+  await completeLogin("student");
   return NextResponse.redirect(new URL("/student", request.url));
 }

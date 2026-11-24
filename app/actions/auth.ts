@@ -6,6 +6,7 @@ import { isFingerprintFresh } from "@/lib/fingerprint-utils";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/client-ip";
 import { PASSWORD_AUTH_DISABLED_MESSAGE, isPasswordAuthEnabled } from "@/lib/auth-config";
+import { registerSession, revokeSessions, sessionIdFromAccessToken } from "@/lib/session-tracking";
 import type { UserRole, DeviceComponents } from "@/types";
 
 
@@ -160,6 +161,18 @@ export async function signIn(
     user_agent: clip(formData.get("user_agent") as string | null, MAX_USER_AGENT_LENGTH),
   });
 
+  // Register this session and enforce the device/session limit.
+  const {
+    data: { session: newSession },
+  } = await supabase.auth.getSession();
+  await registerSession({
+    userId: user.id,
+    role,
+    sessionId: sessionIdFromAccessToken(newSession?.access_token),
+    userAgent: clip(formData.get("user_agent") as string | null, MAX_USER_AGENT_LENGTH),
+    ip: await getClientIp(),
+  });
+
   if (role === "admin") {
     const { data: capability } = await supabase
       .from("super_admins")
@@ -272,7 +285,20 @@ export async function signUp(
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const sessionId = (claimsData?.claims as { session_id?: string } | undefined)?.session_id;
+
+  // Sign out THIS device only. The default scope ("global") also signed the user out on
+  // every other device they use.
+  await supabase.auth.signOut({ scope: "local" });
+
+  if (sessionId) {
+    try {
+      await revokeSessions([sessionId], "signed_out");
+    } catch (err) {
+      console.error("[sessions] sign-out bookkeeping failed:", err instanceof Error ? err.message : err);
+    }
+  }
   redirect("/login");
 }
 

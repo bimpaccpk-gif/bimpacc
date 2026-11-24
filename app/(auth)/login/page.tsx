@@ -7,6 +7,8 @@ const LOGIN_ERRORS: Record<string, string> = {
   google_auth_failed: "Google sign-in did not complete. Please try again.",
   account_locked: "This account is locked. Please contact the BIMPACC team.",
   account_paused: "This account is paused. Please contact the BIMPACC team.",
+  session_revoked:
+    "This device was signed out: the account was signed in on another device, or an admin ended this session. Sign in again to continue.",
   device_mismatch:
     "This account is registered to a different device. Use your registered device or contact the BIMPACC team.",
 };

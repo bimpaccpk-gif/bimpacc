@@ -1,6 +1,7 @@
 export { AccessPanel } from "./access-panel";
 export { ActivityPanel } from "./activity-panel";
 export { DetailTabs } from "./detail-tabs";
+export { DevicesPanel } from "./devices-panel";
 export type { DetailTab, DetailTabsProps } from "./detail-tabs";
 export { EnrollmentsPanel } from "./enrollments-panel";
 export { LockedAccountAlert } from "./locked-account-alert";

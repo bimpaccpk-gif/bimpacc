@@ -104,16 +104,20 @@ describe("login error messages and paused accounts", () => {
     for (const f of files) {
       for (const m of read(f).matchAll(/login\?error=([a-z_]+)/g)) codes.add(m[1]);
       for (const m of read(f).matchAll(/searchParams\.set\("error",\s*"([a-z_]+)"\)/g)) codes.add(m[1]);
+      for (const m of read(f).matchAll(/endSession\("([a-z_]+)"\)/g)) codes.add(m[1]);
     }
     expect(codes.size).toBeGreaterThan(2);
     const page = read("app/(auth)/login/page.tsx");
     for (const code of codes) expect(page, code).toContain(`${code}:`);
   });
 
-  it("the proxy signs paused users out instead of bouncing them between /login and the dashboard", () => {
+  it("the proxy signs paused or revoked sessions out instead of bouncing them between /login and the dashboard", () => {
     const proxy = read("proxy.ts");
-    const block = proxy.slice(proxy.indexOf("if (isPaused)"), proxy.indexOf("if (isPaused)") + 900);
-    expect(block).toContain("signOut");
-    expect(block).toContain("user = null");
+    const helper = proxy.slice(proxy.indexOf("const endSession"), proxy.indexOf("const endSession") + 700);
+    expect(helper).toContain('signOut({ scope: "local" })');
+    expect(helper).toContain("user = null");
+    expect(helper).toContain("if (isAuthRoute) return null");
+    expect(proxy).toContain('endSession("account_paused")');
+    expect(proxy).toContain('endSession("session_revoked")');
   });
 });
