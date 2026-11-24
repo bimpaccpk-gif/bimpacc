@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { verifySession, assertMfaSatisfied } from "@/lib/dal";
+import { getCourseLessons } from "@/lib/course-content";
 
 export async function verifyInstructor() {
   const session = await verifySession();
@@ -22,81 +23,90 @@ export async function verifyInstructor() {
   return { userId: session.userId, role: profile.role };
 }
 
-export async function getInstructorDashboardData() {
-  const session = await verifySession();
-  const supabase = await createClient();
+export interface InstructorCourseStats {
+  id: string;
+  title: string;
+  status: string;
+  batch: string | null;
+  enrollments: number;
+  lessons: number;
+  /** Lessons completed, summed over all enrolled students. */
+  completedLessons: number;
+  /** completedLessons / (enrollments x lessons), 0-100. */
+  progress: number;
+}
 
-  // Verify instructor role
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", session.userId)
-    .single();
+export interface InstructorDashboardData {
+  error?: string;
+  role?: "admin" | "instructor";
+  courses?: InstructorCourseStats[];
+  totals?: { courses: number; published: number; enrollments: number; progress: number };
+}
 
-  if (!profile || (profile.role !== "instructor" && profile.role !== "admin")) {
+/**
+ * Per-course teaching stats. Admins see every course, instructors only their own.
+ * Uses COUNT queries (never row lists), so large courses are not cut off at the API's row limit.
+ */
+export async function getInstructorDashboardData(): Promise<InstructorDashboardData> {
+  let auth: { userId: string; role: string };
+  try {
+    auth = await verifyInstructor();
+  } catch {
     return { error: "Unauthorized." };
   }
+  const role = auth.role === "admin" ? "admin" : "instructor";
+  const supabase = await createClient();
 
-  // Get courses where this instructor is the instructor_id, or all courses if admin
-  const role = profile.role as string;
+  let query = supabase
+    .from("courses")
+    .select("id, title, status, batch, hierarchy_type")
+    .order("created_at", { ascending: false });
+  if (role !== "admin") query = query.eq("instructor_id", auth.userId);
 
-  const { data: coursesList } = role === "admin"
-    ? await supabase.from("courses").select("id, title, status, created_at, batch").order("created_at", { ascending: false })
-    : await supabase.from("courses").select("id, title, status, created_at, batch").eq("instructor_id", session.userId).order("created_at", { ascending: false });
+  const { data: courseRows, error } = await query;
+  if (error) return { error: "Could not load your courses." };
 
-  const courses = coursesList ?? [];
+  const courses = await Promise.all(
+    (courseRows ?? []).map(async (c): Promise<InstructorCourseStats> => {
+      const [enrollRes, doneRes, lessonList] = await Promise.all([
+        supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("course_id", c.id),
+        supabase
+          .from("lesson_progress")
+          .select("id, enrollments!inner(course_id)", { count: "exact", head: true })
+          .eq("completed", true)
+          .eq("enrollments.course_id", c.id),
+        // Shared, cached course structure (same for everyone); safe after the role check above.
+        getCourseLessons(c.id, c.hierarchy_type ?? 1).catch(() => []),
+      ]);
+      const enrollments = enrollRes.count ?? 0;
+      const lessons = lessonList.length;
+      const completedLessons = doneRes.count ?? 0;
+      const possible = enrollments * lessons;
+      return {
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        batch: c.batch,
+        enrollments,
+        lessons,
+        completedLessons,
+        progress: possible > 0 ? Math.min(100, Math.round((completedLessons / possible) * 100)) : 0,
+      };
+    })
+  );
 
-  // Get total enrollments across these courses
-  const courseIds = courses.map((c) => c.id);
-  let totalStudents = 0;
-  let enrollmentMap: Record<string, number> = {};
-
-  if (courseIds.length > 0) {
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("user_id, course_id")
-      .in("course_id", courseIds);
-
-    if (enrollments) {
-      const uniqueUserIds = new Set(enrollments.map((e) => e.user_id));
-      totalStudents = uniqueUserIds.size;
-      enrollmentMap = enrollments.reduce(
-        (acc, e) => {
-          acc[e.course_id] = (acc[e.course_id] ?? 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>
-      );
-    }
-  }
-
-  // Calculate completion rate from lesson_progress for enrollments in these courses
-  let completionRate = 0;
-  // Get enrollment IDs for these courses
-    const { data: courseEnrollments } = await supabase
-      .from("enrollments")
-      .select("id")
-      .in("course_id", courseIds);
-
-    const enrollmentIds = courseEnrollments?.map((e) => e.id) ?? [];
-
-    if (enrollmentIds.length > 0) {
-      const { data: progressData } = await supabase
-        .from("lesson_progress")
-        .select("completed")
-        .in("enrollment_id", enrollmentIds);
-
-    if (progressData && progressData.length > 0) {
-      const completedCount = progressData.filter((p) => p.completed).length;
-      completionRate = Math.round((completedCount / progressData.length) * 100);
-    }
-  }
+  const possible = courses.reduce((n, c) => n + c.enrollments * c.lessons, 0);
+  const done = courses.reduce((n, c) => n + c.completedLessons, 0);
 
   return {
+    role,
     courses,
-    totalStudents,
-    completionRate,
-    enrollmentMap,
+    totals: {
+      courses: courses.length,
+      published: courses.filter((c) => c.status === "published").length,
+      enrollments: courses.reduce((n, c) => n + c.enrollments, 0),
+      progress: possible > 0 ? Math.min(100, Math.round((done / possible) * 100)) : 0,
+    },
   };
 }
 
