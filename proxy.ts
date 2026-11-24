@@ -137,9 +137,22 @@ export async function proxy(request: NextRequest) {
     isPaused = profile?.is_paused ?? false;
     isSuperAdmin = role === "admin" && Boolean(capability);
 
-    // Account pause/ban check — redirect paused users away from protected routes
-    if (isPaused && !isAuthRoute) {
-      return secure(NextResponse.redirect(new URL("/login?error=account_paused", request.url)));
+    // Account pause/ban check. A paused user is signed out (this session only) and sent to
+    // /login with a message. Without the sign-out, /login would send the still-signed-in user
+    // back to their dashboard, which sends them to /login again: an endless redirect loop.
+    if (isPaused) {
+      await supabase.auth.signOut({ scope: "local" });
+      user = null;
+
+      if (!isAuthRoute) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("error", "account_paused");
+        const redirectResponse = secure(NextResponse.redirect(loginUrl));
+        // Carry over the cookie deletions signOut() just wrote onto `response`.
+        for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
+        return redirectResponse;
+      }
+      // On /login or /register: continue as signed out so the message can be shown.
     }
   }
 

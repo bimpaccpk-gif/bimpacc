@@ -96,3 +96,24 @@ describe("quiz answers stay on the server", () => {
     expect(read("app/actions/quiz.ts")).not.toMatch(/from\("quiz_questions"\)\s*\.select\("\*"\)/);
   });
 });
+
+describe("login error messages and paused accounts", () => {
+  it("every ?error= code the app redirects to /login with has a message on the login page", () => {
+    const files = ["proxy.ts", "lib/dal.ts", "app/auth/callback/route.ts", "app/actions/auth.ts"];
+    const codes = new Set<string>();
+    for (const f of files) {
+      for (const m of read(f).matchAll(/login\?error=([a-z_]+)/g)) codes.add(m[1]);
+      for (const m of read(f).matchAll(/searchParams\.set\("error",\s*"([a-z_]+)"\)/g)) codes.add(m[1]);
+    }
+    expect(codes.size).toBeGreaterThan(2);
+    const page = read("app/(auth)/login/page.tsx");
+    for (const code of codes) expect(page, code).toContain(`${code}:`);
+  });
+
+  it("the proxy signs paused users out instead of bouncing them between /login and the dashboard", () => {
+    const proxy = read("proxy.ts");
+    const block = proxy.slice(proxy.indexOf("if (isPaused)"), proxy.indexOf("if (isPaused)") + 900);
+    expect(block).toContain("signOut");
+    expect(block).toContain("user = null");
+  });
+});
